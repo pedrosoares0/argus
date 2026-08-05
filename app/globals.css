@@ -1,0 +1,203 @@
+@import 'tailwindcss';
+
+/* ================================================================
+   SENTRY — Design System Premium
+   Linguagem visual: Apple (iOS/macOS) — Human Interface Guidelines
+   Mobile-first, uso em campo hospitalar
+   
+   Filosofia: cada detalhe compõe algo que parece nativo do iOS.
+   Botões com bordas glass, glow colorido, cards com depth real,
+   tipografia com hierarquia clara, micro-interações táteis.
+   ================================================================ */
+
+@theme {
+  /* ---- Cores do sistema (iOS systemColors) ---- */
+  --color-fundo: #F2F2F7;
+  --color-fundo-elevado: #EFEFF4;
+  --color-superficie: #FFFFFF;
+  --color-superficie-secundaria: #F9F9FB;
+  --color-superficie-terciaria: #F4F6FA;
+
+  /* Azul primário — sistema */
+  --color-primaria: #007AFF;
+  --color-primaria-clara: #5AC8FA;
+  --color-primaria-media: #3A9BFF;
+  --color-primaria-escura: #0055D4;
+  --color-primaria-profunda: #003EA1;
+
+  /* Texto */
+  --color-texto: #1C1C1E;
+  --color-texto-secundario: #8E8E93;
+  --color-texto-terciario: #C7C7CC;
+  --color-separador: rgba(60, 60, 67, 0.08);
+  --color-separador-forte: rgba(60, 60, 67, 0.15);
+
+  /* Semânticas */
+  --color-perigo: #FF3B30;
+  --color-perigo-fundo: rgba(255, 59, 48, 0.08);
+  --color-alerta: #FF9500;
+  --color-alerta-fundo: rgba(255, 149, 0, 0.08);
+  --color-sucesso: #34C759;
+  --color-sucesso-fundo: rgba(52, 199, 89, 0.08);
+  --color-info: #5856D6;
+  --color-info-fundo: rgba(88, 86, 214, 0.08);
+
+  /* Glass */
+  --color-glass-borda: rgba(255, 255, 255, 0.65);
+  --color-glass-borda-interna: rgba(255, 255, 255, 0.9);
+  --color-glass-fundo: rgba(255, 255, 255, 0.72);
+
+  /* ---- Raios ---- */
+  --radius-card: 22px;
+  --radius-card-lg: 28px;
+  --radius-pill: 9999px;
+  --radius-input: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 8px;
+
+  /* ---- Sombras premium ---- */
+  --shadow-card: 
+    0 0 0 0.5px rgba(0, 0, 0, 0.03),
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    0 2px 6px rgba(0, 0, 0, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.1);
+  --shadow-elevado:
+    0 0 0 0.5px rgba(0, 0, 0, 0.03),
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    0 12px 36px rgba(0, 0, 0, 0.08);
+  --shadow-botao-primario:
+    0 4px 16px rgba(0, 122, 255, 0.35),
+    0 1px 4px rgba(0, 122, 255, 0.25);
+  --shadow-botao-primario-hover:
+    0 6px 24px rgba(0, 122, 255, 0.45),
+    0 2px 8px rgba(0, 122, 255, 0.3);
+  --shadow-glow-azul: 0 0 24px rgba(0, 122, 255, 0.2);
+  --shadow-glow-icone:
+    0 8px 24px rgba(0, 122, 255, 0.3),
+    0 2px 8px rgba(0, 122, 255, 0.2);
+
+  /* ---- Tipografia ---- */
+  --font-sistema: -apple-system, 'SF Pro Display', 'SF Pro Text', system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* ---- Easing (Apple + Emil Kowalski) ---- */
+  --ease-out-forte: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-forte: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ---- Reset & Base ---- */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-family: var(--font-sistema);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-fundo);
+  color: var(--color-texto);
+  letter-spacing: -0.01em;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+/* ---- Feedback tátil global (Apple Design §1) ---- */
+button,
+a,
+[role="button"] {
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 250ms cubic-bezier(0.23, 1, 0.32, 1),
+              opacity 200ms ease;
+}
+
+button:active,
+a:active,
+[role="button"]:active {
+  transform: scale(0.97);
+}
+
+/* ---- Scrollbar mínima ---- */
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 9999px;
+}
+
+/* ================================================================
+   Animações
+   ================================================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulso {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position: 200% 0; }
+}
+
+@keyframes scanLine {
+  0%, 100% { top: 10%; }
+  50%      { top: 90%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(0, 122, 255, 0.35), 0 1px 4px rgba(0, 122, 255, 0.25); }
+  50%      { box-shadow: 0 6px 24px rgba(0, 122, 255, 0.45), 0 2px 8px rgba(0, 122, 255, 0.3); }
+}
+
+/* ---- Skeleton loader ---- */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-superficie-secundaria) 25%,
+    rgba(0, 0, 0, 0.03) 50%,
+    var(--color-superficie-secundaria) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ---- Reduced Motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
