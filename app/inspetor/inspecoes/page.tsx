@@ -24,7 +24,7 @@ const HISTORICO_MOCK: InspecaoHistorico[] = [
     tipo: 'Carrinho de Parada · Completo',
     dataHora: 'Hoje às 10:15',
     status: 'com_nc',
-    detalheStatus: '1 Não Conformidade registrada',
+    detalheStatus: '1 Não Conformidade',
     secoesRespondidas: 9,
     totalSecoes: 9,
     categoriaLocal: 'UTI',
@@ -60,7 +60,7 @@ const HISTORICO_MOCK: InspecaoHistorico[] = [
     tipo: 'Checklist de Segurança',
     dataHora: '02/08 às 19:40',
     status: 'com_nc',
-    detalheStatus: '2 Não Conformidades registradas',
+    detalheStatus: '2 Não Conformidades',
     secoesRespondidas: 8,
     totalSecoes: 8,
     categoriaLocal: 'CENTRO_C',
@@ -95,39 +95,27 @@ export default function PaginaHistoricoInspecoes() {
 
   return (
     <div className="px-5 pt-4 space-y-6">
-      {/* ── Perfil do Usuário / Resumo ── */}
-      <div className="bg-white rounded-[24px] p-5 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-bold text-base shadow-[0_4px_12px_rgba(36,107,253,0.25)] shrink-0">
-          {usuario.avatar}
+      {/* ── Perfil do Usuário Sleek ── */}
+      <div className="bg-white rounded-[24px] p-5 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 flex items-center justify-between">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(36,107,253,0.15)] shrink-0">
+            {usuario.avatar}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-gray-900 leading-tight">{usuario.nome}</p>
+            <p className="text-[12px] text-gray-400 font-medium mt-0.5">{usuario.cargo}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-[16px] font-bold text-gray-900 leading-tight">{usuario.nome}</p>
-          <p className="text-[12px] text-gray-400 font-medium mt-0.5">{usuario.cargo}</p>
-        </div>
-      </div>
 
-      {/* ── Estatísticas do Inspetor ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-[20px] p-4 border border-gray-100/80 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
-          <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">
-            Realizadas (Total)
-          </span>
-          <span className="text-2xl font-bold text-gray-900 mt-1 block">
-            {HISTORICO_MOCK.length}
-          </span>
-        </div>
-        <div className="bg-white rounded-[20px] p-4 border border-gray-100/80 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
-          <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase block">
-            Com Conformidade
-          </span>
-          <span className="text-2xl font-bold text-emerald-600 mt-1 block">
-            {HISTORICO_MOCK.filter((i) => i.status === 'conforme').length}
-          </span>
+        {/* Resumo Rápido */}
+        <div className="text-right shrink-0">
+          <p className="text-[16px] font-extrabold text-gray-900 leading-none">{HISTORICO_MOCK.length}</p>
+          <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Inspeções</p>
         </div>
       </div>
 
       {/* ── Filtros Segmentados (iOS Style) ── */}
-      <div className="bg-gray-100 rounded-full p-1 flex gap-1">
+      <div className="bg-gray-200/60 rounded-full p-1 flex gap-1">
         {(['todas', 'conforme', 'com_nc'] as const).map((opt) => {
           const labels = { todas: 'Todas', conforme: 'Conformes', com_nc: 'Com NC' }
           const ativo = filtro === opt
@@ -137,9 +125,9 @@ export default function PaginaHistoricoInspecoes() {
               type="button"
               onClick={() => setFiltro(opt)}
               className={[
-                'flex-1 py-1.5 rounded-full text-[13px] font-bold transition-all duration-200 cursor-pointer',
+                'flex-1 py-2 rounded-full text-[13px] font-bold transition-all duration-200 cursor-pointer',
                 ativo
-                  ? 'bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
+                  ? 'bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
                   : 'text-gray-500 hover:text-gray-900',
               ].join(' ')}
             >
@@ -149,14 +137,14 @@ export default function PaginaHistoricoInspecoes() {
         })}
       </div>
 
-      {/* ── Histórico de Inspeções ── */}
-      <div className="space-y-3">
+      {/* ── Lista de Inspeções (iOS Settings-style) ── */}
+      <div className="space-y-2">
         <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase px-1">
           Minhas Inspeções ({filtrados.length})
         </p>
 
         {filtrados.length > 0 ? (
-          <div className="space-y-3">
+          <div className="bg-white rounded-[24px] shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
             {filtrados.map((ins) => {
               const corTag = ins.categoriaLocal === 'UTI'
                 ? 'roxo'
@@ -164,50 +152,48 @@ export default function PaginaHistoricoInspecoes() {
                   ? 'azul'
                   : 'verde'
 
-              const statusColors = ins.status === 'conforme'
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-red-50 text-red-700'
+              const dot = ins.status === 'conforme' ? 'bg-emerald-500' : 'bg-red-500'
+
+              const statusBadgeColors = ins.status === 'conforme'
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                : 'bg-red-50 text-red-700 border border-red-100'
 
               return (
                 <div
                   key={ins.id}
-                  className="bg-white rounded-[24px] p-5 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 space-y-3.5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.05)] transition-all"
+                  className="flex items-center justify-between py-4 px-5 hover:bg-gray-50/40 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
+                  {/* Informações da Inspeção */}
+                  <div className="flex items-start gap-3 min-w-0">
+                    {/* Status Indicator */}
+                    <span className={`w-2 h-2 rounded-full ${dot} shrink-0 mt-2`} />
+
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[15px] font-bold text-gray-900 truncate">
+                          {ins.ativo}
+                        </span>
                         <PillTag cor={corTag}>
                           {ins.categoriaLocal === 'UTI' ? 'UTI' : ins.categoriaLocal === 'PRONTO' ? 'PRONTO' : 'C. CIRÚRGICO'}
                         </PillTag>
-                        <span className="text-[11px] font-medium text-gray-400">
-                          {ins.dataHora}
-                        </span>
                       </div>
-                      <h3 className="text-[15px] font-bold text-gray-900 leading-tight">
-                        {ins.ativo}
-                      </h3>
-                      <p className="text-[12px] text-gray-500">
-                        {ins.local}
+                      <p className="text-[12px] text-gray-400 mt-0.5">
+                        {ins.local} · {ins.dataHora}
+                      </p>
+                      <p className="text-[11px] text-gray-500 font-semibold mt-1">
+                        {ins.detalheStatus} · <span className="text-gray-400">{ins.secoesRespondidas}/{ins.totalSecoes} seções</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="h-px bg-gray-100" />
-
-                  {/* Status & Progresso */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${statusColors}`}>
-                        {ins.status === 'conforme' ? 'Conforme' : 'Com Não Conf.'}
-                      </span>
-                      <span className="text-[11px] text-gray-400 font-medium">
-                        {ins.detalheStatus}
-                      </span>
-                    </div>
-
-                    <span className="text-[12px] font-bold text-gray-700 tabular-nums">
-                      {ins.secoesRespondidas}/{ins.totalSecoes} seções
+                  {/* Badges de Status e Chevron */}
+                  <div className="flex items-center gap-2 shrink-0 ml-3">
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${statusBadgeColors}`}>
+                      {ins.status === 'conforme' ? 'Conforme' : 'Com NC'}
                     </span>
+                    <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
                   </div>
                 </div>
               )
@@ -215,7 +201,7 @@ export default function PaginaHistoricoInspecoes() {
           </div>
         ) : (
           <div className="bg-white rounded-[24px] p-8 text-center text-gray-400 border border-gray-100/80">
-            Nenhuma inspeção encontrada para o filtro selecionado.
+            Nenhuma inspeção encontrada.
           </div>
         )}
       </div>
