@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { PillTag } from '@/components/ui/PillTag'
 
 interface InspecaoHistorico {
   id: string
@@ -13,57 +12,52 @@ interface InspecaoHistorico {
   detalheStatus: string
   secoesRespondidas: number
   totalSecoes: number
-  categoriaLocal: 'UTI' | 'PRONTO' | 'CENTRO_C'
 }
 
 const HISTORICO_MOCK: InspecaoHistorico[] = [
   {
     id: 'ins-1',
     ativo: 'Carrinho UTI-A',
-    local: 'UTI Adulto - Bloco A',
+    local: 'UTI Adulto',
     tipo: 'Carrinho de Parada · Completo',
     dataHora: 'Hoje às 10:15',
     status: 'com_nc',
-    detalheStatus: '1 Não Conformidade',
+    detalheStatus: '1 NC',
     secoesRespondidas: 9,
     totalSecoes: 9,
-    categoriaLocal: 'UTI',
   },
   {
     id: 'ins-2',
     ativo: 'Monitor Multiparamétrico #1',
-    local: 'Sala 01 · Centro Cirúrgico A',
+    local: 'Sala 01',
     tipo: 'Checklist de Segurança',
     dataHora: 'Ontem às 14:30',
     status: 'conforme',
-    detalheStatus: 'Totalmente conforme',
+    detalheStatus: 'Conforme',
     secoesRespondidas: 5,
     totalSecoes: 5,
-    categoriaLocal: 'CENTRO_C',
   },
   {
     id: 'ins-3',
     ativo: 'Carrinho Pronto-B',
-    local: 'Pronto Socorro · Sala Vermelha',
+    local: 'Pronto Socorro',
     tipo: 'Carrinho de Parada · Plantão',
     dataHora: '03/08 às 07:15',
     status: 'conforme',
-    detalheStatus: 'Totalmente conforme',
+    detalheStatus: 'Conforme',
     secoesRespondidas: 3,
     totalSecoes: 3,
-    categoriaLocal: 'PRONTO',
   },
   {
     id: 'ins-4',
     ativo: 'Aparelho de Anestesia #1',
-    local: 'Sala 02 · Centro Cirúrgico A',
+    local: 'Sala 02',
     tipo: 'Checklist de Segurança',
     dataHora: '02/08 às 19:40',
     status: 'com_nc',
-    detalheStatus: '2 Não Conformidades',
+    detalheStatus: '2 NCs',
     secoesRespondidas: 8,
     totalSecoes: 8,
-    categoriaLocal: 'CENTRO_C',
   },
   {
     id: 'ins-5',
@@ -72,10 +66,9 @@ const HISTORICO_MOCK: InspecaoHistorico[] = [
     tipo: 'Carrinho de Parada · Completo',
     dataHora: '01/08 às 11:20',
     status: 'conforme',
-    detalheStatus: 'Totalmente conforme',
+    detalheStatus: 'Conforme',
     secoesRespondidas: 9,
     totalSecoes: 9,
-    categoriaLocal: 'UTI',
   },
 ]
 
@@ -137,7 +130,7 @@ export default function PaginaHistoricoInspecoes() {
         })}
       </div>
 
-      {/* ── Lista de Inspeções (iOS Settings-style) ── */}
+      {/* ── Lista de Inspeções (Ultra Clean) ── */}
       <div className="space-y-2">
         <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase px-1">
           Minhas Inspeções ({filtrados.length})
@@ -146,50 +139,32 @@ export default function PaginaHistoricoInspecoes() {
         {filtrados.length > 0 ? (
           <div className="bg-white rounded-[24px] shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
             {filtrados.map((ins) => {
-              const corTag = ins.categoriaLocal === 'UTI'
-                ? 'roxo'
-                : ins.categoriaLocal === 'PRONTO'
-                  ? 'azul'
-                  : 'verde'
-
               const dot = ins.status === 'conforme' ? 'bg-emerald-500' : 'bg-red-500'
-
-              const statusBadgeColors = ins.status === 'conforme'
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                : 'bg-red-50 text-red-700 border border-red-100'
+              const textColors = ins.status === 'conforme' ? 'text-emerald-600' : 'text-red-500'
 
               return (
                 <div
                   key={ins.id}
                   className="flex items-center justify-between py-4 px-5 hover:bg-gray-50/40 transition-colors"
                 >
-                  {/* Informações da Inspeção */}
-                  <div className="flex items-start gap-3 min-w-0">
-                    {/* Status Indicator */}
-                    <span className={`w-2 h-2 rounded-full ${dot} shrink-0 mt-2`} />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {/* Status Dot */}
+                    <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
 
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[15px] font-bold text-gray-900 truncate">
-                          {ins.ativo}
-                        </span>
-                        <PillTag cor={corTag}>
-                          {ins.categoriaLocal === 'UTI' ? 'UTI' : ins.categoriaLocal === 'PRONTO' ? 'PRONTO' : 'C. CIRÚRGICO'}
-                        </PillTag>
-                      </div>
-                      <p className="text-[12px] text-gray-400 mt-0.5">
-                        {ins.local} · {ins.dataHora}
+                      <p className="text-[15px] font-bold text-gray-900 leading-tight">
+                        {ins.ativo}
                       </p>
-                      <p className="text-[11px] text-gray-500 font-semibold mt-1">
-                        {ins.detalheStatus} · <span className="text-gray-400">{ins.secoesRespondidas}/{ins.totalSecoes} seções</span>
+                      <p className="text-[12px] text-gray-400 mt-1">
+                        {ins.local} · {ins.dataHora}
                       </p>
                     </div>
                   </div>
 
-                  {/* Badges de Status e Chevron */}
+                  {/* Status do lado direito */}
                   <div className="flex items-center gap-2 shrink-0 ml-3">
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase ${statusBadgeColors}`}>
-                      {ins.status === 'conforme' ? 'Conforme' : 'Com NC'}
+                    <span className={`text-[13px] font-bold ${textColors}`}>
+                      {ins.detalheStatus}
                     </span>
                     <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
