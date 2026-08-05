@@ -1,8 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
 
 export default function LayoutInspetor({
@@ -11,6 +11,8 @@ export default function LayoutInspetor({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const [menuAberto, setMenuAberto] = useState(false)
 
   const itensNav = [
     {
@@ -42,6 +44,11 @@ export default function LayoutInspetor({
     },
   ]
 
+  function handleSair() {
+    setMenuAberto(false)
+    router.push('/login')
+  }
+
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#F4F6FA] max-w-md mx-auto relative">
       {/* Header branco */}
@@ -49,7 +56,7 @@ export default function LayoutInspetor({
         <Link href="/inspetor" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity">
           Sentry
         </Link>
-        <PillUsuario nome="Dr. Paulo" />
+        <PillUsuario nome="Dr. Paulo" onClick={() => setMenuAberto(true)} />
       </header>
 
       {/* Conteúdo principal */}
@@ -86,6 +93,95 @@ export default function LayoutInspetor({
           </div>
         </nav>
       </div>
+
+      {/* ══════════════════════════════════════════════════
+          DRAWER / MENU LATERAL (Apple Sidebar)
+         ══════════════════════════════════════════════════ */}
+      {menuAberto && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Backdrop blur */}
+          <div
+            className="absolute inset-0 bg-black/15 backdrop-blur-[1px] animate-[fadeIn_0.15s_ease-out]"
+            onClick={() => setMenuAberto(false)}
+          />
+
+          {/* Container do Drawer */}
+          <div className="relative w-[280px] h-full bg-[#F4F6FA] shadow-[-4px_0_24px_rgba(0,0,0,0.08)] flex flex-col rounded-l-[28px] overflow-hidden animate-[slideLeft_0.25s_cubic-bezier(0.25,1,0.5,1)]">
+            
+            {/* Perfil Header */}
+            <div className="bg-white p-6 pt-10 border-b border-gray-100 flex flex-col items-center text-center space-y-3">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-bold text-lg shadow-[0_4px_14px_rgba(36,107,253,0.2)]">
+                DP
+              </div>
+              <div>
+                <p className="text-[16px] font-bold text-gray-900">Dr. Paulo</p>
+                <p className="text-[12px] text-gray-400 font-medium">Médico / Coordenador</p>
+              </div>
+            </div>
+
+            {/* Menu Links */}
+            <div className="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
+              
+              {/* Seção 1: Navegação Principal */}
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase px-2">
+                  Navegação Principal
+                </p>
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.01)] overflow-hidden">
+                  {itensNav.map((item) => {
+                    const ativo = item.href === '/inspetor'
+                      ? pathname === '/inspetor'
+                      : pathname.startsWith(item.href)
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMenuAberto(false)}
+                        className={[
+                          'flex items-center gap-3 px-4 py-3 text-[14px] font-semibold transition-colors',
+                          ativo
+                            ? 'bg-[#246BFD]/5 text-[#246BFD]'
+                            : 'text-gray-700 hover:bg-gray-50',
+                        ].join(' ')}
+                      >
+                        <div className={ativo ? 'text-[#246BFD]' : 'text-gray-400'}>
+                          {item.icone}
+                        </div>
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Rodapé: Sair */}
+            <div className="p-4 bg-white border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleSair}
+                className="w-full py-3.5 rounded-full text-[14px] font-bold text-red-600 bg-red-50 border border-red-100 hover:bg-red-100/70 transition-colors cursor-pointer flex items-center justify-center gap-2 active:scale-[0.98] duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                </svg>
+                Sair da Conta
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Animação do drawer */}
+      <style jsx global>{`
+        @keyframes slideLeft {
+          from { transform: translateX(100%); }
+          to   { transform: translateX(0); }
+        }
+      `}</style>
     </div>
   )
 }
