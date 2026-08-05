@@ -1,185 +1,208 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/Card'
-import { Botao } from '@/components/ui/Botao'
+import { useState, useRef, Suspense } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import type { CriticidadeItem } from '@/lib/supabase/types'
 
-/**
- * Formulário de abertura de NC (Não Conformidade).
- * RN-009: vinculada ao item/seção que gerou a NC.
- * Status inicial sempre "Aberta" — inspetor não pode alterar.
- * Upload de foto via câmera para Supabase Storage.
- */
-export default function PaginaNovaNaoConformidade() {
+const CRITICIDADES: { valor: CriticidadeItem; label: string; desc: string; cor: string; corAtivo: string }[] = [
+  { valor: 'critico', label: 'Crítico', desc: 'Pode indisponibilizar o ativo', cor: 'border-gray-200 bg-white text-gray-600', corAtivo: 'border-red-300 bg-red-50 text-red-700' },
+  { valor: 'importante', label: 'Importante', desc: 'Requer ação em breve', cor: 'border-gray-200 bg-white text-gray-600', corAtivo: 'border-amber-300 bg-amber-50 text-amber-700' },
+  { valor: 'informativo', label: 'Informativo', desc: 'Registro para acompanhamento', cor: 'border-gray-200 bg-white text-gray-600', corAtivo: 'border-sky-300 bg-sky-50 text-sky-700' },
+]
+
+function FormularioNC() {
   const router = useRouter()
-  const inputFotoRef = useRef<HTMLInputElement>(null)
+  const params = useSearchParams()
+  const fotoInputRef = useRef<HTMLInputElement>(null)
+
+  const secaoNome = params.get('secaoNome') ?? 'Seção'
 
   const [descricao, setDescricao] = useState('')
+  const [criticidade, setCriticidade] = useState<CriticidadeItem>('critico')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
-  function handleCapturarFoto() {
-    inputFotoRef.current?.click()
+  function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFotoPreview(URL.createObjectURL(file))
   }
 
-  function handleFotoSelecionada(e: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0]
-    if (!arquivo) return
-
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setFotoPreview(ev.target?.result as string)
-    }
-    reader.readAsDataURL(arquivo)
+  function removerFoto() {
+    setFotoPreview(null)
+    if (fotoInputRef.current) fotoInputRef.current.value = ''
   }
 
-  async function handleEnviar(e: React.FormEvent) {
-    e.preventDefault()
-    if (!descricao.trim()) return
-
+  async function handleRegistrar() {
     setEnviando(true)
-    // Futuramente:
-    // 1. Upload da foto para Supabase Storage
-    // 2. Criar registro em nao_conformidades via Edge Function
-    // 3. Status = 'aberta', criticidade herdada do item
-    await new Promise((r) => setTimeout(r, 1500))
+    await new Promise((r) => setTimeout(r, 1000))
     router.back()
   }
 
   return (
-    <div className="px-4 pt-4 pb-8 space-y-5">
-      {/* Botão voltar */}
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-1 text-primaria text-sm font-medium"
+    <div className="px-5 pt-4 pb-10 space-y-6">
+      {/* Voltar */}
+      <Link
+        href="/inspetor"
+        onClick={(e) => { e.preventDefault(); router.back() }}
+        className="inline-flex items-center gap-1.5 text-[13px] font-bold text-gray-600 hover:text-black transition-colors -ml-1"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
         Voltar
-      </button>
+      </Link>
 
+      {/* Título */}
       <div>
-        <h2 className="text-xl font-bold text-texto">Nova Não Conformidade</h2>
-        <p className="text-sm text-texto-secundario mt-1">
-          Documente o problema encontrado com descrição e foto
+        <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+          Registrar não conformidade
+        </h1>
+        <p className="text-[13px] text-gray-500 mt-0.5">
+          Seção: <span className="font-semibold text-gray-700">{secaoNome}</span>
         </p>
       </div>
 
-      <form onSubmit={handleEnviar} className="space-y-5">
-        {/* Captura de foto */}
-        <Card className="!p-0 overflow-hidden">
-          {fotoPreview ? (
-            <div className="relative">
-              <img
-                src={fotoPreview}
-                alt="Evidência capturada"
-                className="w-full aspect-[4/3] object-cover"
-              />
-              <button
-                type="button"
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white hover:bg-black/70 transition"
-                onClick={() => setFotoPreview(null)}
-                aria-label="Remover foto"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="w-full aspect-[4/3] flex flex-col items-center justify-center gap-3 bg-fundo hover:bg-texto/[0.03] transition-colors"
-              onClick={handleCapturarFoto}
-            >
-              <div className="w-16 h-16 rounded-2xl bg-primaria/10 flex items-center justify-center">
-                <svg className="w-8 h-8 text-primaria" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-                </svg>
-              </div>
-              <div className="text-center">
-                <p className="text-base font-medium text-texto">Tirar foto</p>
-                <p className="text-sm text-texto-secundario mt-0.5">
-                  Documente o problema encontrado
-                </p>
-              </div>
-            </button>
-          )}
-        </Card>
+      {/* ── Descrição ── */}
+      <div className="space-y-2">
+        <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+          Descreva a não conformidade
+        </label>
+        <textarea
+          rows={4}
+          autoFocus
+          placeholder="Ex: Faltando 2 ampolas de Adrenalina 1mg/ml..."
+          value={descricao}
+          onChange={(e) => setDescricao(e.target.value)}
+          className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-2 focus:ring-[#246BFD]/10 resize-none transition-all"
+        />
+      </div>
 
-        {/* Input oculto para captura de foto */}
+      {/* ── Evidência ── */}
+      <div className="space-y-2">
+        <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+          Evidência
+        </label>
+
         <input
-          ref={inputFotoRef}
+          ref={fotoInputRef}
           type="file"
           accept="image/*"
           capture="environment"
-          onChange={handleFotoSelecionada}
+          onChange={handleFoto}
           className="hidden"
         />
 
-        {/* Descrição */}
-        <div>
-          <label
-            htmlFor="descricao-nc"
-            className="block text-sm font-medium text-texto-secundario mb-1.5 ml-1"
-          >
-            Descrição do problema
-          </label>
-          <textarea
-            id="descricao-nc"
-            value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            required
-            rows={4}
-            className={[
-              'w-full',
-              'bg-superficie',
-              'rounded-input',
-              'border border-separador',
-              'px-4 py-3',
-              'text-base text-texto',
-              'placeholder:text-texto-terciario',
-              'outline-none',
-              'transition-all duration-200',
-              'focus:border-primaria/30 focus:shadow-[var(--shadow-glow)]',
-              'resize-none',
-            ].join(' ')}
-            placeholder="Descreva o que foi encontrado fora de conformidade..."
-          />
-        </div>
-
-        {/* Info fixa */}
-        <Card className="!p-4 bg-alerta-fundo border border-alerta/20">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-alerta shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-            </svg>
-            <div>
-              <p className="text-sm font-semibold text-alerta">
-                NC será registrada como &quot;Aberta&quot;
-              </p>
-              <p className="text-xs text-alerta/80 mt-0.5">
-                A criticidade será herdada do item do checklist. O coordenador será notificado para atribuir um responsável.
-              </p>
-            </div>
+        {fotoPreview ? (
+          <div className="relative">
+            <img
+              src={fotoPreview}
+              alt="Evidência fotográfica"
+              className="w-full h-52 object-cover rounded-2xl border border-gray-200"
+            />
+            <button
+              type="button"
+              onClick={removerFoto}
+              className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-xs font-bold hover:bg-black/70 transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
           </div>
-        </Card>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fotoInputRef.current?.click()}
+            className="w-full h-36 rounded-2xl border-2 border-dashed border-gray-200 bg-white flex flex-col items-center justify-center gap-2.5 text-gray-400 hover:border-[#246BFD] hover:text-[#246BFD] transition-colors cursor-pointer"
+          >
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+            </svg>
+            <span className="text-[13px] font-semibold">Tirar foto ou anexar</span>
+          </button>
+        )}
+      </div>
 
-        {/* Botão enviar */}
-        <Botao
-          type="submit"
-          variante="primario"
-          tamanho="lg"
-          larguraTotal
-          carregando={enviando}
-          disabled={!descricao.trim()}
+      {/* ── Criticidade ── */}
+      <div className="space-y-2">
+        <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+          Criticidade
+        </label>
+        <div className="space-y-2">
+          {CRITICIDADES.map((c) => {
+            const selecionado = criticidade === c.valor
+            return (
+              <button
+                key={c.valor}
+                type="button"
+                onClick={() => setCriticidade(c.valor)}
+                className={[
+                  'w-full flex items-center justify-between px-4 py-3.5 rounded-2xl border transition-all cursor-pointer',
+                  selecionado ? c.corAtivo : c.cor,
+                ].join(' ')}
+              >
+                <div className="text-left">
+                  <p className="text-[14px] font-bold">{c.label}</p>
+                  <p className="text-[11px] opacity-70 mt-0.5">{c.desc}</p>
+                </div>
+                <div className={[
+                  'w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
+                  selecionado ? 'border-current' : 'border-gray-300',
+                ].join(' ')}>
+                  {selecionado && <div className="w-2.5 h-2.5 rounded-full bg-current" />}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Assinatura do Responsável ── */}
+      <div className="space-y-2">
+        <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+          Registrado por
+        </label>
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 flex items-center gap-3.5">
+          {/* Avatar com iniciais */}
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-600 font-bold text-sm shrink-0">
+            PS
+          </div>
+          <div className="min-w-0">
+            <p className="text-[14px] font-bold text-gray-900">Enf. Pedro Soares</p>
+            <p className="text-[12px] text-gray-500">
+              Inspetor · {new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Ações ── */}
+      <div className="flex gap-3 pt-3 pb-4">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="flex-1 py-3.5 rounded-full text-[14px] font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
         >
-          Registrar não conformidade
-        </Botao>
-      </form>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleRegistrar}
+          disabled={!descricao.trim() || enviando}
+          className="flex-1 py-3.5 rounded-full text-[14px] font-bold text-white bg-gradient-to-b from-[#246bfd] to-[#1253f6] border-[3px] border-white/90 shadow-[0_10px_24px_-4px_rgba(30,107,251,0.35)] hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {enviando ? 'Registrando...' : 'Registrar NC'}
+        </button>
+      </div>
     </div>
+  )
+}
+
+export default function PaginaNovaNC() {
+  return (
+    <Suspense fallback={<div className="px-5 pt-8 text-center text-gray-400">Carregando...</div>}>
+      <FormularioNC />
+    </Suspense>
   )
 }

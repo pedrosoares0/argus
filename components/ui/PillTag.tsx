@@ -15,30 +15,30 @@ interface PillTagProps {
 }
 
 const coresPill: Record<CorPill, string> = {
-  azul: 'bg-primaria/12 text-primaria',
-  roxo: 'bg-info/12 text-info',
-  verde: 'bg-sucesso/12 text-sucesso',
-  laranja: 'bg-alerta/12 text-alerta',
-  vermelho: 'bg-perigo/12 text-perigo',
-  cinza: 'bg-texto-terciario/12 text-texto-secundario',
+  roxo: 'bg-[#F3E8FF] text-[#9333EA]',
+  azul: 'bg-[#E0F2FE] text-[#0284C7]',
+  verde: 'bg-[#DCFCE7] text-[#16A34A]',
+  laranja: 'bg-[#FEF3C7] text-[#D97706]',
+  vermelho: 'bg-[#FEE2E2] text-[#DC2626]',
+  cinza: 'bg-[#F3F4F6] text-[#4B5563]',
 }
 
 /**
- * Tag colorida no formato pill para categorias e setores.
- * Ex: pill roxa "UTI", pill verde "Operacional".
+ * Tag limpa no formato pill para categorias e setores.
+ * Inspirada na 2ª imagem de referência: tons pastéis suaves e tipografia em caixa alta.
  */
 export function PillTag({
   children,
-  cor = 'azul',
+  cor = 'roxo',
   className = '',
 }: PillTagProps) {
   return (
     <span
       className={[
-        'inline-flex items-center',
-        'rounded-pill',
+        'inline-flex items-center justify-center',
+        'rounded-full',
         'px-3 py-1',
-        'text-xs font-semibold',
+        'text-[10px] font-bold tracking-wider uppercase',
         'select-none',
         coresPill[cor],
         className,

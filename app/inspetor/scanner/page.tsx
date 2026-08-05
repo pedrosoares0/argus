@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 
@@ -112,18 +113,16 @@ export default function PaginaScanner() {
     <div className="min-h-[calc(100dvh-8rem)] flex flex-col">
       {/* Botão voltar */}
       <div className="px-4 pt-4">
-        <button
-          onClick={() => {
-            pararCamera()
-            router.back()
-          }}
-          className="flex items-center gap-1 text-primaria text-sm font-medium"
+        <Link
+          href="/inspetor"
+          onClick={pararCamera}
+          className="inline-flex items-center gap-1.5 text-[13px] font-bold text-gray-700 hover:text-black transition-colors py-1 px-2 -ml-2 rounded-lg hover:bg-gray-200/50 cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Voltar
-        </button>
+        </Link>
       </div>
 
       {/* Área do scanner */}

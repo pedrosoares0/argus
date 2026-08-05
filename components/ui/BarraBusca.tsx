@@ -10,11 +10,11 @@ interface BarraBuscaProps {
 }
 
 /**
- * Barra de busca no formato pill com ícone de lupa.
- * Fundo cinza suave, cantos totalmente arredondados.
+ * Barra de busca no formato pill clean com ícone de lupa.
+ * Fundo branco, borda suave de 1px, shadow levíssima.
  */
 export function BarraBusca({
-  placeholder = 'Buscar...',
+  placeholder = 'Buscar por carrinho ou setor...',
   valor,
   aoMudar,
   className = '',
@@ -32,18 +32,18 @@ export function BarraBusca({
     <div
       className={[
         'relative flex items-center',
-        'bg-superficie',
-        'rounded-pill',
-        'border border-separador',
-        'shadow-[var(--shadow-card)]',
-        'transition-shadow duration-200',
-        'focus-within:shadow-[var(--shadow-glow)] focus-within:border-primaria/30',
+        'bg-white',
+        'rounded-full',
+        'border border-gray-200/80',
+        'shadow-[0_2px_8px_rgba(0,0,0,0.02)]',
+        'transition-all duration-200',
+        'focus-within:border-[#246BFD] focus-within:shadow-[0_2px_12px_rgba(36,107,253,0.12)]',
         className,
       ].join(' ')}
     >
       {/* Ícone de lupa */}
       <svg
-        className="absolute left-4 h-4.5 w-4.5 text-texto-terciario pointer-events-none"
+        className="absolute left-4 h-4 w-4 text-gray-400 pointer-events-none"
         fill="none"
         viewBox="0 0 24 24"
         strokeWidth={2}
@@ -61,11 +61,11 @@ export function BarraBusca({
         className={[
           'w-full',
           'bg-transparent',
-          'pl-11 pr-4 py-3',
-          'text-base text-texto',
-          'placeholder:text-texto-terciario',
+          'pl-11 pr-4 py-3.5',
+          'text-sm text-texto',
+          'placeholder:text-gray-400',
           'outline-none',
-          'rounded-pill',
+          'rounded-full',
         ].join(' ')}
         placeholder={placeholder}
         value={valorAtual}
@@ -76,7 +76,7 @@ export function BarraBusca({
       {valorAtual && (
         <button
           type="button"
-          className="absolute right-3 p-1 rounded-full hover:bg-texto-terciario/10 text-texto-terciario"
+          className="absolute right-3.5 p-1 rounded-full hover:bg-gray-100 text-gray-400"
           onClick={() => {
             setValorInterno('')
             aoMudar?.('')

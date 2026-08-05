@@ -1,198 +1,152 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/Card'
-import { PillTag } from '@/components/ui/PillTag'
 import { Botao } from '@/components/ui/Botao'
 import type { StatusAtivo } from '@/lib/supabase/types'
 
 /**
- * Tela de detalhes do Local — mostra ativos, status de prontidão e permite iniciar ronda.
- * RN-025/028: inspeção padrão é por ambiente, não por equipamento isolado.
+ * Tela de detalhes do Local / Sala — Apple-style, hierarquia clara.
  */
+
+const STATUS_ATIVO: Record<StatusAtivo, { label: string; dot: string }> = {
+  operacional: { label: 'Operacional', dot: 'bg-emerald-500' },
+  operacional_com_restricoes: { label: 'Com restrição', dot: 'bg-amber-500' },
+  indisponivel: { label: 'Indisponível', dot: 'bg-red-500' },
+  em_manutencao: { label: 'Em manutenção', dot: 'bg-sky-500' },
+}
+
+const STATUS_LOCAL = {
+  pronta: { label: 'Pronta', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  pronta_com_ressalvas: { label: 'Com ressalvas', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
+  nao_pronta: { label: 'Não pronta', bg: 'bg-red-50 text-red-700 border-red-200' },
+  liberada_manualmente: { label: 'Liberada', bg: 'bg-sky-50 text-sky-700 border-sky-200' },
+} as const
+
 export default function PaginaLocal() {
   const router = useRouter()
 
-  // Dados mock — futuramente virão do Supabase via params.id
+  // Mock
   const local = {
     id: '1',
     nome: 'Sala 01',
     setor: 'Centro Cirúrgico A',
-    status: 'pronta_com_ressalvas' as const,
-    tipo: 'sala' as const,
+    status: 'pronta_com_ressalvas' as keyof typeof STATUS_LOCAL,
   }
 
   const ativos = [
-    {
-      id: 'a1',
-      nome: 'Monitor Multiparamétrico #1',
-      categoria: 'Monitor multiparamétrico',
-      patrimonio: 'PAT-001234',
-      status: 'operacional' as StatusAtivo,
-      ultimaInspecao: 'Hoje 14:30',
-    },
-    {
-      id: 'a2',
-      nome: 'Aparelho de Anestesia #1',
-      categoria: 'Aparelho de anestesia',
-      patrimonio: 'PAT-001235',
-      status: 'operacional_com_restricoes' as StatusAtivo,
-      ultimaInspecao: 'Hoje 13:15',
-    },
-    {
-      id: 'a3',
-      nome: 'Carrinho de Parada #1',
-      categoria: 'Carrinho de parada',
-      patrimonio: 'PAT-001236',
-      status: 'operacional' as StatusAtivo,
-      ultimaInspecao: 'Ontem 18:00',
-    },
-    {
-      id: 'a4',
-      nome: 'Mesa Cirúrgica #1',
-      categoria: 'Mesa cirúrgica',
-      patrimonio: 'PAT-001237',
-      status: 'indisponivel' as StatusAtivo,
-      ultimaInspecao: 'Hoje 10:45',
-    },
+    { id: 'a1', nome: 'Monitor Multiparamétrico #1', status: 'operacional' as StatusAtivo, ultimaInspecao: 'Hoje 14:30' },
+    { id: 'a2', nome: 'Aparelho de Anestesia #1', status: 'operacional_com_restricoes' as StatusAtivo, ultimaInspecao: 'Hoje 13:15' },
+    { id: 'a3', nome: 'Carrinho de Parada #1', status: 'operacional' as StatusAtivo, ultimaInspecao: 'Ontem 18:00' },
+    { id: 'a4', nome: 'Mesa Cirúrgica #1', status: 'indisponivel' as StatusAtivo, ultimaInspecao: 'Hoje 10:45' },
   ]
 
-  const statusAtivoConfig: Record<StatusAtivo, { label: string; cor: 'verde' | 'laranja' | 'vermelho' | 'azul' }> = {
-    operacional: { label: 'Operacional', cor: 'verde' },
-    operacional_com_restricoes: { label: 'Com restrições', cor: 'laranja' },
-    indisponivel: { label: 'Indisponível', cor: 'vermelho' },
-    em_manutencao: { label: 'Em manutenção', cor: 'azul' },
-  }
-
-  const statusLocalConfig = {
-    pronta: { label: 'Pronta', cor: 'verde' as const, icone: '✓' },
-    pronta_com_ressalvas: { label: 'Com ressalvas', cor: 'laranja' as const, icone: '!' },
-    nao_pronta: { label: 'Não pronta', cor: 'vermelho' as const, icone: '✗' },
-    liberada_manualmente: { label: 'Liberada manualmente', cor: 'azul' as const, icone: '↑' },
-  }
-
-  const statusInfo = statusLocalConfig[local.status]
+  const statusCfg = STATUS_LOCAL[local.status]
 
   return (
-    <div className="px-4 pt-4 space-y-5">
-      {/* Botão voltar */}
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-1 text-primaria text-sm font-medium"
+    <div className="px-5 pt-3 pb-10 space-y-6">
+      {/* Voltar */}
+      <Link
+        href="/inspetor"
+        className="inline-flex items-center gap-1.5 text-[13px] font-bold text-gray-600 hover:text-black transition-colors -ml-1"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
         Voltar
-      </button>
+      </Link>
 
-      {/* Header do local */}
-      <Card className="!p-5">
-        <div className="flex items-start justify-between mb-3">
+      {/* ── Card Principal: Sala ── */}
+      <div className="bg-white rounded-[24px] p-6 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80">
+        {/* Nome + Badge de Prontidão */}
+        <div className="flex items-start justify-between gap-3 mb-1">
           <div>
-            <h2 className="text-xl font-bold text-texto">{local.nome}</h2>
-            <p className="text-sm text-texto-secundario mt-0.5">{local.setor}</p>
+            <h1 className="text-[22px] font-bold text-gray-900 tracking-tight leading-tight">
+              {local.nome}
+            </h1>
+            <p className="text-[13px] text-gray-500 mt-0.5">{local.setor}</p>
           </div>
-          <PillTag cor={statusInfo.cor}>{statusInfo.label}</PillTag>
+          <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full border shrink-0 ${statusCfg.bg}`}>
+            {statusCfg.label}
+          </span>
         </div>
 
-        {/* Resumo de prontidão */}
-        <div className="grid grid-cols-3 gap-3 mt-4">
-          <div className="text-center p-3 rounded-sm bg-sucesso-fundo">
-            <p className="text-lg font-bold text-sucesso">
-              {ativos.filter((a) => a.status === 'operacional').length}
-            </p>
-            <p className="text-[10px] font-medium text-sucesso/70 uppercase tracking-wide">
-              Operacionais
-            </p>
-          </div>
-          <div className="text-center p-3 rounded-sm bg-alerta-fundo">
-            <p className="text-lg font-bold text-alerta">
-              {ativos.filter((a) => a.status === 'operacional_com_restricoes').length}
-            </p>
-            <p className="text-[10px] font-medium text-alerta/70 uppercase tracking-wide">
-              Restrições
-            </p>
-          </div>
-          <div className="text-center p-3 rounded-sm bg-perigo-fundo">
-            <p className="text-lg font-bold text-perigo">
-              {ativos.filter((a) => ['indisponivel', 'em_manutencao'].includes(a.status)).length}
-            </p>
-            <p className="text-[10px] font-medium text-perigo/70 uppercase tracking-wide">
-              Indisponíveis
-            </p>
+        {/* Separador */}
+        <div className="h-px bg-gray-100 my-4" />
+
+        {/* Prontidão Visual */}
+        <div className="space-y-3">
+          <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+            Prontidão dos Ativos
+          </p>
+          <div className="grid grid-cols-4 gap-1">
+            {ativos.map((a) => {
+              const cfg = STATUS_ATIVO[a.status]
+              return (
+                <div key={a.id} className="flex flex-col items-center gap-1.5 py-2">
+                  <span className={`w-3 h-3 rounded-full ${cfg.dot}`} />
+                  <span className="text-[10px] font-medium text-gray-500 text-center leading-tight">
+                    {cfg.label}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
-      </Card>
 
-      {/* Botão iniciar ronda */}
-      <Botao
-        variante="primario"
-        tamanho="lg"
-        larguraTotal
-        onClick={() => router.push(`/inspetor/checklist/ronda-${local.id}`)}
-        icone={
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        }
-      >
-        Iniciar ronda
-      </Botao>
+        {/* CTA — Iniciar Ronda */}
+        <div className="mt-5">
+          <Botao
+            variante="primario"
+            tamanho="lg"
+            larguraTotal
+            onClick={() => router.push(`/inspetor/checklist/ronda-${local.id}`)}
+            icone={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+          >
+            Iniciar ronda
+          </Botao>
+        </div>
+      </div>
 
-      {/* Lista de ativos */}
-      <section>
-        <h3 className="text-sm font-semibold text-texto-secundario uppercase tracking-wider mb-3 ml-1">
-          Ativos ({ativos.length})
-        </h3>
-        <Card className="!p-0 divide-y divide-separador overflow-hidden">
+      {/* ── Lista de Equipamentos ── */}
+      <div className="space-y-2">
+        <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase px-1">
+          Equipamentos ({ativos.length})
+        </p>
+
+        <div className="bg-white rounded-[24px] shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
           {ativos.map((ativo) => {
-            const statusCfg = statusAtivoConfig[ativo.status]
+            const cfg = STATUS_ATIVO[ativo.status]
             return (
               <button
                 key={ativo.id}
-                className="flex items-center gap-3 w-full px-4 py-3.5 text-left hover:bg-texto/[0.02] active:bg-texto/[0.05] transition-colors"
+                type="button"
                 onClick={() => router.push(`/inspetor/checklist/${ativo.id}`)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50/50 transition-colors cursor-pointer active:bg-gray-100/50"
               >
-                {/* Indicador de status */}
-                <div
-                  className={[
-                    'w-2.5 h-2.5 rounded-full shrink-0',
-                    statusCfg.cor === 'verde' ? 'bg-sucesso' : '',
-                    statusCfg.cor === 'laranja' ? 'bg-alerta' : '',
-                    statusCfg.cor === 'vermelho' ? 'bg-perigo' : '',
-                    statusCfg.cor === 'azul' ? 'bg-primaria' : '',
-                  ].join(' ')}
-                />
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-base font-medium text-texto truncate">
-                    {ativo.nome}
-                  </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <PillTag cor="cinza">{ativo.categoria}</PillTag>
-                    <span className="text-xs text-texto-terciario">
-                      {ativo.ultimaInspecao}
-                    </span>
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className={`w-2 h-2 rounded-full ${cfg.dot} shrink-0`} />
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold text-gray-900 truncate">
+                      {ativo.nome}
+                    </p>
+                    <p className="text-[12px] text-gray-400 mt-0.5">
+                      {cfg.label} · {ativo.ultimaInspecao}
+                    </p>
                   </div>
                 </div>
-
-                {/* Chevron */}
-                <svg
-                  className="shrink-0 h-4 w-4 text-texto-terciario"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2.5}
-                  stroke="currentColor"
-                >
+                <svg className="w-4 h-4 text-gray-300 shrink-0 ml-2" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
             )
           })}
-        </Card>
-      </section>
+        </div>
+      </div>
     </div>
   )
 }
