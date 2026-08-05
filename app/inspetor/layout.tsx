@@ -57,10 +57,10 @@ export default function LayoutInspetor({
         {children}
       </main>
 
-      {/* Nav inferior — Glass flutuante (mais translúcida) */}
+      {/* Nav inferior — Glass flutuante com Efeito Bubble */}
       <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <nav className="bg-white/45 backdrop-blur-[18px] rounded-[22px] border border-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center justify-around px-2 py-2">
+        <nav className="bg-white/45 backdrop-blur-[18px] rounded-[24px] border border-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center justify-around px-2 py-2.5">
             {itensNav.map((item) => {
               const ativo = item.href === '/inspetor'
                 ? pathname === '/inspetor'
@@ -71,15 +71,15 @@ export default function LayoutInspetor({
                   key={item.href}
                   href={item.href}
                   className={[
-                    'flex flex-col items-center gap-0.5 px-5 py-1.5 rounded-2xl',
-                    'transition-all duration-200',
+                    'flex flex-col items-center gap-0.5 px-5 py-2 rounded-[18px]',
+                    'transition-all duration-300 ease-out active:scale-[0.92]',
                     ativo
-                      ? 'text-[#246BFD]'
-                      : 'text-gray-400 hover:text-gray-600',
+                      ? 'text-[#246BFD] bg-[#246BFD]/8 shadow-[inset_0_0_0_1px_rgba(36,107,253,0.05)] font-bold'
+                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/40',
                   ].join(' ')}
                 >
                   {item.icone}
-                  <span className={`text-[10px] ${ativo ? 'font-bold' : 'font-medium'}`}>{item.label}</span>
+                  <span className="text-[10px] tracking-wide mt-0.5">{item.label}</span>
                 </Link>
               )
             })}

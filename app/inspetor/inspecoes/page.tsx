@@ -107,8 +107,8 @@ export default function PaginaHistoricoInspecoes() {
         </div>
       </div>
 
-      {/* ── Filtros Segmentados (iOS Style) ── */}
-      <div className="bg-gray-200/60 rounded-full p-1 flex gap-1">
+      {/* ── Filtros Segmentados (Efeito Bubble) ── */}
+      <div className="bg-gray-200/50 rounded-full p-1 flex gap-1">
         {(['todas', 'conforme', 'com_nc'] as const).map((opt) => {
           const labels = { todas: 'Todas', conforme: 'Conformes', com_nc: 'Com NC' }
           const ativo = filtro === opt
@@ -118,10 +118,10 @@ export default function PaginaHistoricoInspecoes() {
               type="button"
               onClick={() => setFiltro(opt)}
               className={[
-                'flex-1 py-2 rounded-full text-[13px] font-bold transition-all duration-200 cursor-pointer',
+                'flex-1 py-2 rounded-full text-[13px] font-bold transition-all duration-300 ease-out cursor-pointer active:scale-[0.95]',
                 ativo
-                  ? 'bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
-                  : 'text-gray-500 hover:text-gray-900',
+                  ? 'bg-white text-[#246BFD] shadow-[0_2px_8px_rgba(0,0,0,0.06)]'
+                  : 'text-gray-500 hover:text-gray-800 hover:bg-white/10',
               ].join(' ')}
             >
               {labels[opt]}
