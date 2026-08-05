@@ -26,6 +26,19 @@ export default function PaginaLogin() {
     setCarregando(true)
     await new Promise((r) => setTimeout(r, 800))
 
+    // Armazena o usuário correspondente no localStorage
+    const perfilMock = {
+      coordenador: { id: 'usr-coord-1', nome: 'Dra. Beatriz Ferraz', perfil: 'coordenador' as const },
+      engenharia: { id: 'usr-eng-1', nome: 'Eng. Carlos Eduardo', perfil: 'engenharia_clinica' as const },
+      inspetor: { id: 'usr-insp-1', nome: 'Enf. Pedro Soares', perfil: 'inspetor' as const },
+      gestor: { id: 'usr-gest-1', nome: 'Dr. Paulo Albuquerque', perfil: 'gestor' as const },
+      admin: { id: 'usr-admin-1', nome: 'Suporte TI Sentry', perfil: 'administrador' as const },
+    }
+    const mockUser = perfilMock[perfilSelecionado]
+    if (mockUser) {
+      window.localStorage.setItem('sentry_usuario_atual', JSON.stringify(mockUser))
+    }
+
     // Redireciona baseado no perfil selecionado
     const rotas: Record<PerfilUsuario, string> = {
       inspetor: '/inspetor',
