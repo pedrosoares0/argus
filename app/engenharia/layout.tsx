@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
-import { getUsuarioLogado } from '@/lib/supabase/mockDb'
+import { getUsuarioLogado, setUsuarioLogado, DEFAULT_USER } from '@/lib/supabase/mockDb'
 
 export default function LayoutEngenharia({
   children,
@@ -17,7 +17,12 @@ export default function LayoutEngenharia({
 
   useEffect(() => {
     const user = getUsuarioLogado()
-    setUsuario({ nome: user.nome, perfil: user.perfil })
+    if (user.perfil !== 'engenharia_clinica') {
+      setUsuarioLogado(DEFAULT_USER)
+      setUsuario({ nome: DEFAULT_USER.nome, perfil: DEFAULT_USER.perfil })
+    } else {
+      setUsuario({ nome: user.nome, perfil: user.perfil })
+    }
   }, [])
 
   function handleSair() {
@@ -41,7 +46,7 @@ export default function LayoutEngenharia({
       </main>
 
       {/* ══════════════════════════════════════════════════
-          DRAWER / MENU LATERAL (Compact, Clean & Flat)
+          DRAWER / MENU LATERAL
          ══════════════════════════════════════════════════ */}
       {menuAberto && (
         <div className="fixed inset-0 z-[100] flex justify-end">
@@ -68,7 +73,7 @@ export default function LayoutEngenharia({
             {/* Perfil Header */}
             <div className="pt-10 pb-5 px-4 flex flex-col items-center text-center border-b border-gray-100">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-extrabold text-[16px] shadow-[0_4px_10px_rgba(36,107,253,0.12)] mb-2.5">
-                EC
+                CE
               </div>
               <h3 className="text-[14px] font-bold text-gray-900 leading-tight">{usuario.nome}</h3>
               <p className="text-[10px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">Engenharia Clínica</p>
@@ -88,7 +93,7 @@ export default function LayoutEngenharia({
                 >
                   <div className="text-[#246BFD]">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.29-3.52c-.58-.39-1.13.12-.8.78l3.06 6.13c.25.5.92.5 1.17 0l3.06-6.13c.33-.66-.22-1.17-.8-.78l-5.29 3.52zM9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
                     </svg>
                   </div>
                   <span>Fila de NCs</span>

@@ -3,15 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { setUsuarioLogado, DEFAULT_USER, COORDENADOR_USER } from '@/lib/supabase/mockDb'
 
-type PerfilUsuario = 'inspetor' | 'coordenador' | 'engenharia' | 'gestor' | 'admin'
+type PerfilUsuario = 'inspetor' | 'coordenador' | 'engenharia' | 'gestor'
 
 const PERFIS: { valor: PerfilUsuario; label: string; desc: string; icone: string }[] = [
   { valor: 'inspetor', label: 'Inspetor', desc: 'Enfermeiros e Técnicos em campo', icone: '📋' },
   { valor: 'coordenador', label: 'Coordenador', desc: 'Visão setorial e validação de NCs', icone: '🔑' },
   { valor: 'engenharia', label: 'Engenharia Clínica', desc: 'Manutenção e reparo de ativos', icone: '🛠️' },
   { valor: 'gestor', label: 'Gestor', desc: 'Painéis, indicadores e SLA', icone: '📊' },
-  { valor: 'admin', label: 'Administrador', desc: 'Gestão completa do sistema', icone: '⚙️' },
 ]
 
 export default function PaginaLogin() {
@@ -20,23 +20,18 @@ export default function PaginaLogin() {
   const [senha, setSenha] = useState('')
   const [perfilSelecionado, setPerfilSelecionado] = useState<PerfilUsuario>('inspetor')
   const [carregando, setCarregando] = useState(false)
+  const [mostrarCredenciais, setMostrarCredenciais] = useState(false)
 
   async function handleEntrar(e: React.FormEvent) {
     e.preventDefault()
     setCarregando(true)
     await new Promise((r) => setTimeout(r, 800))
 
-    // Armazena o usuário correspondente no localStorage
-    const perfilMock = {
-      coordenador: { id: 'usr-coord-1', nome: 'Dra. Beatriz Ferraz', perfil: 'coordenador' as const },
-      engenharia: { id: 'usr-eng-1', nome: 'Eng. Carlos Eduardo', perfil: 'engenharia_clinica' as const },
-      inspetor: { id: 'usr-insp-1', nome: 'Enf. Pedro Soares', perfil: 'inspetor' as const },
-      gestor: { id: 'usr-gest-1', nome: 'Dr. Paulo Albuquerque', perfil: 'gestor' as const },
-      admin: { id: 'usr-admin-1', nome: 'Suporte TI Sentry', perfil: 'administrador' as const },
-    }
-    const mockUser = perfilMock[perfilSelecionado]
-    if (mockUser) {
-      window.localStorage.setItem('sentry_usuario_atual', JSON.stringify(mockUser))
+    // Configura o usuário logado baseado no perfil
+    if (perfilSelecionado === 'coordenador') {
+      setUsuarioLogado(COORDENADOR_USER)
+    } else if (perfilSelecionado === 'engenharia') {
+      setUsuarioLogado(DEFAULT_USER)
     }
 
     // Redireciona baseado no perfil selecionado
@@ -45,7 +40,6 @@ export default function PaginaLogin() {
       coordenador: '/coordenador',
       engenharia: '/engenharia',
       gestor: '/gestor',
-      admin: '/admin',
     }
 
     router.push(rotas[perfilSelecionado])
@@ -63,6 +57,80 @@ export default function PaginaLogin() {
           <p className="text-sm text-gray-400 font-semibold mt-1.5 leading-snug">
             Plataforma de Prontidão Operacional <br /> do Centro Cirúrgico
           </p>
+
+          {/* Botão CREDENCIAIS */}
+          <button
+            type="button"
+            onClick={() => setMostrarCredenciais(!mostrarCredenciais)}
+            className="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white border border-gray-200/50 shadow-[0_2px_6px_rgba(0,0,0,0.02)] text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 hover:border-gray-300 transition-all duration-200 cursor-pointer active:scale-95 select-none"
+          >
+            <span>CREDENCIAIS</span>
+            <svg className={`w-2.5 h-2.5 text-gray-400 transition-transform duration-300 ${mostrarCredenciais ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          {/* Painel de Perfis Animado */}
+          <div
+            className="overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{
+              maxHeight: mostrarCredenciais ? '120px' : '0px',
+              opacity: mostrarCredenciais ? 1 : 0,
+              marginTop: mostrarCredenciais ? '14px' : '0px',
+            }}
+          >
+            <div className="bg-white rounded-[24px] p-4 border border-gray-100/80 shadow-[0_4px_16px_rgba(0,0,0,0.02)]">
+              <div className="flex justify-center gap-4">
+                {PERFIS.map((p) => {
+                  const ativo = perfilSelecionado === p.valor
+                  const labelCurto: Record<string, string> = {
+                    inspetor: 'Inspetor',
+                    coordenador: 'Coord.',
+                    engenharia: 'Engenharia',
+                    gestor: 'Gestor',
+                    admin: 'Admin',
+                  }
+                  
+                  return (
+                    <button
+                      key={p.valor}
+                      type="button"
+                      onClick={() => {
+                        setPerfilSelecionado(p.valor)
+                        const emails: Record<string, string> = {
+                          inspetor: 'inspetor.pedro@sentry.com',
+                          coordenador: 'coordenador.ana@sentry.com',
+                          engenharia: 'engenharia.carlos@sentry.com',
+                          gestor: 'gestor.paulo@sentry.com',
+                          admin: 'admin.sentry@sentry.com',
+                        }
+                        setEmail(emails[p.valor])
+                        setSenha('senha123')
+                      }}
+                      className="flex flex-col items-center gap-1.5 focus:outline-none group select-none cursor-pointer"
+                    >
+                      <div
+                        className={`w-11 h-11 rounded-full flex items-center justify-center text-lg transition-all duration-200 border ${
+                          ativo
+                            ? 'bg-[#246BFD] border-[#246BFD] text-white shadow-[0_4px_12px_rgba(36,107,253,0.25)] scale-105'
+                            : 'bg-[#F8FAFC] border-gray-200/50 text-gray-700 hover:border-gray-300 hover:bg-gray-50 active:scale-95'
+                        }`}
+                      >
+                        {p.icone}
+                      </div>
+                      <span
+                        className={`text-[9px] font-bold tracking-tight text-center whitespace-nowrap transition-colors ${
+                          ativo ? 'text-[#246BFD]' : 'text-gray-400 group-hover:text-gray-600'
+                        }`}
+                      >
+                        {labelCurto[p.valor]}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Card Principal do Login */}
@@ -97,42 +165,6 @@ export default function PaginaLogin() {
                 onChange={(e) => setSenha(e.target.value)}
                 className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3.5 text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
               />
-            </div>
-
-            {/* ── Seletor de Perfil (Simulação) ── */}
-            <div className="space-y-2 pt-2">
-              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-                Simular Acesso como
-              </label>
-              
-              <div className="space-y-2 max-h-[170px] overflow-y-auto pr-1 border border-gray-100 rounded-2xl p-2 bg-[#F4F6FA]/50 scrollbar-thin">
-                {PERFIS.map((p) => {
-                  const ativo = perfilSelecionado === p.valor
-                  return (
-                    <button
-                      key={p.valor}
-                      type="button"
-                      onClick={() => setPerfilSelecionado(p.valor)}
-                      className={[
-                        'w-full flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all duration-200 active:scale-[0.98]',
-                        ativo
-                          ? 'border-[#246BFD]/30 bg-[#246BFD]/5 text-[#246BFD] shadow-sm'
-                          : 'border-transparent bg-white text-gray-600 hover:bg-gray-50',
-                      ].join(' ')}
-                    >
-                      <span className="text-lg shrink-0">{p.icone}</span>
-                      <div className="min-w-0">
-                        <p className={`text-[13px] font-bold ${ativo ? 'text-[#246BFD]' : 'text-gray-900'}`}>
-                          {p.label}
-                        </p>
-                        <p className="text-[10px] text-gray-400 truncate">
-                          {p.desc}
-                        </p>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
             </div>
 
             {/* Botão Entrar */}

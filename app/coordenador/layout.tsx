@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
-import { getUsuarioLogado } from '@/lib/supabase/mockDb'
+import { getUsuarioLogado, setUsuarioLogado, COORDENADOR_USER } from '@/lib/supabase/mockDb'
 
 export default function LayoutCoordenador({
   children,
@@ -13,11 +13,17 @@ export default function LayoutCoordenador({
 }) {
   const router = useRouter()
   const [menuAberto, setMenuAberto] = useState(false)
-  const [usuario, setUsuario] = useState({ nome: 'Dra. Beatriz Ferraz', perfil: 'coordenador' })
+  const [usuario, setUsuario] = useState({ nome: 'Coord. Ana Beatriz', perfil: 'coordenador' })
 
   useEffect(() => {
+    // Garante que o usuário logado é o coordenador
     const user = getUsuarioLogado()
-    setUsuario({ nome: user.nome, perfil: user.perfil })
+    if (user.perfil !== 'coordenador') {
+      setUsuarioLogado(COORDENADOR_USER)
+      setUsuario({ nome: COORDENADOR_USER.nome, perfil: COORDENADOR_USER.perfil })
+    } else {
+      setUsuario({ nome: user.nome, perfil: user.perfil })
+    }
   }, [])
 
   function handleSair() {
@@ -41,7 +47,7 @@ export default function LayoutCoordenador({
       </main>
 
       {/* ══════════════════════════════════════════════════
-          DRAWER / MENU LATERAL (Compact, Clean & Flat)
+          DRAWER / MENU LATERAL
          ══════════════════════════════════════════════════ */}
       {menuAberto && (
         <div className="fixed inset-0 z-[100] flex justify-end">
@@ -67,11 +73,11 @@ export default function LayoutCoordenador({
 
             {/* Perfil Header */}
             <div className="pt-10 pb-5 px-4 flex flex-col items-center text-center border-b border-gray-100">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-extrabold text-[16px] shadow-[0_4px_10px_rgba(36,107,253,0.12)] mb-2.5">
-                CO
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-white font-extrabold text-[16px] shadow-[0_4px_10px_rgba(124,58,237,0.12)] mb-2.5">
+                AB
               </div>
               <h3 className="text-[14px] font-bold text-gray-900 leading-tight">{usuario.nome}</h3>
-              <p className="text-[10px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">Coordenadora</p>
+              <p className="text-[10px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">Coordenador(a)</p>
             </div>
 
             {/* Menu Links */}
@@ -84,14 +90,14 @@ export default function LayoutCoordenador({
                 <Link
                   href="/coordenador"
                   onClick={() => setMenuAberto(false)}
-                  className="flex items-center gap-2.5 px-4 py-3 text-[13px] font-bold bg-[#246BFD]/5 text-[#246BFD] border-l-[3px] border-[#246BFD] transition-all duration-150"
+                  className="flex items-center gap-2.5 px-4 py-3 text-[13px] font-bold bg-[#7C3AED]/5 text-[#7C3AED] border-l-[3px] border-[#7C3AED] transition-all duration-150"
                 >
-                  <div className="text-[#246BFD]">
+                  <div className="text-[#7C3AED]">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <span>Validação de NCs</span>
+                  <span>Validar NCs</span>
                 </Link>
               </div>
             </div>

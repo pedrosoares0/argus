@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { PillTag } from '@/components/ui/PillTag'
-import { getNC, validarCorrecao, reabrirNC, getUsuarioLogado, MockNaoConformidadeExtended } from '@/lib/supabase/mockDb'
+import { getNC, validarEEncerrarNC, reabrirNC, getUsuarioLogado, MockNaoConformidadeExtended } from '@/lib/supabase/mockDb'
 import type { StatusNaoConformidade, StatusAtivo } from '@/lib/supabase/types'
 
 const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' | 'vermelho' | 'cinza'> = {
@@ -37,12 +37,11 @@ export default function ValidarNC() {
   const ncId = params.id as string
 
   const [nc, setNc] = useState<MockNaoConformidadeExtended | null>(null)
-  const [usuario, setUsuario] = useState({ id: '', nome: '', perfil: '' })
-  const [justificativa, setJustificativa] = useState('')
-  const [mostrarFormReabertura, setMostrarFormReabertura] = useState(false)
+  const [usuario, setUsuario] = useState({ id: '', nome: '' })
   const [fotoZoom, setFotoZoom] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [avisoSucesso, setAvisoSucesso] = useState<string | null>(null)
+  const [confirmandoReabertura, setConfirmandoReabertura] = useState(false)
 
   // Carrega dados iniciais
   useEffect(() => {
@@ -54,7 +53,7 @@ export default function ValidarNC() {
       setErro('Não conformidade não encontrada.')
     }
     const user = getUsuarioLogado()
-    setUsuario({ id: user.id, nome: user.nome, perfil: user.perfil })
+    setUsuario({ id: user.id, nome: user.nome })
   }, [ncId])
 
   function atualizarNC() {
@@ -64,50 +63,42 @@ export default function ValidarNC() {
     }
   }
 
-  // Ação 1: Validar e Encerrar
+  // Ação 1: Validar e Encerrar NC
   function handleValidarEncerrar() {
     if (!nc) return
-    const atualizado = validarCorrecao(nc.id, usuario.id, usuario.nome)
+    const atualizado = validarEEncerrarNC(nc.id, usuario.id, usuario.nome)
     if (atualizado) {
-      setAvisoSucesso('Não Conformidade validada e encerrada com sucesso!')
+      setAvisoSucesso('NC validada e encerrada com sucesso.')
+      setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()
-      setTimeout(() => {
-        setAvisoSucesso(null)
-        router.push('/coordenador')
-      }, 2000)
     }
   }
 
-  // Ação 2: Reabrir NC (Correção insuficiente)
-  function handleReabrir(e: React.FormEvent) {
-    e.preventDefault()
-    if (!nc || !justificativa.trim()) return
-    const atualizado = reabrirNC(nc.id, usuario.id, usuario.nome, justificativa)
+  // Ação 2: Reabrir Correção (volta para em_correcao)
+  function handleReabrirCorrecao() {
+    if (!nc) return
+    const atualizado = reabrirNC(nc.id, usuario.id, usuario.nome)
     if (atualizado) {
-      setAvisoSucesso('Não Conformidade reaberta e encaminhada para a Engenharia Clínica.')
-      setMostrarFormReabertura(false)
-      setJustificativa('')
+      setAvisoSucesso('NC reaberta. Enviada de volta para a Engenharia Clínica.')
+      setConfirmandoReabertura(false)
+      setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()
-      setTimeout(() => {
-        setAvisoSucesso(null)
-        router.push('/coordenador')
-      }, 2000)
     }
   }
 
   if (erro) {
     return (
-      <div className="px-5 pt-10 text-center space-y-4 max-w-md mx-auto">
+      <div className="px-5 pt-10 text-center space-y-4">
         <p className="text-red-500 font-bold">{erro}</p>
-        <Link href="/coordenador" className="inline-block text-[#246BFD] font-bold">
-          Voltar para o painel
+        <Link href="/coordenador" className="inline-block text-[#7C3AED] font-bold">
+          Voltar para a fila
         </Link>
       </div>
     )
   }
 
   if (!nc) {
-    return <div className="px-5 pt-10 text-center text-gray-500 max-w-md mx-auto">Carregando...</div>
+    return <div className="px-5 pt-10 text-center text-gray-500">Carregando...</div>
   }
 
   const corCriticidade =
@@ -120,10 +111,11 @@ export default function ValidarNC() {
   const corStatus = STATUS_CORES[nc.status]
   const labelStatus = STATUS_LABELS[nc.status]
   const ativoStatusCfg = nc.ativo ? STATUS_ATIVO[nc.ativo.status] : null
-  const pendenteValidação = nc.status === 'aguardando_validacao'
+  const ncEncerrada = nc.status === 'encerrada'
+  const ncAguardando = nc.status === 'aguardando_validacao'
 
   return (
-    <div className="min-h-screen bg-[#F4F6FA] pb-36 max-w-md mx-auto">
+    <div className="min-h-screen bg-[#F4F6FA] pb-32">
       {/* Header compact com botão voltar */}
       <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between sticky top-0 z-30">
         <Link
@@ -133,7 +125,7 @@ export default function ValidarNC() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
-          Painel
+          Fila
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200">
@@ -154,7 +146,22 @@ export default function ValidarNC() {
           </div>
         )}
 
-        {/* ── CARD 1: O ATIVO E SUA LOCALIZAÇÃO ── */}
+        {/* Badge NC Encerrada */}
+        {ncEncerrada && (
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-gray-600 text-xs font-bold flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">NC Encerrada</p>
+              <p className="text-[11px] text-gray-400 font-medium mt-0.5">Esta não conformidade foi validada e encerrada. Somente leitura.</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── CARD 1: O ATIVO ── */}
         <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4">
           <div>
             <span className="text-[10px] font-bold text-[#0284C7] bg-[#E0F2FE] px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -204,17 +211,17 @@ export default function ValidarNC() {
           )}
         </div>
 
-        {/* ── CARD 2: RELATO ORIGINAL (Inspetor) ── */}
+        {/* ── CARD 2: A NÃO CONFORMIDADE (Abertura do Inspetor) ── */}
         <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Relato do Inspetor</span>
+            <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Relato da Ocorrência</span>
             <PillTag cor={corCriticidade}>
               {nc.criticidade === 'critico' ? 'Urgente / Crítico' : nc.criticidade === 'importante' ? 'Importante' : 'Informativo'}
             </PillTag>
           </div>
 
           <div>
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Item/Seção com Falha</h4>
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Item Afetado</h4>
             <p className="text-[14px] font-bold text-gray-800 mt-0.5">{nc.item_execucao.item_congelado}</p>
           </div>
 
@@ -225,22 +232,22 @@ export default function ValidarNC() {
             </p>
           </div>
 
-          {/* Observação Adicional do Inspetor se houver */}
+          {/* Observação Adicional do Inspetor */}
           {nc.item_execucao.evidencia_texto && (
             <div className="space-y-1">
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Observações do Inspetor</h4>
-              <p className="text-xs text-gray-500 italic">"{nc.item_execucao.evidencia_texto}"</p>
+              <p className="text-xs text-gray-500 italic">&quot;{nc.item_execucao.evidencia_texto}&quot;</p>
             </div>
           )}
 
-          {/* Evidência Fotográfica */}
+          {/* Evidência URL (Foto) */}
           {nc.evidencia_url && (
             <div className="space-y-1.5">
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Evidência Fotográfica</h4>
               <div className="relative group cursor-zoom-in overflow-hidden rounded-2xl border border-gray-200">
                 <img
                   src={nc.evidencia_url}
-                  alt="Evidência da não conformidade"
+                  alt="Foto de evidência da não conformidade"
                   className="w-full h-44 object-cover hover:scale-105 transition-transform duration-300"
                   onClick={() => setFotoZoom(nc.evidencia_url)}
                 />
@@ -258,60 +265,58 @@ export default function ValidarNC() {
           {/* Assinatura / Criador */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-600 font-extrabold text-[11px] shrink-0">
-              {nc.criado_por_nome.substring(0, 2).toUpperCase()}
+              {nc.criado_por_nome.substring(5, 7).toUpperCase()}
             </div>
             <div>
               <p className="text-xs font-bold text-gray-900">{nc.criado_por_nome}</p>
               <p className="text-[10px] text-gray-400">
-                Aberto em {new Date(nc.created_at).toLocaleString('pt-BR')}
+                Aberto em {new Date(nc.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
           </div>
         </div>
 
-        {/* ── CARD 3: REGISTRO TÉCNICO DE MANUTENÇÃO (Engenharia) ── */}
-        {nc.registro_manutencao ? (
-          <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4">
-            <span className="text-[10px] font-bold text-[#246BFD] bg-[#246BFD]/5 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-              Conserto Realizado (Eng. Clínica)
-            </span>
-
-            <div className="space-y-3">
-              <div className="bg-blue-50/40 rounded-xl p-3 border border-blue-100/50">
-                <h4 className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1">
-                  Resumo das Ações Corretivas
-                </h4>
-                <p className="text-xs text-gray-700 leading-relaxed font-normal">
-                  {nc.registro_manutencao.descricao}
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium">
-                <span>Técnico Responsável:</span>
-                <span className="font-bold text-gray-900">
-                  {nc.responsavel_nome || 'Engenheiro Clínico'}
-                </span>
-              </div>
-
-              {nc.registro_manutencao.finalizada_em && (
-                <div className="text-[10px] text-gray-400 italic">
-                  Manutenção finalizada em:{' '}
-                  {new Date(nc.registro_manutencao.finalizada_em).toLocaleString('pt-BR')}
-                </div>
-              )}
+        {/* ── CARD 3: REGISTRO DE MANUTENÇÃO ── */}
+        {nc.registro_manutencao && (
+          <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4 animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Registro Técnico de Manutenção</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${nc.registro_manutencao.status === 'finalizada' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                {nc.registro_manutencao.status === 'finalizada' ? '✓ Finalizado' : 'Em andamento'}
+              </span>
             </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 text-center py-6">
-            <p className="text-xs text-gray-400">Nenhum registro de conserto disponível ainda.</p>
+
+            <div className="bg-sky-50/50 rounded-xl p-3 border border-sky-100/60">
+              <p className="text-xs text-gray-700 leading-relaxed font-normal">
+                {nc.registro_manutencao.descricao}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center gap-1.5 text-gray-400 font-medium">
+                <svg className="w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+                <span>Responsável: <span className="font-bold text-gray-600">{nc.responsavel_nome || 'N/A'}</span></span>
+              </div>
+            </div>
+
+            {nc.registro_manutencao.finalizada_em && (
+              <div className="text-[10px] text-gray-400 italic flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Finalizado em: {new Date(nc.registro_manutencao.finalizada_em).toLocaleString('pt-BR')}
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── CARD 4: TIMELINE / HISTÓRICO COMPLETO ── */}
+        {/* ── CARD 4: TIMELINE / HISTÓRICO ── */}
         <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4">
-          <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Linha do Tempo</span>
+          <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Histórico de Alterações</span>
 
-          <div className="relative border-l border-gray-200 pl-4 ml-2.5 space-y-5 py-2">
+          <div className="relative border-l border-gray-200 pl-4 ml-2.5 space-y-4 py-2">
             {nc.historico.map((hist, idx) => {
               const bolinhaCor =
                 hist.status_novo === 'aberta'
@@ -321,30 +326,28 @@ export default function ValidarNC() {
                   : hist.status_novo === 'em_correcao'
                   ? 'bg-amber-500 ring-4 ring-amber-100'
                   : hist.status_novo === 'aguardando_validacao'
+                  ? 'bg-[#7C3AED] ring-4 ring-[#7C3AED]/10'
+                  : hist.status_novo === 'encerrada'
                   ? 'bg-emerald-500 ring-4 ring-emerald-100'
                   : 'bg-gray-500 ring-4 ring-gray-100'
 
               return (
                 <div key={hist.id} className="relative animate-[fadeIn_0.3s_ease-out]" style={{ animationDelay: `${idx * 40}ms` }}>
+                  {/* Bolinha da timeline */}
                   <span className={`absolute -left-[25.5px] top-[3px] w-2.5 h-2.5 rounded-full ${bolinhaCor}`} />
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-gray-800">
                       {hist.status_anterior !== hist.status_novo ? (
                         <>
-                          Status alterado para <span className="text-[#246BFD]">{STATUS_LABELS[hist.status_novo]}</span>
+                          Alterado para <span className="text-[#7C3AED]">{STATUS_LABELS[hist.status_novo]}</span>
                         </>
                       ) : (
                         <>NC assumida por técnico</>
                       )}
                     </p>
                     <p className="text-[10px] text-gray-400 mt-0.5">
-                      Por {hist.usuario_nome} · {new Date(hist.created_at).toLocaleString('pt-BR')}
+                      Por {hist.usuario_nome} · {new Date(hist.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ({new Date(hist.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
                     </p>
-                    {hist.justificativa && (
-                      <div className="mt-1.5 p-2 bg-red-50 border border-red-100/50 rounded-lg text-red-700 text-xs font-normal">
-                        <span className="font-bold">Motivo do retorno:</span> "{hist.justificativa}"
-                      </div>
-                    )}
                   </div>
                 </div>
               )
@@ -353,86 +356,76 @@ export default function ValidarNC() {
         </div>
       </div>
 
-      {/* ── BARRA INFERIOR DE CTAs (Validar ou Reabrir) ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#F4F6FA] via-[#F4F6FA]/95 to-transparent pt-6">
-        <div className="bg-white/95 backdrop-blur-[20px] rounded-[24px] border border-white/80 shadow-[0_4px_30px_rgba(0,0,0,0.08)] p-4 flex flex-col gap-3">
-          
-          {pendenteValidação ? (
-            <>
-              {!mostrarFormReabertura ? (
-                <div className="flex gap-3">
+      {/* ── BARRA INFERIOR DE CTAs (somente se aguardando_validacao) ── */}
+      {ncAguardando && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#F4F6FA] via-[#F4F6FA]/90 to-transparent pt-6">
+          <div className="bg-white/80 backdrop-blur-[18px] rounded-[24px] border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-3 flex flex-col gap-2.5">
+
+            {/* Modal de confirmação de reabertura */}
+            {confirmandoReabertura ? (
+              <div className="space-y-3 animate-[fadeIn_0.15s_ease-out]">
+                <p className="text-xs text-gray-600 font-medium text-center px-2">
+                  Confirma a reabertura? A NC voltará para a fila da Engenharia Clínica com status <span className="font-bold text-amber-600">Em Correção</span>.
+                </p>
+                <div className="flex gap-2.5">
                   <Botao
                     variante="secundario"
-                    tamanho="lg"
+                    tamanho="sm"
                     larguraTotal
-                    onClick={() => setMostrarFormReabertura(true)}
-                    className="border-gray-200 hover:border-gray-300 text-gray-700"
+                    onClick={() => setConfirmandoReabertura(false)}
                   >
-                    Reabrir Correção
+                    Cancelar
                   </Botao>
                   <Botao
-                    variante="primario"
-                    tamanho="lg"
+                    variante="perigo"
+                    tamanho="sm"
                     larguraTotal
-                    onClick={handleValidarEncerrar}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={handleReabrirCorrecao}
+                    icone={
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                      </svg>
+                    }
                   >
-                    Validar e Encerrar
+                    Confirmar
                   </Botao>
                 </div>
-              ) : (
-                /* Slide-down form para justificar reabertura */
-                <form onSubmit={handleReabrir} className="space-y-3 animate-[fadeIn_0.2s_ease-out]">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-red-500 uppercase tracking-wider">
-                      Justificativa da Reabertura *
-                    </label>
-                    <textarea
-                      required
-                      rows={3}
-                      autoFocus
-                      placeholder="Descreva por que a correção foi insuficiente (ex: peça inadequada, erro persiste)..."
-                      value={justificativa}
-                      onChange={(e) => setJustificativa(e.target.value)}
-                      className="w-full bg-[#FAFAFA] border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-800 outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/10 resize-none transition-all"
-                    />
-                  </div>
-                  <div className="flex gap-2.5">
-                    <Botao
-                      type="button"
-                      variante="secundario"
-                      tamanho="sm"
-                      larguraTotal
-                      onClick={() => {
-                        setMostrarFormReabertura(false)
-                        setJustificativa('')
-                      }}
-                    >
-                      Voltar
-                    </Botao>
-                    <button
-                      type="submit"
-                      disabled={!justificativa.trim()}
-                      className="flex-1 inline-flex items-center justify-center font-bold tracking-wide rounded-full text-xs px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white disabled:opacity-40 transition-colors"
-                    >
-                      Confirmar Reabertura
-                    </button>
-                  </div>
-                </form>
-              )}
-            </>
-          ) : (
-            <div className="text-center py-2">
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                {nc.status === 'encerrada' ? '✅ Esta Não Conformidade foi encerrada' : 'Esta NC está sendo tratada'}
-              </p>
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                Não são permitidas ações adicionais para o seu perfil.
-              </p>
-            </div>
-          )}
+              </div>
+            ) : (
+              <>
+                {/* Botão Primário: Validar e Encerrar */}
+                <Botao
+                  variante="primario"
+                  tamanho="lg"
+                  larguraTotal
+                  onClick={handleValidarEncerrar}
+                  icone={
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  }
+                >
+                  Validar e Encerrar
+                </Botao>
+
+                {/* Botão Secundário: Reabrir Correção */}
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoReabertura(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-xs font-bold text-gray-600 bg-white hover:bg-gray-50 transition-colors border border-gray-200 cursor-pointer active:scale-95"
+                >
+                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                  </svg>
+                  Reabrir Correção
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* NC encerrada → sem botões, apenas somente leitura */}
 
       {/* ── MODAL ZOOM FOTO ── */}
       {fotoZoom && (
@@ -450,7 +443,7 @@ export default function ValidarNC() {
             </button>
             <img
               src={fotoZoom}
-              alt="Evidência ampliada"
+              alt="Evidência expandida"
               className="w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl"
             />
           </div>

@@ -84,10 +84,10 @@ export default function FilaNCs() {
             (nc.responsavel_id === null || nc.responsavel_id === usuario.id)
           )
         case 'minhas':
-          // Sob responsabilidade do usuário
+          // Sob responsabilidade do usuário e não encerradas
           return nc.responsavel_id === usuario.id && nc.status !== 'encerrada'
         case 'sem_responsavel':
-          // Aberta ou em progresso mas sem nenhum responsável
+          // Sem nenhum responsável e não encerradas
           return nc.responsavel_id === null && nc.status !== 'encerrada'
         case 'aguardando':
           // Aguardando validação do Coordenador

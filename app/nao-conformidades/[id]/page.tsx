@@ -5,7 +5,15 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { PillTag } from '@/components/ui/PillTag'
-import { getNC, assumirNC, iniciarAnalise, registrarCorrecao, finalizarReparo, getUsuarioLogado, MockNaoConformidadeExtended } from '@/lib/supabase/mockDb'
+import {
+  getNC,
+  iniciarAnalise,
+  registrarCorrecao,
+  finalizarReparo,
+  getUsuarioLogado,
+  assumirNC,
+  MockNaoConformidadeExtended,
+} from '@/lib/supabase/mockDb'
 import type { StatusNaoConformidade, StatusAtivo } from '@/lib/supabase/types'
 
 const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' | 'vermelho' | 'cinza'> = {
@@ -31,18 +39,21 @@ const STATUS_ATIVO: Record<StatusAtivo, { label: string; dot: string }> = {
   em_manutencao: { label: 'Em manutenção', dot: 'bg-sky-500' },
 }
 
-export default function DetalheNC() {
+export default function DetalheNCEngenharia() {
   const params = useParams()
   const router = useRouter()
   const ncId = params.id as string
 
   const [nc, setNc] = useState<MockNaoConformidadeExtended | null>(null)
-  const [usuario, setUsuario] = useState({ id: '', nome: '' })
-  const [descricaoReparo, setDescricaoReparo] = useState('')
-  const [mostrarFormManutencao, setMostrarFormManutencao] = useState(false)
+  const [usuario, setUsuario] = useState({ id: '', nome: '', perfil: '' })
   const [fotoZoom, setFotoZoom] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [avisoSucesso, setAvisoSucesso] = useState<string | null>(null)
+  
+  // Controle do formulário de manutenção
+  const [mostrarFormManutencao, setMostrarFormManutencao] = useState(false)
+  const [descricaoReparo, setDescricaoReparo] = useState('')
+  const [erroForm, setErroForm] = useState('')
 
   // Carrega dados iniciais
   useEffect(() => {
@@ -50,75 +61,71 @@ export default function DetalheNC() {
     const dadosNC = getNC(ncId)
     if (dadosNC) {
       setNc(dadosNC)
-      if (dadosNC.registro_manutencao) {
-        setDescricaoReparo(dadosNC.registro_manutencao.descricao)
-      }
     } else {
       setErro('Não conformidade não encontrada.')
     }
     const user = getUsuarioLogado()
-    setUsuario({ id: user.id, nome: user.nome })
+    setUsuario({ id: user.id, nome: user.nome, perfil: user.perfil })
   }, [ncId])
 
   function atualizarNC() {
     const dadosNC = getNC(ncId)
     if (dadosNC) {
       setNc({ ...dadosNC })
-      if (dadosNC.registro_manutencao) {
-        setDescricaoReparo(dadosNC.registro_manutencao.descricao)
-      }
     }
   }
 
-  // Ação 1: Assumir NC
+  // Ação: Assumir NC sem iniciar análise
   function handleAssumir() {
     if (!nc) return
     const atualizado = assumirNC(nc.id, usuario.id, usuario.nome)
     if (atualizado) {
       setAvisoSucesso('Você assumiu a responsabilidade por esta NC.')
-      setTimeout(() => setAvisoSucesso(null), 3000)
+      setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()
     }
   }
 
-  // Ação 2: Iniciar Análise
+  // Ação: Iniciar Análise
   function handleIniciarAnalise() {
     if (!nc) return
     const atualizado = iniciarAnalise(nc.id, usuario.id, usuario.nome)
     if (atualizado) {
-      setAvisoSucesso('Análise técnica iniciada.')
-      setTimeout(() => setAvisoSucesso(null), 3000)
+      setAvisoSucesso('Análise iniciada com sucesso.')
+      setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()
     }
   }
 
-  // Ação 3: Confirmar Correção (Mudar para Em Correção com descrição)
-  function handleConfirmarCorrecao(e: React.FormEvent) {
+  // Ação: Confirmar envio de registro de reparo e mudar para em_correcao
+  function handleSalvarCorrecao(e: React.FormEvent) {
     e.preventDefault()
-    if (!nc || !descricaoReparo.trim()) return
+    if (!nc) return
+    if (!descricaoReparo.trim()) {
+      setErroForm('Por favor, descreva o diagnóstico ou ações realizadas.')
+      return
+    }
+
     const atualizado = registrarCorrecao(nc.id, usuario.id, usuario.nome, descricaoReparo)
     if (atualizado) {
-      setAvisoSucesso('Registro de manutenção criado e status do ativo atualizado.')
-      setTimeout(() => setAvisoSucesso(null), 3000)
+      setAvisoSucesso('Manutenção registrada e status alterado para Em Correção.')
       setMostrarFormManutencao(false)
+      setDescricaoReparo('')
+      setErroForm('')
+      setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()
     }
   }
 
-  // Ação 4: Finalizar Reparo (Mudar para Aguardando Validação)
+  // Ação: Finalizar Reparo
   function handleFinalizarReparo() {
     if (!nc) return
     const atualizado = finalizarReparo(nc.id, usuario.id, usuario.nome)
     if (atualizado) {
-      setAvisoSucesso('Reparo finalizado. Enviado para validação do Coordenador.')
-      setTimeout(() => setAvisoSucesso(null), 3000)
+      setAvisoSucesso('Reparo finalizado! NC enviada para validação do coordenador.')
+      setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()
     }
-  }
-
-  // Escalar Chamado
-  function handleEscalar() {
-    alert('⚠️ Alerta prioritário enviado ao Coordenador com sucesso!')
   }
 
   if (erro) {
@@ -146,11 +153,12 @@ export default function DetalheNC() {
   const corStatus = STATUS_CORES[nc.status]
   const labelStatus = STATUS_LABELS[nc.status]
   const ativoStatusCfg = nc.ativo ? STATUS_ATIVO[nc.ativo.status] : null
-  const pertenceAoUsuario = nc.responsavel_id === usuario.id
-  const semResponsavel = nc.responsavel_id === null
+
+  // Regra de Negócio: verificar se tem outro responsável
+  const temOutroResponsavel = nc.responsavel_id !== null && nc.responsavel_id !== usuario.id
 
   return (
-    <div className="min-h-screen bg-[#F4F6FA] pb-32">
+    <div className="min-h-screen bg-[#F4F6FA] pb-36">
       {/* Header compact com botão voltar */}
       <div className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between sticky top-0 z-30">
         <Link
@@ -181,14 +189,19 @@ export default function DetalheNC() {
           </div>
         )}
 
-        {/* Alerta de Propriedade se for de outro profissional */}
-        {!pertenceAoUsuario && !semResponsavel && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800 text-xs font-medium leading-relaxed flex items-start gap-2.5">
-            <svg className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3.75m9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-            </svg>
+        {/* Alerta de Responsável */}
+        {temOutroResponsavel && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-amber-800 text-xs font-bold flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
             <div>
-              Esta Não Conformidade está sob responsabilidade de <span className="font-bold">{nc.responsavel_nome}</span>. Suas ações de alteração foram bloqueadas.
+              <p className="text-[13px] font-bold text-gray-900">Outro Responsável</p>
+              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                Esta NC já está sob cuidados de <span className="font-bold">{nc.responsavel_nome}</span>. As ações de alteração foram bloqueadas.
+              </p>
             </div>
           </div>
         )}
@@ -243,7 +256,7 @@ export default function DetalheNC() {
           )}
         </div>
 
-        {/* ── CARD 2: A NÃO CONFORMIDADE (Abertura do Inspetor) ── */}
+        {/* ── CARD 2: A NÃO CONFORMIDADE ── */}
         <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Relato da Ocorrência</span>
@@ -264,11 +277,11 @@ export default function DetalheNC() {
             </p>
           </div>
 
-          {/* Observação Adicional do Inspetor se houver */}
+          {/* Observação Adicional do Inspetor */}
           {nc.item_execucao.evidencia_texto && (
             <div className="space-y-1">
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Observações do Inspetor</h4>
-              <p className="text-xs text-gray-500 italic">"{nc.item_execucao.evidencia_texto}"</p>
+              <p className="text-xs text-gray-500 italic">&quot;{nc.item_execucao.evidencia_texto}&quot;</p>
             </div>
           )}
 
@@ -279,7 +292,7 @@ export default function DetalheNC() {
               <div className="relative group cursor-zoom-in overflow-hidden rounded-2xl border border-gray-200">
                 <img
                   src={nc.evidencia_url}
-                  alt="Foto de evidência da não conformidade"
+                  alt="Foto de evidência"
                   className="w-full h-44 object-cover hover:scale-105 transition-transform duration-300"
                   onClick={() => setFotoZoom(nc.evidencia_url)}
                 />
@@ -308,68 +321,82 @@ export default function DetalheNC() {
           </div>
         </div>
 
-        {/* ── CARD 3: REGISTRO DE MANUTENÇÃO (Se ativo ou em formulário) ── */}
-        {(nc.registro_manutencao || (pertenceAoUsuario && mostrarFormManutencao)) && (
-          <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4 animate-[fadeIn_0.2s_ease-out]">
-            <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Registro Técnico de Manutenção</span>
+        {/* ── FORMULÁRIO DE REGISTRO DE MANUTENÇÃO (Modal ou Inline) ── */}
+        {mostrarFormManutencao && (
+          <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border-2 border-[#246BFD]/20 space-y-4 animate-[fadeIn_0.15s_ease-out]">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900">Registrar Ação de Manutenção</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setMostrarFormManutencao(false)
+                  setErroForm('')
+                }}
+                className="text-gray-400 hover:text-gray-600 text-xs font-bold"
+              >
+                Cancelar
+              </button>
+            </div>
+            
+            <form onSubmit={handleSalvarCorrecao} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                  Descrição das Ações Realizadas
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={descricaoReparo}
+                  onChange={(e) => setDescricaoReparo(e.target.value)}
+                  placeholder="Descreva o diagnóstico inicial, peças trocadas, calibração realizada ou justificativa do reparo..."
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-xs text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all resize-none"
+                />
+                {erroForm && <p className="text-[11px] text-red-500 font-medium">{erroForm}</p>}
+              </div>
 
-            {pertenceAoUsuario && mostrarFormManutencao ? (
-              /* Formulário de Preenchimento */
-              <form onSubmit={handleConfirmarCorrecao} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                    Descrição do reparo/diagnóstico *
-                  </label>
-                  <textarea
-                    required
-                    rows={4}
-                    autoFocus
-                    placeholder="Descreva detalhadamente o diagnóstico, peças substituídas ou ações tomadas para corrigir o ativo..."
-                    value={descricaoReparo}
-                    onChange={(e) => setDescricaoReparo(e.target.value)}
-                    className="w-full bg-[#F8FAFC] border border-gray-200 rounded-xl px-4 py-3 text-xs text-gray-800 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 resize-none transition-all"
-                  />
-                </div>
-                <div className="flex gap-2.5">
-                  <Botao
-                    type="button"
-                    variante="secundario"
-                    tamanho="sm"
-                    larguraTotal
-                    onClick={() => setMostrarFormManutencao(false)}
-                  >
-                    Cancelar
-                  </Botao>
-                  <Botao
-                    type="submit"
-                    variante="primario"
-                    tamanho="sm"
-                    larguraTotal
-                    disabled={!descricaoReparo.trim()}
-                  >
-                    Confirmar Registro
-                  </Botao>
-                </div>
-              </form>
-            ) : (
-              /* Visualização do Registro Existente */
-              <div className="space-y-3">
-                <div className="bg-sky-50/50 rounded-xl p-3 border border-sky-100/60">
-                  <p className="text-xs text-gray-700 leading-relaxed font-normal">
-                    {nc.registro_manutencao?.descricao}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-gray-400 font-medium">
-                  <span>Status do Conserto:</span>
-                  <span className={`font-bold uppercase tracking-wider ${nc.registro_manutencao?.status === 'finalizada' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    {nc.registro_manutencao?.status === 'finalizada' ? 'Finalizado' : 'Em andamento'}
-                  </span>
-                </div>
-                {nc.registro_manutencao?.finalizada_em && (
-                  <div className="text-[10px] text-gray-400 italic">
-                    Finalizado em: {new Date(nc.registro_manutencao.finalizada_em).toLocaleString('pt-BR')}
-                  </div>
-                )}
+              <Botao
+                type="submit"
+                variante="primario"
+                tamanho="sm"
+                larguraTotal
+              >
+                Gravar Registro e Avançar
+              </Botao>
+            </form>
+          </div>
+        )}
+
+        {/* ── CARD 3: REGISTRO DE MANUTENÇÃO (Se existir) ── */}
+        {nc.registro_manutencao && !mostrarFormManutencao && (
+          <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4 animate-[fadeIn_0.2s_ease-out]">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Registro Técnico de Manutenção</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${nc.registro_manutencao.status === 'finalizada' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                {nc.registro_manutencao.status === 'finalizada' ? '✓ Finalizado' : 'Em andamento'}
+              </span>
+            </div>
+
+            <div className="bg-sky-50/50 rounded-xl p-3 border border-sky-100/60">
+              <p className="text-xs text-gray-700 leading-relaxed font-normal">
+                {nc.registro_manutencao.descricao}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px]">
+              <div className="flex items-center gap-1.5 text-gray-400 font-medium">
+                <svg className="w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+                <span>Responsável: <span className="font-bold text-gray-600">{nc.responsavel_nome || 'N/A'}</span></span>
+              </div>
+            </div>
+
+            {nc.registro_manutencao.finalizada_em && (
+              <div className="text-[10px] text-gray-400 italic flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Finalizado em: {new Date(nc.registro_manutencao.finalizada_em).toLocaleString('pt-BR')}
               </div>
             )}
           </div>
@@ -389,12 +416,13 @@ export default function DetalheNC() {
                   : hist.status_novo === 'em_correcao'
                   ? 'bg-amber-500 ring-4 ring-amber-100'
                   : hist.status_novo === 'aguardando_validacao'
+                  ? 'bg-[#7C3AED] ring-4 ring-[#7C3AED]/10'
+                  : hist.status_novo === 'encerrada'
                   ? 'bg-emerald-500 ring-4 ring-emerald-100'
                   : 'bg-gray-500 ring-4 ring-gray-100'
 
               return (
                 <div key={hist.id} className="relative animate-[fadeIn_0.3s_ease-out]" style={{ animationDelay: `${idx * 40}ms` }}>
-                  {/* Bolinha da timeline */}
                   <span className={`absolute -left-[25.5px] top-[3px] w-2.5 h-2.5 rounded-full ${bolinhaCor}`} />
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-gray-800">
@@ -406,6 +434,11 @@ export default function DetalheNC() {
                         <>NC assumida por técnico</>
                       )}
                     </p>
+                    {hist.justificativa && (
+                      <p className="text-xs text-amber-600 bg-amber-50/50 p-2 rounded-lg border border-amber-100 mt-1 max-w-sm">
+                        Justificativa de reabertura: &quot;{hist.justificativa}&quot;
+                      </p>
+                    )}
                     <p className="text-[10px] text-gray-400 mt-0.5">
                       Por {hist.usuario_nome} · {new Date(hist.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ({new Date(hist.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
                     </p>
@@ -417,27 +450,18 @@ export default function DetalheNC() {
         </div>
       </div>
 
-      {/* ── BARRA INFERIOR DE CTAs iOS-STYLE (Ancorada) ── */}
+      {/* ── BARRA INFERIOR DE CTAs (Apple design) ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-[#F4F6FA] via-[#F4F6FA]/90 to-transparent pt-6">
         <div className="bg-white/80 backdrop-blur-[18px] rounded-[24px] border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-3 flex flex-col gap-2.5">
-          {semResponsavel ? (
-            /* Ação Inicial: Assumir */
-            <Botao
-              variante="primario"
-              tamanho="lg"
-              larguraTotal
-              onClick={handleAssumir}
-              icone={
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              }
-            >
-              Assumir Não Conformidade
-            </Botao>
-          ) : pertenceAoUsuario ? (
-            /* Ações Dinâmicas para o Responsável */
+          
+          {/* Se a NC é de outro técnico, mostra estado inativo */}
+          {temOutroResponsavel ? (
+            <div className="text-center py-2 text-xs font-bold text-gray-400">
+              Apenas {nc.responsavel_nome} pode interagir com esta NC
+            </div>
+          ) : (
             <>
+              {/* Botão Primário Dinâmico */}
               {nc.status === 'aberta' && (
                 <Botao
                   variante="primario"
@@ -446,7 +470,7 @@ export default function DetalheNC() {
                   onClick={handleIniciarAnalise}
                   icone={
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   }
                 >
@@ -485,20 +509,51 @@ export default function DetalheNC() {
                   Finalizar Reparo
                 </Botao>
               )}
-            </>
-          ) : null}
 
-          {/* Botão Secundário: Chamar Coordenador (Sempre disponível) */}
-          <button
-            type="button"
-            onClick={handleEscalar}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 transition-colors border border-amber-200/50 cursor-pointer active:scale-95"
-          >
-            <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-            </svg>
-            Chamar Coordenador
-          </button>
+              {nc.status === 'aguardando_validacao' && (
+                <div className="text-center py-3 bg-gray-50 border border-gray-100 rounded-full text-xs font-bold text-gray-500 flex items-center justify-center gap-1.5">
+                  <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Aguardando validação do Coordenador</span>
+                </div>
+              )}
+
+              {nc.status === 'encerrada' && (
+                <div className="text-center py-3 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-bold text-emerald-700 flex items-center justify-center gap-1.5">
+                  <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Não conformidade encerrada</span>
+                </div>
+              )}
+
+              {/* Botão Secundário se não estiver no form ou encerrado */}
+              {!mostrarFormManutencao && nc.status !== 'encerrada' && (
+                <button
+                  type="button"
+                  onClick={() => alert('Coordenador acionado via notificação rápida.')}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-xs font-bold text-gray-600 bg-white hover:bg-gray-50 transition-colors border border-gray-200 cursor-pointer active:scale-95"
+                >
+                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.05 4.575a1.575 1.575 0 11-3.15 0 1.575 1.575 0 013.15 0zM8.475 7.875a.75.75 0 01.75.75v3.188a.75.75 0 01-1.5 0V8.625a.75.75 0 01.75-.75zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                  </svg>
+                  Chamar Coordenador
+                </button>
+              )}
+
+              {/* Botão extra: Assumir NC se estiver aberta e sem responsável */}
+              {nc.status === 'aberta' && nc.responsavel_id === null && (
+                <button
+                  type="button"
+                  onClick={handleAssumir}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-[11px] font-bold text-[#246BFD] hover:bg-[#246BFD]/5 transition-colors cursor-pointer active:scale-95"
+                >
+                  Assumir NC sem iniciar análise
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
 

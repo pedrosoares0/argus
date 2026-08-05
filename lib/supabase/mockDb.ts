@@ -87,9 +87,9 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
     status: 'aberta',
     responsavel_id: null,
     responsavel_nome: null,
-    prazo: new Date(Date.now() + 4 * 3600 * 1000).toISOString(), // 4 horas
+    prazo: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
     evidencia_url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=600',
-    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(), // Aberta há 2h
+    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     ativo: INITIAL_ATIVOS['at-001'],
     local: INITIAL_LOCALS['loc-001'],
@@ -126,9 +126,9 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
     status: 'em_analise',
     responsavel_id: 'usr-eng-1',
     responsavel_nome: 'Eng. Carlos Eduardo',
-    prazo: new Date(Date.now() + 24 * 3600 * 1000).toISOString(), // 24 horas
+    prazo: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
     evidencia_url: null,
-    created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(), // Aberta há 5h
+    created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
     ativo: INITIAL_ATIVOS['at-002'],
     local: INITIAL_LOCALS['loc-002'],
@@ -174,9 +174,9 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
     status: 'em_correcao',
     responsavel_id: 'usr-eng-1',
     responsavel_nome: 'Eng. Carlos Eduardo',
-    prazo: new Date(Date.now() + 2 * 3600 * 1000).toISOString(), // 2 horas
+    prazo: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
     evidencia_url: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=600',
-    created_at: new Date(Date.now() - 10 * 3600 * 1000).toISOString(), // Aberta há 10h
+    created_at: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     ativo: INITIAL_ATIVOS['at-003'],
     local: INITIAL_LOCALS['loc-uti'],
@@ -351,6 +351,12 @@ export const DEFAULT_USER = {
   perfil: 'engenharia_clinica' as const
 }
 
+export const COORDENADOR_USER = {
+  id: 'usr-coord-1',
+  nome: 'Coord. Ana Beatriz',
+  perfil: 'coordenador' as const
+}
+
 // Inicializa no cliente
 function getStore(): MockNaoConformidadeExtended[] {
   if (typeof window === 'undefined') return INITIAL_NC_EXTENDED
@@ -375,6 +381,11 @@ export function getUsuarioLogado() {
     return DEFAULT_USER
   }
   return JSON.parse(user)
+}
+
+export function setUsuarioLogado(user: { id: string; nome: string; perfil: string }) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
 export function resetMockDb() {
@@ -549,11 +560,14 @@ export function validarCorrecao(ncId: string, usuarioId: string, usuarioNome: st
   return nc
 }
 
+/** Alias usado pela tela de validação do Coordenador */
+export const validarEEncerrarNC = validarCorrecao
+
 export function reabrirNC(
   ncId: string,
   usuarioId: string,
   usuarioNome: string,
-  justificativa: string
+  justificativa?: string
 ): MockNaoConformidadeExtended | null {
   const store = getStore()
   const idx = store.findIndex((nc) => nc.id === ncId)
@@ -583,7 +597,7 @@ export function reabrirNC(
     usuario_id: usuarioId,
     usuario_nome: usuarioNome,
     created_at: new Date().toISOString(),
-    justificativa: justificativa
+    justificativa: justificativa || undefined
   })
 
   saveStore(store)
