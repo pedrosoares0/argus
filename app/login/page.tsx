@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { setUsuarioLogado, DEFAULT_USER, COORDENADOR_USER } from '@/lib/supabase/mockDb'
