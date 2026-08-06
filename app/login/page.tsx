@@ -261,6 +261,16 @@ export default function PaginaLogin() {
               </Botao>
             </div>
 
+            {/* Link para Cadastro */}
+            <div className="text-center pt-1.5">
+              <Link
+                href="/cadastro"
+                className="text-xs font-bold text-[#246BFD] hover:underline"
+              >
+                Não tem uma conta? Cadastre-se
+              </Link>
+            </div>
+
           </form>
         </div>
 
