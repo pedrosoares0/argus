@@ -81,7 +81,7 @@ function FormularioNC() {
           placeholder="Ex: Faltando 2 ampolas de Adrenalina 1mg/ml..."
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
-          className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-2 focus:ring-[#246BFD]/10 resize-none transition-all"
+          className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-[16px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-2 focus:ring-[#246BFD]/10 resize-none transition-all"
         />
       </div>
 

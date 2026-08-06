@@ -1,9 +1,12 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { PillTag } from '@/components/ui/PillTag'
 import type { StatusAtivo } from '@/lib/supabase/types'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 
 /**
  * Tela de detalhes do Local / Sala — Apple-style, hierarquia clara.
@@ -26,22 +29,97 @@ const STATUS_LOCAL = {
 export default function PaginaLocal() {
   const router = useRouter()
 
-  // Mock
-  const local = {
-    id: '1',
-    nome: 'Sala 01',
-    setor: 'Centro Cirúrgico A',
-    status: 'pronta_com_ressalvas' as keyof typeof STATUS_LOCAL,
+  const params = useParams()
+  const localId = params.id as string
+
+  const [local, setLocal] = useState<any>(null)
+  const [ativos, setAtivos] = useState<any[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function carregarDados() {
+      try {
+        const supabase = criarClienteSupabase()
+        
+        // Buscar detalhes do local
+        const { data: localData, error: localError } = await supabase
+          .from('locais')
+          .select('*, centros_cirurgicos(*)')
+          .eq('id', localId)
+          .single()
+
+        if (localError) {
+          console.error(localError)
+          setErro(`Erro ao carregar local: ${localError.message} (Código ${localError.code})`)
+          return
+        }
+
+        if (!localData) {
+          setErro('Nenhum dado encontrado para esta sala.')
+          return
+        }
+
+        setLocal({
+          id: localData.id,
+          nome: localData.nome,
+          setor: localData.centros_cirurgicos?.nome || 'Centro Cirúrgico',
+          status: localData.status as keyof typeof STATUS_LOCAL,
+        })
+
+        // Buscar ativos desse local
+        const { data: ativosData, error: ativosError } = await supabase
+          .from('ativos')
+          .select('*')
+          .eq('local_id', localId)
+
+        if (ativosError) {
+          console.error(ativosError)
+          setErro(`Erro ao carregar ativos: ${ativosError.message} (Código ${ativosError.code})`)
+          return
+        }
+
+        if (ativosData) {
+          setAtivos(ativosData.map((a: any) => ({
+            id: a.id,
+            nome: a.nome,
+            status: a.status as StatusAtivo,
+            ultimaInspecao: 'Sem inspeções hoje',
+          })))
+        }
+      } catch (err: any) {
+        console.error(err)
+        setErro(`Erro de conexão: ${err.message || err}`)
+      } finally {
+        setCarregando(false)
+      }
+    }
+    if (localId) {
+      carregarDados()
+    }
+  }, [localId])
+
+  if (erro) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#F4F6FA] p-6 space-y-4">
+        <p className="text-sm font-semibold text-red-500 text-center">{erro}</p>
+        <Link href="/inspetor" className="text-xs font-bold text-[#246BFD] underline">
+          Voltar para Início
+        </Link>
+      </div>
+    )
   }
 
-  const ativos = [
-    { id: 'a1', nome: 'Monitor Multiparamétrico #1', status: 'operacional' as StatusAtivo, ultimaInspecao: 'Hoje 14:30' },
-    { id: 'a2', nome: 'Aparelho de Anestesia #1', status: 'operacional_com_restricoes' as StatusAtivo, ultimaInspecao: 'Hoje 13:15' },
-    { id: 'a3', nome: 'Carrinho de Parada #1', status: 'operacional' as StatusAtivo, ultimaInspecao: 'Ontem 18:00' },
-    { id: 'a4', nome: 'Mesa Cirúrgica #1', status: 'indisponivel' as StatusAtivo, ultimaInspecao: 'Hoje 10:45' },
-  ]
+  if (carregando || !local) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[#F4F6FA]">
+        <p className="text-sm font-semibold text-gray-400 animate-pulse">Carregando sala...</p>
+      </div>
+    )
+  }
 
   const statusCfg = STATUS_LOCAL[local.status]
+  const corPill = local.status === 'pronta' ? 'verde' : local.status === 'pronta_com_ressalvas' ? 'laranja' : local.status === 'nao_pronta' ? 'vermelho' : 'azul'
 
   return (
     <div className="px-5 pt-3 pb-10 space-y-6">
@@ -66,9 +144,9 @@ export default function PaginaLocal() {
             </h1>
             <p className="text-[13px] text-gray-500 mt-0.5">{local.setor}</p>
           </div>
-          <span className={`text-[11px] font-bold px-3 py-1.5 rounded-full border shrink-0 ${statusCfg.bg}`}>
+          <PillTag cor={corPill} className="shrink-0">
             {statusCfg.label}
-          </span>
+          </PillTag>
         </div>
 
         {/* Separador */}

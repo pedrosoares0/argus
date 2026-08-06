@@ -62,7 +62,7 @@ export function BarraBusca({
           'w-full',
           'bg-transparent',
           'pl-11 pr-4 py-3.5',
-          'text-sm text-texto',
+          'text-[16px] text-texto',
           'placeholder:text-gray-400',
           'outline-none',
           'rounded-full',

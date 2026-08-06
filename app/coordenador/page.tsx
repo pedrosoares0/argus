@@ -153,8 +153,8 @@ export default function FilaValidacao() {
         </div>
       </div>
 
-      {/* Seletor de Abas */}
-      <div className="bg-white/70 p-1 rounded-2xl border border-gray-200/50 flex gap-0.5 overflow-x-auto scrollbar-none shadow-[0_1px_4px_rgba(0,0,0,0.01)] shrink-0 select-none">
+      {/* Seletor de Abas (Visual Apple) */}
+      <div className="bg-[#F1F3F6] p-1 rounded-full flex gap-1 overflow-x-auto scrollbar-none shrink-0 select-none">
         {[
           { id: 'aguardando', label: 'Aguardando' },
           { id: 'encerradas', label: 'Encerradas' },
@@ -166,10 +166,10 @@ export default function FilaValidacao() {
               key={tab.id}
               onClick={() => setAbaAtiva(tab.id as typeof abaAtiva)}
               className={[
-                'flex-1 text-center py-2 px-3 text-[11px] font-bold tracking-tight rounded-xl whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95',
+                'flex-1 text-center py-2 px-3 text-[11px] font-bold tracking-tight rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95',
                 ativa
-                  ? 'bg-white text-[#7C3AED] shadow-xs border border-gray-100/50'
-                  : 'text-gray-400 hover:text-gray-600',
+                  ? 'bg-white text-slate-800 shadow-[0_2px_6px_rgba(0,0,0,0.06)]'
+                  : 'text-gray-500 hover:text-slate-800',
               ].join(' ')}
             >
               {tab.label}

@@ -209,9 +209,9 @@ export default function DetalheNCEngenharia() {
         {/* ── CARD 1: O ATIVO ── */}
         <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4">
           <div>
-            <span className="text-[10px] font-bold text-[#0284C7] bg-[#E0F2FE] px-2 py-0.5 rounded-full uppercase tracking-wider">
+            <PillTag cor="azul">
               {nc.ativo?.categoria || 'Equipamento'}
-            </span>
+            </PillTag>
             <h2 className="text-base font-extrabold text-gray-900 mt-2 leading-tight tracking-tight">
               {nc.ativo?.nome || 'Ativo desconhecido'}
             </h2>
@@ -349,7 +349,7 @@ export default function DetalheNCEngenharia() {
                   value={descricaoReparo}
                   onChange={(e) => setDescricaoReparo(e.target.value)}
                   placeholder="Descreva o diagnóstico inicial, peças trocadas, calibração realizada ou justificativa do reparo..."
-                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-xs text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all resize-none"
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[16px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all resize-none"
                 />
                 {erroForm && <p className="text-[11px] text-red-500 font-medium">{erroForm}</p>}
               </div>
@@ -371,9 +371,9 @@ export default function DetalheNCEngenharia() {
           <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4 animate-[fadeIn_0.2s_ease-out]">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Registro Técnico de Manutenção</span>
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${nc.registro_manutencao.status === 'finalizada' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                {nc.registro_manutencao.status === 'finalizada' ? '✓ Finalizado' : 'Em andamento'}
-              </span>
+              <PillTag cor={nc.registro_manutencao.status === 'finalizada' ? 'verde' : 'laranja'}>
+                {nc.registro_manutencao.status === 'finalizada' ? 'Finalizado' : 'Em andamento'}
+              </PillTag>
             </div>
 
             <div className="bg-sky-50/50 rounded-xl p-3 border border-sky-100/60">

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { BarraBusca } from '@/components/ui/BarraBusca'
 import { PillTag } from '@/components/ui/PillTag'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 
 /**
  * Tela inicial do Inspetor — idêntica à 2ª imagem de referência.
@@ -17,38 +18,86 @@ export default function PaginaInicialInspetor() {
   const [codigoInput, setCodigoInput] = useState('')
 
   // Dados fieis à imagem de referência 2
-  const carrinhosRecentes = [
-    {
-      id: '1',
-      tag: 'UTI',
-      corTag: 'roxo' as const,
-      nome: 'Carrinho UTI-A',
-      localizacao: 'UTI Adulto - Bloco A',
-      ultimaInspecao: 'Ontem às 19:30 por Enf. Cláudia',
-    },
-    {
-      id: '2',
-      tag: 'PRONTO',
-      corTag: 'azul' as const,
-      nome: 'Carrinho Emergência PS',
-      localizacao: 'Pronto Socorro - Sala Vermelha',
-      ultimaInspecao: 'Hoje às 07:15 por Enf. Bruno',
-    },
-    {
-      id: '3',
-      tag: 'UTI',
-      corTag: 'roxo' as const,
-      nome: 'Carrinho UTI Ped/Neo',
-      localizacao: 'UTI Pediátrica e Neonatal',
-      ultimaInspecao: 'Anteontem às 14:00 por Enf. Mariana',
-    },
-  ]
+  const [ativos, setAtivos] = useState<any[]>([])
+  const [carregando, setCarregando] = useState(true)
 
-  function handleSubmeterCodigo(e: React.FormEvent) {
+  useEffect(() => {
+    async function carregarAtivos() {
+      try {
+        const supabase = criarClienteSupabase()
+        const { data, error } = await supabase
+          .from('ativos')
+          .select('*, locais(*), categorias_ativos(*)')
+        
+        if (error) {
+          console.error(error)
+          return
+        }
+
+        if (data) {
+          const formatados = data.map((ativo: any) => ({
+            id: ativo.id,
+            localId: ativo.local_id,
+            tag: ativo.categorias_ativos?.nome || 'Ativo',
+            corTag: (ativo.categorias_ativos?.nome === 'Carrinho de parada' ? 'azul' : 'roxo') as 'azul' | 'roxo',
+            nome: ativo.nome,
+            localizacao: ativo.locais?.nome || 'Sem localização',
+            ultimaInspecao: 'Operacional · Sem inspeções hoje',
+          }))
+          setAtivos(formatados)
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setCarregando(false)
+      }
+    }
+    carregarAtivos()
+  }, [])
+
+  const ativosFiltrados = ativos.filter(item => 
+    item.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
+    item.localizacao.toLowerCase().includes(termoBusca.toLowerCase())
+  )
+
+  async function handleSubmeterCodigo(e: React.FormEvent) {
     e.preventDefault()
     if (!codigoInput.trim()) return
-    setMostrarModalCodigo(false)
-    router.push(`/inspetor/local/1`)
+
+    try {
+      const supabase = criarClienteSupabase()
+      
+      // Buscar local pelo QR
+      const { data: local } = await supabase
+        .from('locais')
+        .select('id')
+        .eq('codigo_qr', codigoInput.trim())
+        .single()
+
+      if (local) {
+        setMostrarModalCodigo(false)
+        router.push(`/inspetor/local/${local.id}`)
+        return
+      }
+
+      // Buscar ativo pelo QR
+      const { data: ativo } = await supabase
+        .from('ativos')
+        .select('id, local_id')
+        .eq('codigo_qr', codigoInput.trim())
+        .single()
+
+      if (ativo) {
+        setMostrarModalCodigo(false)
+        router.push(`/inspetor/local/${ativo.local_id}`)
+        return
+      }
+
+      alert('Código QR não encontrado.')
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao buscar o código.')
+    }
   }
 
   return (
@@ -117,47 +166,57 @@ export default function PaginaInicialInspetor() {
 
       {/* Lista de Carrinhos (Visual exato da 2ª imagem) */}
       <div className="space-y-3 pb-4">
-        {carrinhosRecentes.map((item, i) => (
-          <div
-            key={item.id}
-            onClick={() => router.push(`/inspetor/local/${item.id}`)}
-            className="bg-white rounded-[24px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.025)] border border-gray-100 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
-            style={{ animationDelay: `${i * 60}ms` }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              {/* Info Esquerda */}
-              <div className="space-y-2">
-                <div>
-                  <PillTag cor={item.corTag}>
-                    {item.tag}
-                  </PillTag>
+        {carregando ? (
+          <div className="text-center py-8 text-sm text-gray-400 font-semibold animate-pulse">
+            Carregando ativos do hospital...
+          </div>
+        ) : ativosFiltrados.length === 0 ? (
+          <div className="text-center py-8 text-sm text-gray-400 font-semibold">
+            Nenhum ativo encontrado.
+          </div>
+        ) : (
+          ativosFiltrados.map((item, i) => (
+            <div
+              key={item.id}
+              onClick={() => router.push(`/inspetor/local/${item.localId}`)}
+              className="bg-white rounded-[24px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.025)] border border-gray-100 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                {/* Info Esquerda */}
+                <div className="space-y-2">
+                  <div>
+                    <PillTag cor={item.corTag}>
+                      {item.tag}
+                    </PillTag>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-texto tracking-tight">
+                      {item.nome}
+                    </h3>
+                    <p className="text-xs text-gray-500 font-normal mt-0.5">
+                      {item.localizacao}
+                    </p>
+                  </div>
+                  {/* Linha de status com ponto azul */}
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#246BFD] shrink-0" />
+                    <span className="text-[11px] text-gray-500 font-medium">
+                      {item.ultimaInspecao}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-texto tracking-tight">
-                    {item.nome}
-                  </h3>
-                  <p className="text-xs text-gray-500 font-normal mt-0.5">
-                    {item.localizacao}
-                  </p>
-                </div>
-                {/* Linha de status com ponto azul */}
-                <div className="flex items-center gap-1.5 pt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#246BFD] shrink-0" />
-                  <span className="text-[11px] text-gray-500 font-medium">
-                    {item.ultimaInspecao}
-                  </span>
-                </div>
-              </div>
 
-              {/* Botão Círculo com Seta (Direita) */}
-              <div className="w-9 h-9 rounded-full bg-[#F4F6FA] flex items-center justify-center text-gray-400 hover:text-texto transition-colors shrink-0 mt-2">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                </svg>
+                {/* Botão Círculo com Seta (Direita) */}
+                <div className="w-9 h-9 rounded-full bg-[#F4F6FA] flex items-center justify-center text-gray-400 hover:text-texto transition-colors shrink-0 mt-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                  </svg>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
 
       {/* Modal Mock de Digitar Código */}
@@ -176,7 +235,7 @@ export default function PaginaInicialInspetor() {
                 placeholder="Ex: QR-UTI-001"
                 value={codigoInput}
                 onChange={(e) => setCodigoInput(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200 rounded-full px-4 py-3 text-sm text-texto font-mono uppercase tracking-wider outline-none focus:border-[#246BFD]"
+                className="w-full bg-[#F4F6FA] border border-gray-200 rounded-full px-4 py-3 text-[16px] text-texto font-mono uppercase tracking-wider outline-none focus:border-[#246BFD]"
               />
               <div className="flex gap-2 pt-2">
                 <Botao
