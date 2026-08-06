@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
@@ -13,6 +13,22 @@ export default function LayoutInspetor({
   const pathname = usePathname()
   const router = useRouter()
   const [menuAberto, setMenuAberto] = useState(false)
+  const [usuario, setUsuario] = useState<{ nome: string; perfil: string } | null>(null)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('sentry_usuario_atual')
+    if (stored) {
+      try {
+        setUsuario(JSON.parse(stored))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }, [])
+
+  const nomeExibido = usuario?.nome || 'Usuário'
+  const perfilExibido = usuario?.perfil === 'inspetor' ? 'Inspetor(a)' : usuario?.perfil === 'coordenador' ? 'Coordenador(a)' : usuario?.perfil === 'engenharia_clinica' ? 'Engenharia Clínica' : usuario?.perfil === 'gestor' ? 'Gestor(a)' : 'Administrador(a)'
+  const iniciais = nomeExibido.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase()
 
   const itensNav = [
     {
@@ -56,7 +72,7 @@ export default function LayoutInspetor({
         <Link href="/inspetor" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity">
           Sentry
         </Link>
-        <PillUsuario nome="Dr. Paulo" onClick={() => setMenuAberto(true)} />
+        <PillUsuario nome={nomeExibido} onClick={() => setMenuAberto(true)} />
       </header>
 
       {/* Conteúdo principal */}
@@ -124,11 +140,11 @@ export default function LayoutInspetor({
 
             {/* Perfil Header compacto */}
             <div className="pt-10 pb-5 px-4 flex flex-col items-center text-center border-b border-gray-100">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-extrabold text-[16px] shadow-[0_4px_10px_rgba(36,107,253,0.12)] mb-2.5">
-                DP
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-extrabold text-[14px] shadow-[0_4px_10px_rgba(36,107,253,0.12)] mb-2.5">
+                {iniciais}
               </div>
-              <h3 className="text-[14px] font-bold text-gray-900 leading-tight">Dr. Paulo</h3>
-              <p className="text-[11px] text-gray-400 font-bold mt-0.5">Médico / Coordenador</p>
+              <h3 className="text-[14px] font-bold text-gray-900 leading-tight">{nomeExibido}</h3>
+              <p className="text-[11px] text-gray-400 font-bold mt-0.5">{perfilExibido}</p>
             </div>
 
             {/* Menu Links — Sem arredondamento, destaque em barra lateral */}

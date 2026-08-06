@@ -53,11 +53,27 @@ export default function PaginaChecklist() {
           setUsuario(profile)
         }
 
-        // 2. Carregar ativo
+        // 2. Carregar ativo (se for prefixado com ronda-, busca o primeiro ativo da sala correspondente)
+        let targetAssetId = assetId
+        if (assetId.startsWith('ronda-')) {
+          const roomId = assetId.replace('ronda-', '')
+          const { data: roomAtivos, error: roomAtivosError } = await supabase
+            .from('ativos')
+            .select('id')
+            .eq('local_id', roomId)
+            .limit(1)
+
+          if (roomAtivosError || !roomAtivos || roomAtivos.length === 0) {
+            setErro('Não foi encontrado nenhum ativo cadastrado nesta sala para iniciar a ronda.')
+            return
+          }
+          targetAssetId = roomAtivos[0].id
+        }
+
         const { data: ativoData, error: ativoError } = await supabase
           .from('ativos')
           .select('*, locais(*)')
-          .eq('id', assetId)
+          .eq('id', targetAssetId)
           .single()
 
         if (ativoError) {
