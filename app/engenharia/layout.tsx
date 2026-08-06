@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
 import { getUsuarioLogado, setUsuarioLogado, DEFAULT_USER } from '@/lib/supabase/mockDb'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 
 export default function LayoutEngenharia({
   children,
@@ -16,6 +17,17 @@ export default function LayoutEngenharia({
   const [usuario, setUsuario] = useState({ nome: 'Eng. Carlos', perfil: 'engenharia_clinica' })
 
   useEffect(() => {
+    const stored = localStorage.getItem('sentry_usuario_atual')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        setUsuario({ nome: parsed.nome, perfil: parsed.perfil })
+        return
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
     const user = getUsuarioLogado()
     if (user.perfil !== 'engenharia_clinica') {
       setUsuarioLogado(DEFAULT_USER)
@@ -25,7 +37,14 @@ export default function LayoutEngenharia({
     }
   }, [])
 
-  function handleSair() {
+  async function handleSair() {
+    try {
+      const supabase = criarClienteSupabase()
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.error(e)
+    }
+    localStorage.removeItem('sentry_usuario_atual')
     setMenuAberto(false)
     router.push('/login')
   }

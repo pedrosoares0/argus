@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 
 export default function LayoutInspetor({
   children,
@@ -60,7 +61,14 @@ export default function LayoutInspetor({
     },
   ]
 
-  function handleSair() {
+  async function handleSair() {
+    try {
+      const supabase = criarClienteSupabase()
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.error(e)
+    }
+    localStorage.removeItem('sentry_usuario_atual')
     setMenuAberto(false)
     router.push('/login')
   }

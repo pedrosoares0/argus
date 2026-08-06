@@ -54,9 +54,11 @@ export default function PaginaChecklist() {
         }
 
         // 2. Carregar ativo (se for prefixado com ronda-, busca o primeiro ativo da sala correspondente)
-        let targetAssetId = assetId
-        if (assetId.startsWith('ronda-')) {
-          const roomId = assetId.replace('ronda-', '')
+        const cleanAssetId = decodeURIComponent(assetId).trim().replace(/['"]/g, '')
+        let targetAssetId = cleanAssetId
+
+        if (cleanAssetId.includes('ronda-')) {
+          const roomId = cleanAssetId.split('ronda-')[1].trim()
           const { data: roomAtivos, error: roomAtivosError } = await supabase
             .from('ativos')
             .select('id')

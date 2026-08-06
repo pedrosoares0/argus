@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
 import { getUsuarioLogado, setUsuarioLogado, COORDENADOR_USER } from '@/lib/supabase/mockDb'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 
 export default function LayoutCoordenador({
   children,
@@ -16,6 +17,17 @@ export default function LayoutCoordenador({
   const [usuario, setUsuario] = useState({ nome: 'Coord. Ana Beatriz', perfil: 'coordenador' })
 
   useEffect(() => {
+    const stored = localStorage.getItem('sentry_usuario_atual')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        setUsuario({ nome: parsed.nome, perfil: parsed.perfil })
+        return
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
     // Garante que o usuário logado é o coordenador
     const user = getUsuarioLogado()
     if (user.perfil !== 'coordenador') {
@@ -26,7 +38,14 @@ export default function LayoutCoordenador({
     }
   }, [])
 
-  function handleSair() {
+  async function handleSair() {
+    try {
+      const supabase = criarClienteSupabase()
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.error(e)
+    }
+    localStorage.removeItem('sentry_usuario_atual')
     setMenuAberto(false)
     router.push('/login')
   }
