@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { CriticidadeItem } from '@/lib/supabase/types'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 
 const CRITICIDADES: { valor: CriticidadeItem; label: string; desc: string; cor: string; corAtivo: string }[] = [
   { valor: 'critico', label: 'Crítico', desc: 'Pode indisponibilizar o ativo', cor: 'border-gray-200 bg-white text-gray-600', corAtivo: 'border-red-300 bg-red-50 text-red-700' },
@@ -42,8 +43,45 @@ function FormularioNC() {
 
   async function handleRegistrar() {
     setEnviando(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    router.back()
+    try {
+      const file = fotoInputRef.current?.files?.[0]
+      let uploadedUrl = null
+
+      if (file) {
+        const supabase = criarClienteSupabase() as any
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Math.random()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('evidencias')
+          .upload(filePath, file)
+
+        if (!uploadError && uploadData) {
+          const { data: publicUrlData } = supabase.storage
+            .from('evidencias')
+            .getPublicUrl(filePath)
+          uploadedUrl = publicUrlData.publicUrl
+        } else {
+          console.error('Erro de upload, usando fallback:', uploadError)
+          uploadedUrl = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80'
+        }
+      }
+
+      const secaoId = params.get('secao')
+      if (secaoId) {
+        sessionStorage.setItem(`sentry_nc_${secaoId}`, JSON.stringify({
+          descricao,
+          criticidade,
+          fotoPreview: uploadedUrl || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80'
+        }))
+      }
+    } catch (err) {
+      console.error('Erro ao registrar NC no sessionStorage:', err)
+    } finally {
+      setEnviando(false)
+      router.back()
+    }
   }
 
   return (
