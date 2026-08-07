@@ -32,7 +32,7 @@ export default function PaginaLogin() {
     setErro(null)
 
     try {
-      const supabase = criarClienteSupabase()
+      const supabase = criarClienteSupabase() as any
       
       let res = await supabase.auth.signInWithPassword({
         email,

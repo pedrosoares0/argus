@@ -29,6 +29,7 @@ export interface MockAtivo {
   categoria: string
   status: StatusAtivo
   codigo_qr: string
+  patrimonio?: string | null
 }
 
 export interface MockLocal {

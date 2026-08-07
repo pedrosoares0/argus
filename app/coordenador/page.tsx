@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BarraBusca } from '@/components/ui/BarraBusca'
 import { PillTag } from '@/components/ui/PillTag'
-import { getNCs, getUsuarioLogado, MockNaoConformidadeExtended } from '@/lib/supabase/mockDb'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 import type { StatusNaoConformidade, CriticidadeItem } from '@/lib/supabase/types'
 
 const CRITICIDADE_ORDEM: Record<CriticidadeItem, number> = {
@@ -31,15 +31,113 @@ const STATUS_LABELS: Record<StatusNaoConformidade, string> = {
 
 export default function FilaValidacao() {
   const router = useRouter()
-  const [ncs, setNcs] = useState<MockNaoConformidadeExtended[]>([])
+  const [ncs, setNcs] = useState<any[]>([])
   const [termoBusca, setTermoBusca] = useState('')
   const [abaAtiva, setAbaAtiva] = useState<'aguardando' | 'encerradas' | 'todas'>('aguardando')
   const [usuario, setUsuario] = useState({ id: '', nome: '' })
+  const [carregando, setCarregando] = useState(true)
 
   useEffect(() => {
-    setNcs(getNCs())
-    const user = getUsuarioLogado()
-    setUsuario({ id: user.id, nome: user.nome })
+    async function carregarDados() {
+      try {
+        const supabase = criarClienteSupabase() as any
+        
+        let currentUser = null
+        const stored = localStorage.getItem('sentry_usuario_atual')
+        if (stored) {
+          try {
+            currentUser = JSON.parse(stored)
+          } catch (e) {
+            console.error(e)
+          }
+        }
+        
+        if (!currentUser) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: profile } = await supabase
+              .from('usuarios')
+              .select('id, nome, perfil, hospital_id')
+              .eq('id', user.id)
+              .single()
+            if (profile) {
+              currentUser = profile
+            }
+          }
+        }
+
+        if (currentUser) {
+          setUsuario({ id: currentUser.id, nome: currentUser.nome })
+          
+          let hospitalId = currentUser.hospital_id
+          if (!hospitalId) {
+            const { data: profile } = await supabase
+              .from('usuarios')
+              .select('hospital_id')
+              .eq('id', currentUser.id)
+              .single()
+            if (profile) {
+              hospitalId = profile.hospital_id
+            }
+          }
+          
+          if (!hospitalId) {
+            hospitalId = 'e632822a-0000-0000-0000-000000000001'
+          }
+
+          // Buscar usuários para resolver o nome do responsável
+          const { data: usuariosData } = await supabase
+            .from('usuarios')
+            .select('id, nome')
+            .eq('hospital_id', hospitalId)
+          
+          const usuariosMapa = new Map()
+          if (usuariosData) {
+            usuariosData.forEach((u: any) => usuariosMapa.set(u.id, u.nome))
+          }
+
+          // Buscar as NCs do banco real
+          const { data: ncsData } = await supabase
+            .from('nao_conformidades')
+            .select('*, ativos(*, categorias_ativos(*)), locais(*)')
+            .eq('hospital_id', hospitalId)
+
+          if (ncsData) {
+            const formatadas = ncsData.map((nc: any) => ({
+              id: nc.id,
+              numero_unico: `NC-${nc.created_at ? new Date(nc.created_at).getFullYear() : '2026'}-${nc.id.substring(0, 4).toUpperCase()}`,
+              descricao: nc.descricao,
+              criticidade: nc.criticidade,
+              status: nc.status,
+              prazo: nc.prazo,
+              created_at: nc.created_at,
+              ativo: nc.ativos ? {
+                id: nc.ativos.id,
+                nome: nc.ativos.nome,
+                categoria: nc.ativos.categorias_ativos?.nome || 'Equipamento',
+                status: nc.ativos.status,
+                codigo_qr: nc.ativos.codigo_qr,
+                patrimonio: nc.ativos.patrimonio,
+              } : null,
+              local: {
+                nome: nc.locais?.nome || 'Sala',
+                unidade: nc.locais?.unidade || 'Unidade',
+                centro_cirurgico: nc.locais?.centro_cirurgico || 'Centro Cirúrgico',
+                hospital: 'Hospital'
+              },
+              responsavel_nome: usuariosMapa.get(nc.responsavel_id) || null,
+              responsavel_id: nc.responsavel_id,
+            }))
+            setNcs(formatadas)
+          }
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setCarregando(false)
+      }
+    }
+    carregarDados()
   }, [])
 
   // Calcula tempo desde abertura
@@ -101,8 +199,8 @@ export default function FilaValidacao() {
     })
     .sort((a, b) => {
       // 1. Criticidade primeiro (Crítico -> Importante -> Informativo)
-      const pesoA = CRITICIDADE_ORDEM[a.criticidade] ?? 99
-      const pesoB = CRITICIDADE_ORDEM[b.criticidade] ?? 99
+      const pesoA = CRITICIDADE_ORDEM[a.criticidade as CriticidadeItem] ?? 99
+      const pesoB = CRITICIDADE_ORDEM[b.criticidade as CriticidadeItem] ?? 99
       if (pesoA !== pesoB) return pesoA - pesoB
 
       // 2. Prazos menores (mais próximos) primeiro
@@ -193,7 +291,11 @@ export default function FilaValidacao() {
       </div>
 
       {/* Lista de NCs */}
-      {ncsFiltradas.length > 0 ? (
+      {carregando ? (
+        <div className="text-center py-12 text-sm text-gray-400 font-semibold animate-pulse">
+          Carregando não conformidades...
+        </div>
+      ) : ncsFiltradas.length > 0 ? (
         <div className="space-y-3.5">
           {ncsFiltradas.map((nc, idx) => {
             const corCriticidade =
@@ -203,8 +305,8 @@ export default function FilaValidacao() {
                 ? 'laranja'
                 : 'azul'
 
-            const corStatus = STATUS_CORES[nc.status]
-            const labelStatus = STATUS_LABELS[nc.status]
+            const corStatus = STATUS_CORES[nc.status as StatusNaoConformidade]
+            const labelStatus = STATUS_LABELS[nc.status as StatusNaoConformidade]
             const tempoRestante = calcularTempoRestante(nc.prazo)
             const vencido = tempoRestante === 'Vencido'
 

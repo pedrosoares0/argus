@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { PillTag } from '@/components/ui/PillTag'
-import { getNC, validarEEncerrarNC, reabrirNC, getUsuarioLogado, MockNaoConformidadeExtended } from '@/lib/supabase/mockDb'
+import { QRCodeAtivo } from '@/components/ui/QRCodeAtivo'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 import type { StatusNaoConformidade, StatusAtivo } from '@/lib/supabase/types'
 
 const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' | 'vermelho' | 'cinza'> = {
@@ -36,53 +37,219 @@ export default function ValidarNC() {
   const router = useRouter()
   const ncId = params.id as string
 
-  const [nc, setNc] = useState<MockNaoConformidadeExtended | null>(null)
+  const [nc, setNc] = useState<any | null>(null)
   const [usuario, setUsuario] = useState({ id: '', nome: '' })
   const [fotoZoom, setFotoZoom] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [avisoSucesso, setAvisoSucesso] = useState<string | null>(null)
   const [confirmandoReabertura, setConfirmandoReabertura] = useState(false)
+  const [carregando, setCarregando] = useState(true)
 
-  // Carrega dados iniciais
-  useEffect(() => {
-    if (!ncId) return
-    const dadosNC = getNC(ncId)
-    if (dadosNC) {
-      setNc(dadosNC)
-    } else {
-      setErro('Não conformidade não encontrada.')
-    }
-    const user = getUsuarioLogado()
-    setUsuario({ id: user.id, nome: user.nome })
-  }, [ncId])
+  async function carregarDados() {
+    try {
+      if (!ncId) return
+      const supabase = criarClienteSupabase() as any
 
-  function atualizarNC() {
-    const dadosNC = getNC(ncId)
-    if (dadosNC) {
-      setNc({ ...dadosNC })
+      // 1. Obter usuário logado
+      let currentUser = null
+      const stored = localStorage.getItem('sentry_usuario_atual')
+      if (stored) {
+        try {
+          currentUser = JSON.parse(stored)
+        } catch (e) {
+          console.error(e)
+        }
+      }
+      
+      if (!currentUser) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('usuarios')
+            .select('id, nome, perfil, hospital_id')
+            .eq('id', user.id)
+            .single()
+          if (profile) {
+            currentUser = profile
+          }
+        }
+      }
+
+      if (currentUser) {
+        setUsuario({ id: currentUser.id, nome: currentUser.nome })
+      }
+
+      // 2. Buscar a NC pelo ID do Supabase
+      const { data: ncData, error: ncError } = await supabase
+        .from('nao_conformidades')
+        .select('*, ativos(*, categorias_ativos(*)), locais(*)')
+        .eq('id', ncId)
+        .single()
+
+      if (ncError || !ncData) {
+        setErro('Não conformidade não encontrada no banco de dados.')
+        return
+      }
+
+      // 3. Buscar nome do responsável se houver
+      let responsavelNome = null
+      if (ncData.responsavel_id) {
+        const { data: resp } = await supabase
+          .from('usuarios')
+          .select('nome')
+          .eq('id', ncData.responsavel_id)
+          .single()
+        if (resp) {
+          responsavelNome = resp.nome
+        }
+      }
+
+      // 4. Buscar histórico de status
+      const { data: historicoData } = await supabase
+        .from('historico_status_nao_conformidade')
+        .select('*')
+        .eq('nao_conformidade_id', ncId)
+        .order('created_at', { ascending: true })
+
+      // 5. Buscar registro de manutenção
+      const { data: maintData } = await supabase
+        .from('registros_manutencao')
+        .select('*')
+        .eq('nao_conformidade_id', ncId)
+        .order('created_at', { ascending: false })
+
+      // Formatar objeto da NC
+      setNc({
+        id: ncData.id,
+        numero_unico: `NC-${ncData.created_at ? new Date(ncData.created_at).getFullYear() : '2026'}-${ncData.id.substring(0, 4).toUpperCase()}`,
+        descricao: ncData.descricao,
+        criticidade: ncData.criticidade,
+        status: ncData.status,
+        prazo: ncData.prazo,
+        created_at: ncData.created_at,
+        evidencia_url: ncData.evidencia_url,
+        ativo: ncData.ativos ? {
+          id: ncData.ativos.id,
+          nome: ncData.ativos.nome,
+          categoria: ncData.ativos.categorias_ativos?.nome || 'Equipamento',
+          status: ncData.ativos.status,
+          codigo_qr: ncData.ativos.codigo_qr,
+          patrimonio: ncData.ativos.patrimonio,
+        } : null,
+        local: {
+          nome: ncData.locais?.nome || 'Sala',
+          unidade: ncData.locais?.unidade || 'Unidade',
+          centro_cirurgico: ncData.locais?.centro_cirurgico || 'Centro Cirúrgico',
+          hospital: 'Hospital'
+        },
+        item_execucao: {
+          item_congelado: ncData.ativos?.nome || 'Equipamento',
+          evidencia_texto: ncData.descricao,
+        },
+        criado_por_nome: 'Inspetor',
+        responsavel_nome: responsavelNome,
+        responsavel_id: ncData.responsavel_id,
+        registro_manutencao: maintData && maintData.length > 0 ? maintData[0] : null,
+        historico: historicoData || [],
+      })
+
+    } catch (err: any) {
+      console.error(err)
+      setErro(`Erro de conexão ao carregar dados: ${err.message || err}`)
+    } finally {
+      setCarregando(false)
     }
   }
 
+  // Carrega dados iniciais
+  useEffect(() => {
+    carregarDados()
+  }, [ncId])
+
+  function atualizarNC() {
+    carregarDados()
+  }
+
   // Ação 1: Validar e Encerrar NC
-  function handleValidarEncerrar() {
+  async function handleValidarEncerrar() {
     if (!nc) return
-    const atualizado = validarEEncerrarNC(nc.id, usuario.id, usuario.nome)
-    if (atualizado) {
+    try {
+      const supabase = criarClienteSupabase() as any
+
+      // 1. Atualizar status da NC para encerrada
+      const { error: ncError } = await supabase
+        .from('nao_conformidades')
+        .update({ status: 'encerrada' })
+        .eq('id', nc.id)
+
+      if (ncError) throw ncError
+
+      // 2. Atualizar status do Ativo de volta para 'operacional' (RN-024)
+      if (nc.ativo?.id) {
+        await supabase
+          .from('ativos')
+          .update({ status: 'operacional' })
+          .eq('id', nc.ativo.id)
+      }
+
+      // 3. Inserir histórico
+      await supabase
+        .from('historico_status_nao_conformidade')
+        .insert({
+          nao_conformidade_id: nc.id,
+          status_anterior: nc.status,
+          status_novo: 'encerrada',
+          usuario_id: usuario.id,
+        })
+
       setAvisoSucesso('NC validada e encerrada com sucesso.')
       setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()
+    } catch (err: any) {
+      console.error(err)
+      alert(`Erro ao validar/encerrar: ${err.message}`)
     }
   }
 
   // Ação 2: Reabrir Correção (volta para em_correcao)
-  function handleReabrirCorrecao() {
+  async function handleReabrirCorrecao() {
     if (!nc) return
-    const atualizado = reabrirNC(nc.id, usuario.id, usuario.nome)
-    if (atualizado) {
+    try {
+      const supabase = criarClienteSupabase() as any
+
+      // 1. Reabrir a NC voltando para em_correcao
+      const { error: ncError } = await supabase
+        .from('nao_conformidades')
+        .update({ status: 'em_correcao' })
+        .eq('id', nc.id)
+
+      if (ncError) throw ncError
+
+      // 2. Reabrir registro_manutencao de volta para em_andamento se houver
+      if (nc.registro_manutencao?.id) {
+        await supabase
+          .from('registros_manutencao')
+          .update({ status: 'em_andamento', finalizada_em: null })
+          .eq('id', nc.registro_manutencao.id)
+      }
+
+      // 3. Inserir histórico
+      await supabase
+        .from('historico_status_nao_conformidade')
+        .insert({
+          nao_conformidade_id: nc.id,
+          status_anterior: nc.status,
+          status_novo: 'em_correcao',
+          usuario_id: usuario.id,
+        })
+
       setAvisoSucesso('NC reaberta. Enviada de volta para a Engenharia Clínica.')
       setConfirmandoReabertura(false)
       setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()
+    } catch (err: any) {
+      console.error(err)
+      alert(`Erro ao reabrir NC: ${err.message}`)
     }
   }
 
@@ -108,9 +275,9 @@ export default function ValidarNC() {
       ? 'laranja'
       : 'azul'
 
-  const corStatus = STATUS_CORES[nc.status]
-  const labelStatus = STATUS_LABELS[nc.status]
-  const ativoStatusCfg = nc.ativo ? STATUS_ATIVO[nc.ativo.status] : null
+  const corStatus = STATUS_CORES[nc.status as StatusNaoConformidade]
+  const labelStatus = STATUS_LABELS[nc.status as StatusNaoConformidade]
+  const ativoStatusCfg = nc.ativo ? STATUS_ATIVO[nc.ativo.status as StatusAtivo] : null
   const ncEncerrada = nc.status === 'encerrada'
   const ncAguardando = nc.status === 'aguardando_validacao'
 
@@ -170,11 +337,26 @@ export default function ValidarNC() {
             <h2 className="text-base font-extrabold text-gray-900 mt-2 leading-tight tracking-tight">
               {nc.ativo?.nome || 'Ativo desconhecido'}
             </h2>
-            {nc.ativo?.codigo_qr && (
-              <p className="text-[11px] font-mono text-gray-400 mt-1 uppercase tracking-wider">
-                Código QR: {nc.ativo.codigo_qr}
-              </p>
-            )}
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-3.5">
+              {nc.ativo?.codigo_qr && (
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">
+                    Código de Segurança
+                  </p>
+                  <p className="text-xs font-mono font-bold text-gray-700 bg-gray-50 border border-gray-100 rounded-lg px-2 py-0.5 select-all">
+                    {nc.ativo.codigo_qr}
+                  </p>
+                </div>
+              )}
+              {nc.ativo && (
+                <QRCodeAtivo
+                  ativoId={nc.ativo.id}
+                  nomeAtivo={nc.ativo.nome}
+                  codigoQr={nc.ativo.codigo_qr}
+                  patrimonio={nc.ativo.patrimonio}
+                />
+              )}
+            </div>
           </div>
 
           <div className="h-px bg-gray-100" />
@@ -317,7 +499,7 @@ export default function ValidarNC() {
           <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Histórico de Alterações</span>
 
           <div className="relative border-l border-gray-200 pl-4 ml-2.5 space-y-4 py-2">
-            {nc.historico.map((hist, idx) => {
+            {nc.historico.map((hist: any, idx: number) => {
               const bolinhaCor =
                 hist.status_novo === 'aberta'
                   ? 'bg-red-500 ring-4 ring-red-100'
@@ -339,7 +521,7 @@ export default function ValidarNC() {
                     <p className="text-xs font-bold text-gray-800">
                       {hist.status_anterior !== hist.status_novo ? (
                         <>
-                          Alterado para <span className="text-[#7C3AED]">{STATUS_LABELS[hist.status_novo]}</span>
+                          Alterado para <span className="text-[#7C3AED]">{STATUS_LABELS[hist.status_novo as StatusNaoConformidade]}</span>
                         </>
                       ) : (
                         <>NC assumida por técnico</>

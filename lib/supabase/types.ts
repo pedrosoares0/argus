@@ -113,7 +113,7 @@ export interface Ativo {
   categoria_id: string
   nome: string
   patrimonio: string | null
-  qr_code: string
+  codigo_qr: string
   status: StatusAtivo
   created_at: string
   updated_at: string

@@ -40,7 +40,7 @@ export default function PaginaLocal() {
   useEffect(() => {
     async function carregarDados() {
       try {
-        const supabase = criarClienteSupabase()
+        const supabase = criarClienteSupabase() as any
         
         // Buscar detalhes do local
         const { data: localData, error: localError } = await supabase
@@ -118,7 +118,7 @@ export default function PaginaLocal() {
     )
   }
 
-  const statusCfg = STATUS_LOCAL[local.status]
+  const statusCfg = STATUS_LOCAL[local.status as keyof typeof STATUS_LOCAL]
   const corPill = local.status === 'pronta' ? 'verde' : local.status === 'pronta_com_ressalvas' ? 'laranja' : local.status === 'nao_pronta' ? 'vermelho' : 'azul'
 
   return (
@@ -159,7 +159,7 @@ export default function PaginaLocal() {
           </p>
           <div className="grid grid-cols-4 gap-1">
             {ativos.map((a) => {
-              const cfg = STATUS_ATIVO[a.status]
+              const cfg = STATUS_ATIVO[a.status as StatusAtivo]
               return (
                 <div key={a.id} className="flex flex-col items-center gap-1.5 py-2">
                   <span className={`w-3 h-3 rounded-full ${cfg.dot}`} />
@@ -198,7 +198,7 @@ export default function PaginaLocal() {
 
         <div className="bg-white rounded-[24px] shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
           {ativos.map((ativo) => {
-            const cfg = STATUS_ATIVO[ativo.status]
+            const cfg = STATUS_ATIVO[ativo.status as StatusAtivo]
             return (
               <button
                 key={ativo.id}

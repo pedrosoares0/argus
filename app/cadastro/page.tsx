@@ -34,7 +34,7 @@ export default function PaginaCadastro() {
   useEffect(() => {
     async function carregarHospitais() {
       try {
-        const supabase = criarClienteSupabase()
+        const supabase = criarClienteSupabase() as any
         const { data, error } = await supabase
           .from('hospitais')
           .select('id, nome')
@@ -68,7 +68,7 @@ export default function PaginaCadastro() {
     setCarregando(true)
 
     try {
-      const supabase = criarClienteSupabase()
+      const supabase = criarClienteSupabase() as any
 
       // Registrar o usuário no Supabase Auth com metadados para o trigger do perfil
       const { data, error } = await supabase.auth.signUp({

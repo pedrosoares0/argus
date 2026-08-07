@@ -28,7 +28,7 @@ export default function PaginaChecklist() {
   useEffect(() => {
     async function carregarDados() {
       try {
-        const supabase = criarClienteSupabase()
+        const supabase = criarClienteSupabase() as any
         
         // 1. Obter usuário logado
         const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -106,7 +106,7 @@ export default function PaginaChecklist() {
         if (modelosData && modelosData.length > 0) {
           setModelos(modelosData)
           // Default to 'Completo' model if it exists, otherwise the first one
-          const padrao = modelosData.find(m => m.nome_variante === 'Completo') || modelosData[0]
+          const padrao = modelosData.find((m: any) => m.nome_variante === 'Completo') || modelosData[0]
           setModeloSelecionado(padrao)
         } else {
           setErro('Nenhum modelo de checklist vigente cadastrado para a categoria deste ativo.')
@@ -194,7 +194,7 @@ export default function PaginaChecklist() {
   async function handleConcluir() {
     setEnviando(true)
     try {
-      const supabase = criarClienteSupabase()
+      const supabase = criarClienteSupabase() as any
       
       // 1. Criar execucoes_checklist
       const { data: exec, error: execError } = await supabase

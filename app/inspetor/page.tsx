@@ -24,7 +24,7 @@ export default function PaginaInicialInspetor() {
   useEffect(() => {
     async function carregarAtivos() {
       try {
-        const supabase = criarClienteSupabase()
+        const supabase = criarClienteSupabase() as any
         const { data, error } = await supabase
           .from('ativos')
           .select('*, locais(*), categorias_ativos(*)')
@@ -65,7 +65,7 @@ export default function PaginaInicialInspetor() {
     if (!codigoInput.trim()) return
 
     try {
-      const supabase = criarClienteSupabase()
+      const supabase = criarClienteSupabase() as any
       
       // Buscar local pelo QR
       const { data: local } = await supabase

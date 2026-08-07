@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
 import { getUsuarioLogado, setUsuarioLogado, COORDENADOR_USER } from '@/lib/supabase/mockDb'
 import { criarClienteSupabase } from '@/lib/supabase/client'
@@ -13,6 +13,7 @@ export default function LayoutCoordenador({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [menuAberto, setMenuAberto] = useState(false)
   const [usuario, setUsuario] = useState({ nome: 'Coord. Ana Beatriz', perfil: 'coordenador' })
 
@@ -106,17 +107,42 @@ export default function LayoutCoordenador({
               </p>
 
               <div className="flex flex-col">
+                {/* Validar NCs */}
                 <Link
                   href="/coordenador"
                   onClick={() => setMenuAberto(false)}
-                  className="flex items-center gap-2.5 px-4 py-3 text-[13px] font-bold bg-[#7C3AED]/5 text-[#7C3AED] border-l-[3px] border-[#7C3AED] transition-all duration-150"
+                  className={[
+                    'flex items-center gap-2.5 px-4 py-3 text-[13px] font-bold border-l-[3px] transition-all duration-150',
+                    pathname === '/coordenador'
+                      ? 'bg-[#7C3AED]/5 text-[#7C3AED] border-[#7C3AED]'
+                      : 'text-gray-500 hover:text-[#7C3AED] hover:bg-gray-50 border-transparent',
+                  ].join(' ')}
                 >
-                  <div className="text-[#7C3AED]">
+                  <div className={pathname === '/coordenador' ? 'text-[#7C3AED]' : 'text-gray-400'}>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <span>Validar NCs</span>
+                </Link>
+
+                {/* Gestão de Ativos */}
+                <Link
+                  href="/coordenador/ativos"
+                  onClick={() => setMenuAberto(false)}
+                  className={[
+                    'flex items-center gap-2.5 px-4 py-3 text-[13px] font-bold border-l-[3px] transition-all duration-150',
+                    pathname === '/coordenador/ativos'
+                      ? 'bg-[#7C3AED]/5 text-[#7C3AED] border-[#7C3AED]'
+                      : 'text-gray-500 hover:text-[#7C3AED] hover:bg-gray-50 border-transparent',
+                  ].join(' ')}
+                >
+                  <div className={pathname === '/coordenador/ativos' ? 'text-[#7C3AED]' : 'text-gray-400'}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h3.375c.621 0 1.125.504 1.125 1.125v3.375c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 8.25V4.875zM3.75 14.625c0-.621.504-1.125 1.125-1.125h3.375c.621 0 1.125.504 1.125 1.125V18c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 18v-3.375zM13.5 4.875c0-.621.504-1.125 1.125-1.125H18c.621 0 1.125.504 1.125 1.125v3.375c0 .621-.504 1.125-1.125 1.125h-3.375a1.125 1.125 0 01-1.125-1.125V4.875zM13.5 14.625c0-.621.504-1.125 1.125-1.125H18c.621 0 1.125.504 1.125 1.125V18c0 .621-.504 1.125-1.125 1.125h-3.375a1.125 1.125 0 01-1.125-1.125v-3.375z" />
+                    </svg>
+                  </div>
+                  <span>Gestão de Ativos</span>
                 </Link>
               </div>
             </div>
