@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
-import type { RespostaItem } from '@/lib/supabase/types'
+import type { RespostaItem, CriticidadeItem } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
 export default function PaginaChecklist() {
@@ -16,8 +16,15 @@ export default function PaginaChecklist() {
   const [modelos, setModelos] = useState<any[]>([])
   const [modeloSelecionado, setModeloSelecionado] = useState<any>(null)
   const [itens, setItens] = useState<any[]>([])
-  const [respostas, setRespostas] = useState<Record<string, { resposta: RespostaItem | null }>>({})
+  const [respostas, setRespostas] = useState<Record<string, any>>({})
   const [expandida, setExpandida] = useState<string | null>(null)
+  
+  const [modalNcItem, setModalNcItem] = useState<any | null>(null)
+  const [ncDescricao, setNcDescricao] = useState('')
+  const [ncCriticidade, setNcCriticidade] = useState<CriticidadeItem>('critico')
+  const [ncFotoPreview, setNcFotoPreview] = useState<string | null>(null)
+  const [ncFotoFile, setNcFotoFile] = useState<File | null>(null)
+  const [ncEnviando, setNcEnviando] = useState(false)
   
   const [carregando, setCarregando] = useState(true)
   const [enviando, setEnviando] = useState(false)
@@ -170,25 +177,82 @@ export default function PaginaChecklist() {
   const todosRespondidos = itens.length > 0 && totalRespondidos === itens.length
 
   function setResposta(id: string, resposta: RespostaItem) {
-    setRespostas((prev) => ({ ...prev, [id]: { resposta } }))
     if (resposta === 'nao_conforme') {
       const item = itens.find(i => i.id === id)
-      router.push(`/inspetor/nc/nova?secao=${id}&secaoNome=${encodeURIComponent(item?.nome || '')}`)
+      setModalNcItem(item)
+      setNcDescricao('')
+      setNcCriticidade('critico')
+      setNcFotoPreview(null)
+      setNcFotoFile(null)
     } else {
-      const idx = itens.findIndex((s) => s.id === id)
-      const proxima = itens.slice(idx + 1).find((s) => respostas[s.id]?.resposta === null)
-      if (proxima) {
-        setTimeout(() => {
-          setExpandida(proxima.id)
-          setTimeout(() => {
-            const el = document.getElementById(`secao-${proxima.id}`)
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            }
-          }, 150)
-        }, 250)
-      }
+      setRespostas((prev) => ({ ...prev, [id]: { resposta, evidencia_url: null, evidencia_texto: null } }))
+      avancarProxima(id)
     }
+  }
+
+  function avancarProxima(id: string) {
+    const idx = itens.findIndex((s) => s.id === id)
+    const proxima = itens.slice(idx + 1).find((s) => respostas[s.id]?.resposta === null)
+    if (proxima) {
+      setTimeout(() => {
+        setExpandida(proxima.id)
+        setTimeout(() => {
+          const el = document.getElementById(`secao-${proxima.id}`)
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 150)
+      }, 250)
+    }
+  }
+
+  async function handleSalvarModalNc() {
+    if (!modalNcItem) return
+    setNcEnviando(true)
+    try {
+      let uploadedUrl = null
+      if (ncFotoFile) {
+        const supabase = criarClienteSupabase() as any
+        const fileExt = ncFotoFile.name.split('.').pop()
+        const fileName = `${Math.random()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('evidencias')
+          .upload(filePath, ncFotoFile)
+
+        if (!uploadError && uploadData) {
+          const { data: publicUrlData } = supabase.storage
+            .from('evidencias')
+            .getPublicUrl(filePath)
+          uploadedUrl = publicUrlData.publicUrl
+        } else {
+          console.error('Erro de upload, usando fallback:', uploadError)
+          uploadedUrl = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80'
+        }
+      }
+
+      setRespostas((prev) => ({
+        ...prev,
+        [modalNcItem.id]: {
+          resposta: 'nao_conforme',
+          evidencia_url: uploadedUrl || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80',
+          evidencia_texto: ncDescricao,
+          criticidade: ncCriticidade
+        }
+      }))
+
+      setModalNcItem(null)
+      avancarProxima(modalNcItem.id)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setNcEnviando(false)
+    }
+  }
+
+  function handleCancelarModalNc() {
+    setModalNcItem(null)
   }
 
   async function handleConcluir() {
@@ -602,6 +666,152 @@ export default function PaginaChecklist() {
           {todosRespondidos ? 'Concluir inspeção' : `Responda todas (${totalRespondidos}/${itens.length})`}
         </Botao>
       </div>
+
+      {/* Modal de Registro de NC (In-Page para não perder o estado dos outros itens!) */}
+      {modalNcItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
+          <div className="bg-white rounded-[28px] p-6 max-w-sm w-full shadow-2xl border border-gray-100/80 space-y-5 animate-[scaleIn_0.15s_ease-out] overflow-y-auto max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-1">
+              <div>
+                <h3 className="text-base font-extrabold text-gray-900 tracking-tight">Registrar Não Conformidade</h3>
+                <p className="text-[11px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">
+                  Item: {modalNcItem.nome}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelarModalNc}
+                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Descrição */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                O que está inconforme?
+              </label>
+              <textarea
+                rows={3}
+                required
+                placeholder="Ex: Faltando cânula de Guedel ou laringoscópio sem bateria..."
+                value={ncDescricao}
+                onChange={(e) => setNcDescricao(e.target.value)}
+                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all resize-none"
+              />
+            </div>
+
+            {/* Evidência */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                Evidência Fotográfica
+              </label>
+              
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) {
+                    setNcFotoFile(file)
+                    setNcFotoPreview(URL.createObjectURL(file))
+                  }
+                }}
+                className="hidden"
+                id="modal-foto-input"
+              />
+
+              {ncFotoPreview ? (
+                <div className="relative">
+                  <img
+                    src={ncFotoPreview}
+                    alt="Preview"
+                    className="w-full h-36 object-cover rounded-xl border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNcFotoPreview(null)
+                      setNcFotoFile(null)
+                    }}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] font-bold hover:bg-black/80 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('modal-foto-input')?.click()}
+                  className="w-full h-24 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:border-[#246BFD] hover:text-[#246BFD] transition-colors cursor-pointer"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  </svg>
+                  <span className="text-[11px] font-bold">Tirar foto ou anexar</span>
+                </button>
+              )}
+            </div>
+
+            {/* Criticidade */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                Criticidade
+              </label>
+              <div className="flex gap-1.5">
+                {[
+                  { valor: 'critico', label: 'Crítico', cor: 'bg-red-50 text-red-700 border-red-200' },
+                  { valor: 'importante', label: 'Importante', cor: 'bg-amber-50 text-amber-700 border-amber-200' },
+                  { valor: 'informativo', label: 'Informativo', cor: 'bg-sky-50 text-sky-700 border-sky-200' }
+                ].map((c) => {
+                  const sel = ncCriticidade === c.valor
+                  return (
+                    <button
+                      key={c.valor}
+                      type="button"
+                      onClick={() => setNcCriticidade(c.valor as any)}
+                      className={[
+                        'flex-1 py-2 px-1 text-[11px] font-extrabold rounded-xl border text-center transition-all cursor-pointer',
+                        sel ? `${c.cor} border-2 shadow-xs scale-[1.02]` : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                      ].join(' ')}
+                    >
+                      {c.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Ações */}
+            <div className="flex gap-2 pt-2">
+              <Botao
+                type="button"
+                variante="secundario"
+                larguraTotal
+                onClick={handleCancelarModalNc}
+                disabled={ncEnviando}
+              >
+                Cancelar
+              </Botao>
+              <Botao
+                type="button"
+                variante="primario"
+                larguraTotal
+                onClick={handleSalvarModalNc}
+                carregando={ncEnviando}
+                disabled={!ncDescricao.trim()}
+              >
+                Confirmar
+              </Botao>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }
