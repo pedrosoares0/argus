@@ -166,3 +166,25 @@ CREATE POLICY modelos_checklist_select ON public.modelos_checklist FOR SELECT TO
 ALTER TABLE public.itens_modelo_checklist ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS itens_modelo_checklist_select ON public.itens_modelo_checklist;
 CREATE POLICY itens_modelo_checklist_select ON public.itens_modelo_checklist FOR SELECT TO authenticated USING (true);
+
+-- Politicas adicionais para possibilitar atualizacao e insercao no fluxo de NCs e checklist
+ALTER TABLE public.ativos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS ativos_update ON public.ativos;
+CREATE POLICY ativos_update ON public.ativos FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.locais ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS locais_update ON public.locais;
+CREATE POLICY locais_update ON public.locais FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.nao_conformidades ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS nao_conformidades_all ON public.nao_conformidades;
+CREATE POLICY nao_conformidades_all ON public.nao_conformidades FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.registros_manutencao ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS registros_manutencao_all ON public.registros_manutencao;
+CREATE POLICY registros_manutencao_all ON public.registros_manutencao FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+ALTER TABLE public.historico_status_nao_conformidade ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS historico_status_all ON public.historico_status_nao_conformidade;
+CREATE POLICY historico_status_all ON public.historico_status_nao_conformidade FOR ALL TO authenticated USING (true) WITH CHECK (true);
+

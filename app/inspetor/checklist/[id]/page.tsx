@@ -250,20 +250,79 @@ export default function PaginaChecklist() {
         }
       })
 
-      const { error: itensError } = await supabase
+      const { data: insertedItens, error: itensError } = await supabase
         .from('itens_execucao_checklist')
         .insert(itensExecucao)
+        .select()
 
-      if (itensError) {
+      if (itensError || !insertedItens) {
         console.error(itensError)
         alert('Erro ao salvar os itens do checklist.')
         setEnviando(false)
         return
       }
 
-      // Enviar e-mails para cada item não conforme cadastrado
-      const itensNaoConformes = itensExecucao.filter(it => it.resposta === 'nao_conforme')
+      // 3. Garantir a criação das Não Conformidades (fallback da trigger do Postgres) e atualizar status
+      const itensNaoConformes = insertedItens.filter((it: any) => it.resposta === 'nao_conforme')
+      
       if (itensNaoConformes.length > 0) {
+        // Criar as NCs manualmente se a trigger falhar
+        for (const item of itensNaoConformes) {
+          const { data: triggerNc } = await supabase
+            .from('nao_conformidades')
+            .select('id')
+            .eq('item_execucao_id', item.id)
+
+          if (!triggerNc || triggerNc.length === 0) {
+            console.log('Trigger de autocriação ausente no banco. Criando NC manualmente...');
+            await supabase
+              .from('nao_conformidades')
+              .insert({
+                hospital_id: ativo.hospital_id,
+                item_execucao_id: item.id,
+                ativo_id: ativo.id,
+                local_id: ativo.local_id,
+                descricao: item.evidencia_texto || 'Não conformidade registrada no checklist.',
+                criticidade: item.criticidade,
+                status: 'aberta',
+                evidencia_url: item.evidencia_url
+              })
+          }
+        }
+
+        // Atualizar status do ativo e do local de acordo com a criticidade
+        const temCritico = itensNaoConformes.some((it: any) => it.criticidade === 'critico')
+        const temImportante = itensNaoConformes.some((it: any) => it.criticidade === 'importante')
+
+        let novoStatusAtivo = 'operacional'
+        let novoStatusLocal = 'pronta'
+
+        if (temCritico) {
+          novoStatusAtivo = 'indisponivel'
+          novoStatusLocal = 'nao_pronta'
+        } else if (temImportante) {
+          novoStatusAtivo = 'operacional_com_restricoes'
+          novoStatusLocal = 'pronta_com_ressalvas'
+        }
+
+        // Atualizar ativo no banco
+        await supabase
+          .from('ativos')
+          .update({ status: novoStatusAtivo })
+          .eq('id', ativo.id)
+
+        // Atualizar local no banco
+        await supabase
+          .from('locais')
+          .update({ status: novoStatusLocal })
+          .eq('id', ativo.local_id)
+
+        // Limpar sessionStorage
+        itens.forEach(item => {
+          sessionStorage.removeItem(`sentry_nc_${item.id}`)
+        })
+
+        // Enviar e-mails de notificação pelo Resend
         for (const item of itensNaoConformes) {
           const descricao = item.evidencia_texto || 'Não conformidade registrada no checklist.'
           const criticidade = item.criticidade || 'critico'
@@ -276,6 +335,17 @@ export default function PaginaChecklist() {
             criticidade: criticidade
           }).catch(err => console.error('Erro de envio de email:', err))
         }
+      } else {
+        // Se todas as respostas forem conformes, garantir que o ativo/local fiquem operacionais/prontos
+        await supabase
+          .from('ativos')
+          .update({ status: 'operacional' })
+          .eq('id', ativo.id)
+
+        await supabase
+          .from('locais')
+          .update({ status: 'pronta' })
+          .eq('id', ativo.local_id)
       }
 
       router.push('/inspetor')
