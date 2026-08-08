@@ -19,14 +19,16 @@ const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' |
   em_correcao: 'laranja',
   aguardando_validacao: 'verde',
   encerrada: 'cinza',
+  correcao_recusada: 'vermelho',
 }
 
 const STATUS_LABELS: Record<StatusNaoConformidade, string> = {
   aberta: 'Aberta',
-  em_analise: 'Em Análise',
+  em_analise: 'Em Resolução',
   em_correcao: 'Em Correção',
   aguardando_validacao: 'Aguardando Validação',
   encerrada: 'Encerrada',
+  correcao_recusada: 'Correção Recusada',
 }
 
 export default function FilaNCs() {
@@ -99,35 +101,42 @@ export default function FilaNCs() {
           // Buscar as NCs do banco real
           const { data: ncsData } = await supabase
             .from('nao_conformidades')
-            .select('*, ativos(*, categorias_ativos(*)), locais(*)')
+            .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*)')
             .eq('hospital_id', hospitalId)
 
           if (ncsData) {
-            const formatadas = ncsData.map((nc: any) => ({
-              id: nc.id,
-              numero_unico: `NC-${nc.created_at ? new Date(nc.created_at).getFullYear() : '2026'}-${nc.id.substring(0, 4).toUpperCase()}`,
-              descricao: nc.descricao,
-              criticidade: nc.criticidade,
-              status: nc.status,
-              prazo: nc.prazo,
-              created_at: nc.created_at,
-              ativo: nc.ativos ? {
-                id: nc.ativos.id,
-                nome: nc.ativos.nome,
-                categoria: nc.ativos.categorias_ativos?.nome || 'Equipamento',
-                status: nc.ativos.status,
-                codigo_qr: nc.ativos.codigo_qr,
-                patrimonio: nc.ativos.patrimonio,
-              } : null,
-              local: {
-                nome: nc.locais?.nome || 'Sala',
-                unidade: nc.locais?.unidade || 'Unidade',
-                centro_cirurgico: nc.locais?.centro_cirurgico || 'Centro Cirúrgico',
-                hospital: 'Hospital'
-              },
-              responsavel_nome: usuariosMapa.get(nc.responsavel_id) || null,
-              responsavel_id: nc.responsavel_id,
-            }))
+            const formatadas = ncsData.map((nc: any) => {
+              const localAtivo = nc.ativos?.locais || {}
+              const centroCirurgico = localAtivo.centros_cirurgicos || {}
+              const unidade = centroCirurgico.unidades || {}
+              const itemExec = nc.itens_execucao_checklist || {}
+
+              return {
+                id: nc.id,
+                numero_unico: nc.numero_unico || `NC-${nc.criado_em ? new Date(nc.criado_em).getFullYear() : '2026'}-${nc.id.substring(0, 4).toUpperCase()}`,
+                descricao: itemExec.evidencia_texto || 'Não conformidade registrada no checklist.',
+                criticidade: nc.criticidade,
+                status: nc.status,
+                prazo: nc.prazo,
+                created_at: nc.criado_em,
+                ativo: nc.ativos ? {
+                  id: nc.ativos.id,
+                  nome: nc.ativos.nome,
+                  categoria: nc.ativos.categorias_ativos?.nome || 'Equipamento',
+                  status: nc.ativos.status,
+                  codigo_qr: nc.ativos.codigo_qr,
+                  patrimonio: nc.ativos.patrimonio,
+                } : null,
+                local: {
+                  nome: localAtivo.nome || 'Sala',
+                  unidade: unidade.nome || 'Unidade',
+                  centro_cirurgico: centroCirurgico.nome || 'Centro Cirúrgico',
+                  hospital: 'Hospital'
+                },
+                responsavel_nome: usuariosMapa.get(nc.responsavel_id) || null,
+                responsavel_id: nc.responsavel_id,
+              }
+            })
             setNcs(formatadas)
           }
         }
@@ -175,9 +184,9 @@ export default function FilaNCs() {
       // 2. Filtro por Aba/Filtro Perfil
       switch (abaAtiva) {
         case 'pendentes':
-          // Aberta, Em análise ou Em correção, pertencentes ao usuário ou sem responsável
+          // Aberta, Em análise, Em correção ou Correção Recusada, pertencentes ao usuário ou sem responsável
           return (
-            (nc.status === 'aberta' || nc.status === 'em_analise' || nc.status === 'em_correcao') &&
+            (nc.status === 'aberta' || nc.status === 'em_analise' || nc.status === 'em_correcao' || nc.status === 'correcao_recusada') &&
             (nc.responsavel_id === null || nc.responsavel_id === usuario.id)
           )
         case 'minhas':

@@ -1,90 +1,116 @@
 'use client'
 
-import { useState } from 'react'
-
-interface InspecaoHistorico {
-  id: string
-  ativo: string
-  local: string
-  tipo: string
-  dataHora: string
-  status: 'conforme' | 'com_nc' | 'incompleta'
-  detalheStatus: string
-  secoesRespondidas: number
-  totalSecoes: number
-}
-
-const HISTORICO_MOCK: InspecaoHistorico[] = [
-  {
-    id: 'ins-1',
-    ativo: 'Carrinho UTI-A',
-    local: 'UTI Adulto',
-    tipo: 'Carrinho de Parada · Completo',
-    dataHora: 'Hoje às 10:15',
-    status: 'com_nc',
-    detalheStatus: '1 NC',
-    secoesRespondidas: 9,
-    totalSecoes: 9,
-  },
-  {
-    id: 'ins-2',
-    ativo: 'Monitor Multiparamétrico #1',
-    local: 'Sala 01',
-    tipo: 'Checklist de Segurança',
-    dataHora: 'Ontem às 14:30',
-    status: 'conforme',
-    detalheStatus: 'Conforme',
-    secoesRespondidas: 5,
-    totalSecoes: 5,
-  },
-  {
-    id: 'ins-3',
-    ativo: 'Carrinho Pronto-B',
-    local: 'Pronto Socorro',
-    tipo: 'Carrinho de Parada · Plantão',
-    dataHora: '03/08 às 07:15',
-    status: 'conforme',
-    detalheStatus: 'Conforme',
-    secoesRespondidas: 3,
-    totalSecoes: 3,
-  },
-  {
-    id: 'ins-4',
-    ativo: 'Aparelho de Anestesia #1',
-    local: 'Sala 02',
-    tipo: 'Checklist de Segurança',
-    dataHora: '02/08 às 19:40',
-    status: 'com_nc',
-    detalheStatus: '2 NCs',
-    secoesRespondidas: 8,
-    totalSecoes: 8,
-  },
-  {
-    id: 'ins-5',
-    ativo: 'Carrinho UTI-B',
-    local: 'UTI Coronariana',
-    tipo: 'Carrinho de Parada · Completo',
-    dataHora: '01/08 às 11:20',
-    status: 'conforme',
-    detalheStatus: 'Conforme',
-    secoesRespondidas: 9,
-    totalSecoes: 9,
-  },
-]
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 
 export default function PaginaHistoricoInspecoes() {
+  const router = useRouter()
   const [filtro, setFiltro] = useState<'todas' | 'conforme' | 'com_nc'>('todas')
+  const [inspecoes, setInspecoes] = useState<any[]>([])
+  const [carregando, setCarregando] = useState(true)
+  const [usuario, setUsuario] = useState<any>(null)
 
-  const usuario = {
-    nome: 'Enf. Pedro Soares',
-    cargo: 'Inspetor de Prontidão',
-    avatar: 'PS',
-  }
+  useEffect(() => {
+    async function carregarDados() {
+      try {
+        const supabase = criarClienteSupabase() as any
+        
+        // 1. Obter usuário logado
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+          setUsuario(profile)
+          
+          if (profile) {
+            // 2. Buscar as execuções de checklist do hospital
+            const { data: execsData, error: execsError } = await supabase
+              .from('execucoes_checklist')
+              .select('*, ativos(*, locais(*))')
+              .eq('hospital_id', profile.hospital_id)
+              .eq('status', 'concluida')
+              .order('finalizado_em', { ascending: false })
 
-  const filtrados = HISTORICO_MOCK.filter((ins) => {
+            if (execsError) throw execsError
+
+            if (execsData && execsData.length > 0) {
+              const execsIds = execsData.map((e: any) => e.id)
+              
+              // Buscar todos os itens associados para saber se tem NC
+              const { data: itemsData } = await supabase
+                .from('itens_execucao_checklist')
+                .select('execucao_id, resposta')
+                .in('execucao_id', execsIds)
+
+              const itemsMapa = new Map()
+              if (itemsData) {
+                itemsData.forEach((it: any) => {
+                  const arr = itemsMapa.get(it.execucao_id) || []
+                  arr.push(it)
+                  itemsMapa.set(it.execucao_id, arr)
+                })
+              }
+
+              const formatadas = execsData.map((exec: any) => {
+                const execItems = itemsMapa.get(exec.id) || []
+                const temNc = execItems.some((it: any) => it.resposta === 'nao_conforme')
+                const totalItems = execItems.length
+                
+                let status: 'conforme' | 'com_nc' = 'conforme'
+                let detalheStatus = 'Conforme'
+                if (temNc) {
+                  status = 'com_nc'
+                  const countNc = execItems.filter((it: any) => it.resposta === 'nao_conforme').length
+                  detalheStatus = `${countNc} NC${countNc > 1 ? 's' : ''}`
+                }
+
+                const dataInspecao = new Date(exec.finalizado_em || exec.iniciado_em)
+                const formatador = new Intl.DateTimeFormat('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+
+                return {
+                  id: exec.id,
+                  ativoId: exec.ativo_id,
+                  ativo: exec.ativos?.nome || 'Equipamento',
+                  local: exec.ativos?.locais?.nome || 'Sala',
+                  tipo: 'Checklist',
+                  dataHora: formatador.format(dataInspecao),
+                  status,
+                  detalheStatus,
+                  secoesRespondidas: totalItems,
+                  totalSecoes: totalItems
+                }
+              })
+
+              setInspecoes(formatadas)
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao carregar inspeções:', err)
+      } finally {
+        setCarregando(false)
+      }
+    }
+    carregarDados()
+  }, [])
+
+  const filtrados = inspecoes.filter((ins) => {
     if (filtro === 'todas') return true
     return ins.status === filtro
   })
+
+  const nomeExibido = usuario?.nome || 'Usuário'
+  const cargoExibido = usuario?.perfil === 'inspetor' ? 'Inspetor(a) de Prontidão' : 'Colaborador(a)'
+  const iniciais = nomeExibido.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
 
   return (
     <div className="px-5 pt-4 space-y-6">
@@ -92,17 +118,17 @@ export default function PaginaHistoricoInspecoes() {
       <div className="bg-white rounded-[24px] p-5 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 flex items-center justify-between">
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(36,107,253,0.15)] shrink-0">
-            {usuario.avatar}
+            {iniciais}
           </div>
           <div className="min-w-0">
-            <p className="text-[15px] font-bold text-gray-900 leading-tight">{usuario.nome}</p>
-            <p className="text-[12px] text-gray-400 font-medium mt-0.5">{usuario.cargo}</p>
+            <p className="text-[15px] font-bold text-gray-900 leading-tight">{nomeExibido}</p>
+            <p className="text-[12px] text-gray-400 font-medium mt-0.5">{cargoExibido}</p>
           </div>
         </div>
 
         {/* Resumo Rápido */}
         <div className="text-right shrink-0">
-          <p className="text-[16px] font-extrabold text-gray-900 leading-none">{HISTORICO_MOCK.length}</p>
+          <p className="text-[16px] font-extrabold text-gray-900 leading-none">{inspecoes.length}</p>
           <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Inspeções</p>
         </div>
       </div>
@@ -136,16 +162,22 @@ export default function PaginaHistoricoInspecoes() {
           Minhas Inspeções ({filtrados.length})
         </p>
 
-        {filtrados.length > 0 ? (
+        {carregando ? (
+          <div className="text-center py-8 text-sm text-gray-400 font-semibold animate-pulse">
+            Carregando histórico...
+          </div>
+        ) : filtrados.length > 0 ? (
           <div className="bg-white rounded-[24px] shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
             {filtrados.map((ins) => {
               const dot = ins.status === 'conforme' ? 'bg-emerald-500' : 'bg-red-500'
               const textColors = ins.status === 'conforme' ? 'text-emerald-600' : 'text-red-500'
 
               return (
-                <div
+                <button
                   key={ins.id}
-                  className="flex items-center justify-between py-4 px-5 hover:bg-gray-50/40 transition-colors"
+                  type="button"
+                  onClick={() => router.push(`/inspetor/checklist/${ins.ativoId}?execId=${ins.id}`)}
+                  className="w-full flex items-center justify-between py-4 px-5 hover:bg-gray-50/40 transition-colors text-left cursor-pointer"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     {/* Status Dot */}
@@ -170,7 +202,7 @@ export default function PaginaHistoricoInspecoes() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>

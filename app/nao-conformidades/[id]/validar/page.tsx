@@ -15,14 +15,16 @@ const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' |
   em_correcao: 'laranja',
   aguardando_validacao: 'verde',
   encerrada: 'cinza',
+  correcao_recusada: 'vermelho',
 }
 
 const STATUS_LABELS: Record<StatusNaoConformidade, string> = {
   aberta: 'Aberta',
-  em_analise: 'Em Análise',
+  em_analise: 'Em Resolução',
   em_correcao: 'Em Correção',
   aguardando_validacao: 'Aguardando Validação',
   encerrada: 'Encerrada',
+  correcao_recusada: 'Correção Recusada',
 }
 
 const STATUS_ATIVO: Record<StatusAtivo, { label: string; dot: string }> = {
@@ -82,7 +84,7 @@ export default function ValidarNC() {
       // 2. Buscar a NC pelo ID do Supabase
       const { data: ncData, error: ncError } = await supabase
         .from('nao_conformidades')
-        .select('*, ativos(*, categorias_ativos(*)), locais(*)')
+        .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*)')
         .eq('id', ncId)
         .single()
 
@@ -118,16 +120,21 @@ export default function ValidarNC() {
         .eq('nao_conformidade_id', ncId)
         .order('created_at', { ascending: false })
 
+      const localAtivo = ncData.ativos?.locais || {}
+      const centroCirurgico = localAtivo.centros_cirurgicos || {}
+      const unidade = centroCirurgico.unidades || {}
+      const itemExec = ncData.itens_execucao_checklist || {}
+
       // Formatar objeto da NC
       setNc({
         id: ncData.id,
-        numero_unico: `NC-${ncData.created_at ? new Date(ncData.created_at).getFullYear() : '2026'}-${ncData.id.substring(0, 4).toUpperCase()}`,
-        descricao: ncData.descricao,
+        numero_unico: ncData.numero_unico || `NC-${ncData.criado_em ? new Date(ncData.criado_em).getFullYear() : '2026'}-${ncData.id.substring(0, 4).toUpperCase()}`,
+        descricao: itemExec.evidencia_texto || 'Não conformidade registrada no checklist.',
         criticidade: ncData.criticidade,
         status: ncData.status,
         prazo: ncData.prazo,
-        created_at: ncData.created_at,
-        evidencia_url: ncData.evidencia_url,
+        created_at: ncData.criado_em,
+        evidencia_url: itemExec.evidencia_url,
         ativo: ncData.ativos ? {
           id: ncData.ativos.id,
           nome: ncData.ativos.nome,
@@ -137,14 +144,14 @@ export default function ValidarNC() {
           patrimonio: ncData.ativos.patrimonio,
         } : null,
         local: {
-          nome: ncData.locais?.nome || 'Sala',
-          unidade: ncData.locais?.unidade || 'Unidade',
-          centro_cirurgico: ncData.locais?.centro_cirurgico || 'Centro Cirúrgico',
+          nome: localAtivo.nome || 'Sala',
+          unidade: unidade.nome || 'Unidade',
+          centro_cirurgico: centroCirurgico.nome || 'Centro Cirúrgico',
           hospital: 'Hospital'
         },
         item_execucao: {
-          item_congelado: ncData.ativos?.nome || 'Equipamento',
-          evidencia_texto: ncData.descricao,
+          item_congelado: itemExec.item_congelado?.descricao || ncData.ativos?.nome || 'Equipamento',
+          evidencia_texto: itemExec.evidencia_texto || 'Não conformidade registrada.',
         },
         criado_por_nome: 'Inspetor',
         responsavel_nome: responsavelNome,
@@ -211,16 +218,16 @@ export default function ValidarNC() {
     }
   }
 
-  // Ação 2: Reabrir Correção (volta para em_correcao)
+  // Ação 2: Reabrir Correção (recusa e volta para correcao_recusada)
   async function handleReabrirCorrecao() {
     if (!nc) return
     try {
       const supabase = criarClienteSupabase() as any
 
-      // 1. Reabrir a NC voltando para em_correcao
+      // 1. Reabrir a NC com status correcao_recusada
       const { error: ncError } = await supabase
         .from('nao_conformidades')
-        .update({ status: 'em_correcao' })
+        .update({ status: 'correcao_recusada' })
         .eq('id', nc.id)
 
       if (ncError) throw ncError
@@ -239,11 +246,11 @@ export default function ValidarNC() {
         .insert({
           nao_conformidade_id: nc.id,
           status_anterior: nc.status,
-          status_novo: 'em_correcao',
+          status_novo: 'correcao_recusada',
           usuario_id: usuario.id,
         })
 
-      setAvisoSucesso('NC reaberta. Enviada de volta para a Engenharia Clínica.')
+      setAvisoSucesso('Correção recusada. NC enviada de volta para a Engenharia Clínica.')
       setConfirmandoReabertura(false)
       setTimeout(() => setAvisoSucesso(null), 4000)
       atualizarNC()

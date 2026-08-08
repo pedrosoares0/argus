@@ -80,12 +80,55 @@ export default function PaginaLocal() {
         }
 
         if (ativosData) {
-          setAtivos(ativosData.map((a: any) => ({
-            id: a.id,
-            nome: a.nome,
-            status: a.status as StatusAtivo,
-            ultimaInspecao: 'Sem inspeções hoje',
-          })))
+          if (ativosData.length > 0) {
+            const ativosIds = ativosData.map((a: any) => a.id)
+            
+            // Buscar execuções concluídas para esses ativos
+            const { data: execsData } = await supabase
+              .from('execucoes_checklist')
+              .select('*')
+              .in('ativo_id', ativosIds)
+              .eq('status', 'concluida')
+              .order('finalizado_em', { ascending: false })
+
+            const usuariosMapa = new Map()
+            if (execsData && execsData.length > 0) {
+              const userIds = Array.from(new Set(execsData.map((e: any) => e.usuario_id)))
+              const { data: usersData } = await supabase
+                .from('usuarios')
+                .select('id, nome, perfil')
+                .in('id', userIds)
+
+              if (usersData) {
+                usersData.forEach((u: any) => usuariosMapa.set(u.id, u.nome))
+              }
+            }
+
+            setAtivos(ativosData.map((a: any) => {
+              const ultimaExec = execsData?.find((e: any) => e.ativo_id === a.id)
+              let textoInspecao = 'Sem inspeções hoje'
+              if (ultimaExec) {
+                const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
+                const formatador = new Intl.DateTimeFormat('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+                const nomeInspetor = usuariosMapa.get(ultimaExec.usuario_id) || 'Inspetor'
+                textoInspecao = `Insp. por ${nomeInspetor} em ${formatador.format(dataInspecao)}`
+              }
+
+              return {
+                id: a.id,
+                nome: a.nome,
+                status: a.status as StatusAtivo,
+                ultimaInspecao: textoInspecao,
+              }
+            }))
+          } else {
+            setAtivos([])
+          }
         }
       } catch (err: any) {
         console.error(err)

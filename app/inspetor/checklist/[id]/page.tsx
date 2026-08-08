@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import type { RespostaItem, CriticidadeItem } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
@@ -10,7 +10,10 @@ import { criarClienteSupabase } from '@/lib/supabase/client'
 export default function PaginaChecklist() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const assetId = params.id as string
+  const execId = searchParams?.get('execId')
+  const isReadOnly = !!execId
 
   const [ativo, setAtivo] = useState<any>(null)
   const [modelos, setModelos] = useState<any[]>([])
@@ -92,10 +95,67 @@ export default function PaginaChecklist() {
         }
 
         if (!ativoData) {
-          setErro('Nenhum dado encontrado para este ativo.')
+          setErro('Nenhum dada encontrado para este ativo.')
           return
         }
         setAtivo(ativoData)
+
+        // Se for modo somente leitura (histórico), carregar diretamente a execução e itens
+        if (execId) {
+          const { data: execData, error: execError } = await supabase
+            .from('execucoes_checklist')
+            .select('*, modelos_checklist(*)')
+            .eq('id', execId)
+            .single()
+
+          if (execError) {
+            console.error(execError)
+            setErro(`Erro ao carregar execução: ${execError.message}`)
+            return
+          }
+
+          if (execData) {
+            setModeloSelecionado(execData.modelos_checklist)
+            
+            const { data: itemsExecData, error: itemsExecError } = await supabase
+              .from('itens_execucao_checklist')
+              .select('*')
+              .eq('execucao_id', execId)
+
+            if (itemsExecError) {
+              console.error(itemsExecError)
+              setErro(`Erro ao carregar itens da execução: ${itemsExecError.message}`)
+              return
+            }
+
+            if (itemsExecData) {
+              const sortedItems = [...itemsExecData].sort((a: any, b: any) => {
+                const ordA = a.item_congelado?.ordem || 0
+                const ordB = b.item_congelado?.ordem || 0
+                return ordA - ordB
+              })
+
+              const formatados = sortedItems.map((item: any) => ({
+                id: item.id,
+                nome: item.item_congelado?.descricao || 'Seção',
+                materiaisReferencia: [],
+                criticidade: item.criticidade,
+                rawDescricao: item.item_congelado?.descricao || 'Seção',
+                ordem: item.item_congelado?.ordem || 1
+              }))
+
+              setItens(formatados)
+              setRespostas(Object.fromEntries(sortedItems.map(i => [i.id, {
+                resposta: i.resposta,
+                evidencia_url: i.evidencia_url,
+                evidencia_texto: i.evidencia_texto,
+                criticidade: i.criticidade
+              }])))
+              setExpandida(formatados[0]?.id || null)
+            }
+          }
+          return
+        }
 
         // 3. Carregar modelos vigentes para esta categoria
         const { data: modelosData, error: modelosError } = await supabase
@@ -128,10 +188,11 @@ export default function PaginaChecklist() {
     if (assetId) {
       carregarDados()
     }
-  }, [assetId])
+  }, [assetId, execId])
 
   useEffect(() => {
     async function carregarItens() {
+      if (isReadOnly) return
       if (!modeloSelecionado) return
       try {
         const supabase = criarClienteSupabase()
@@ -170,7 +231,7 @@ export default function PaginaChecklist() {
       }
     }
     carregarItens()
-  }, [modeloSelecionado])
+  }, [modeloSelecionado, isReadOnly])
 
   const totalRespondidos = Object.values(respostas).filter((r) => r.resposta !== null).length
   const progresso = itens.length > 0 ? Math.round((totalRespondidos / itens.length) * 100) : 0
@@ -284,21 +345,17 @@ export default function PaginaChecklist() {
 
       // 2. Criar itens_execucao_checklist
       const itensExecucao = itens.map(item => {
-        // Tentar obter dados salvos na sessionStorage para esse item se for não conforme
+        const respInfo = respostas[item.id] || { resposta: 'nao_se_aplica' }
+        const resposta = respInfo.resposta || 'nao_se_aplica'
+
         let evidenciaUrl = null
         let evidenciaTexto = null
         let crit = item.criticidade
 
-        const storedNc = sessionStorage.getItem(`sentry_nc_${item.id}`)
-        if (storedNc) {
-          try {
-            const parsed = JSON.parse(storedNc)
-            evidenciaTexto = parsed.descricao || null
-            crit = parsed.criticidade || item.criticidade
-            evidenciaUrl = parsed.fotoPreview || null
-          } catch (e) {
-            console.error(e)
-          }
+        if (resposta === 'nao_conforme') {
+          evidenciaUrl = respInfo.evidencia_url || null
+          evidenciaTexto = respInfo.evidencia_texto || null
+          crit = respInfo.criticidade || item.criticidade
         }
 
         return {
@@ -308,7 +365,7 @@ export default function PaginaChecklist() {
             descricao: item.rawDescricao
           },
           criticidade: crit,
-          resposta: respostas[item.id].resposta!,
+          resposta: resposta,
           evidencia_url: evidenciaUrl,
           evidencia_texto: evidenciaTexto
         }
@@ -339,18 +396,21 @@ export default function PaginaChecklist() {
 
           if (!triggerNc || triggerNc.length === 0) {
             console.log('Trigger de autocriação ausente no banco. Criando NC manualmente...');
-            await supabase
+            const { error: insertNcError } = await supabase
               .from('nao_conformidades')
               .insert({
                 hospital_id: ativo.hospital_id,
                 item_execucao_id: item.id,
                 ativo_id: ativo.id,
-                local_id: ativo.local_id,
-                descricao: item.evidencia_texto || 'Não conformidade registrada no checklist.',
                 criticidade: item.criticidade,
                 status: 'aberta',
-                evidencia_url: item.evidencia_url
+                numero_unico: `NC-${new Date().getFullYear()}-${item.id.substring(0, 4).toUpperCase()}`
               })
+
+            if (insertNcError) {
+              console.error('Erro ao inserir NC manualmente:', insertNcError)
+              throw insertNcError
+            }
           }
         }
 
@@ -443,7 +503,7 @@ export default function PaginaChecklist() {
     <div className="px-5 pt-4 pb-10 space-y-5">
       {/* Voltar */}
       <Link
-        href={`/inspetor/local/${ativo.local_id}`}
+        href={isReadOnly ? '/inspetor/inspecoes' : `/inspetor/local/${ativo.local_id}`}
         className="inline-flex items-center gap-1.5 text-[13px] font-bold text-gray-600 hover:text-black transition-colors -ml-1"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -461,7 +521,13 @@ export default function PaginaChecklist() {
           <h1 className="text-xl font-bold text-gray-900 tracking-tight mt-1">{ativo.nome}</h1>
           
           {/* Seletor de Modelo */}
-          {modelos.length > 1 && (
+          {isReadOnly ? (
+            <div className="mt-3">
+              <span className="inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#246BFD]/8 border border-[#246BFD]/15 text-[#246BFD]">
+                Visualizando: {modeloSelecionado?.nome_variante || 'Checklist'}
+              </span>
+            </div>
+          ) : modelos.length > 1 && (
             <div className="mt-3 flex gap-2">
               {modelos.map(m => (
                 <button
@@ -590,13 +656,14 @@ export default function PaginaChecklist() {
                     {/* Conforme */}
                     <button
                       type="button"
-                      onClick={() => setResposta(secao.id, 'conforme')}
+                      onClick={() => !isReadOnly && setResposta(secao.id, 'conforme')}
                       className={[
-                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 cursor-pointer border',
+                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
                         'flex flex-col items-center justify-center gap-1',
+                        isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
                         resp.resposta === 'conforme'
                           ? 'bg-[#34C759] border-[#34C759] text-white shadow-[0_4px_12px_rgba(52,199,89,0.25)] scale-[1.02]'
-                          : 'bg-white border-gray-200 text-[#34C759] hover:bg-[#34C759]/5 active:scale-95',
+                          : 'bg-white border-gray-200 text-[#34C759]' + (isReadOnly ? '' : ' hover:bg-[#34C759]/5'),
                       ].join(' ')}
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -608,13 +675,14 @@ export default function PaginaChecklist() {
                     {/* Não Conforme */}
                     <button
                       type="button"
-                      onClick={() => setResposta(secao.id, 'nao_conforme')}
+                      onClick={() => !isReadOnly && setResposta(secao.id, 'nao_conforme')}
                       className={[
-                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 cursor-pointer border',
+                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
                         'flex flex-col items-center justify-center gap-1',
+                        isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
                         resp.resposta === 'nao_conforme'
                           ? 'bg-[#FF3B30] border-[#FF3B30] text-white shadow-[0_4px_12px_rgba(255,59,48,0.25)] scale-[1.02]'
-                          : 'bg-white border-gray-200 text-[#FF3B30] hover:bg-[#FF3B30]/5 active:scale-95',
+                          : 'bg-white border-gray-200 text-[#FF3B30]' + (isReadOnly ? '' : ' hover:bg-[#FF3B30]/5'),
                       ].join(' ')}
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -626,13 +694,14 @@ export default function PaginaChecklist() {
                     {/* Não se aplica */}
                     <button
                       type="button"
-                      onClick={() => setResposta(secao.id, 'nao_se_aplica')}
+                      onClick={() => !isReadOnly && setResposta(secao.id, 'nao_se_aplica')}
                       className={[
-                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 cursor-pointer border',
+                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
                         'flex flex-col items-center justify-center gap-1 text-center',
+                        isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
                         resp.resposta === 'nao_se_aplica'
                           ? 'bg-[#8E8E93] border-[#8E8E93] text-white shadow-[0_4px_12px_rgba(142,142,147,0.25)] scale-[1.02]'
-                          : 'bg-white border-gray-200 text-[#8E8E93] hover:bg-[#8E8E93]/5 active:scale-95',
+                          : 'bg-white border-gray-200 text-[#8E8E93]' + (isReadOnly ? '' : ' hover:bg-[#8E8E93]/5'),
                       ].join(' ')}
                     >
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -641,6 +710,34 @@ export default function PaginaChecklist() {
                       <span>Não se aplica</span>
                     </button>
                   </div>
+
+                  {/* Evidências e Descrição da NC (mostrado quando resposta é nao_conforme e possui descrição/foto) */}
+                  {resp.resposta === 'nao_conforme' && (resp.evidencia_texto || resp.evidencia_url) && (
+                    <div className="bg-red-50/50 rounded-2xl p-4 border border-red-100/50 space-y-3 mt-3">
+                      {resp.evidencia_texto && (
+                        <div>
+                          <p className="text-[10px] font-bold text-red-400 tracking-[0.08em] uppercase">
+                            Descrição da NC
+                          </p>
+                          <p className="text-[14px] text-gray-700 font-medium leading-relaxed mt-1">
+                            {resp.evidencia_texto}
+                          </p>
+                        </div>
+                      )}
+                      {resp.evidencia_url && (
+                        <div>
+                          <p className="text-[10px] font-bold text-red-400 tracking-[0.08em] uppercase mb-1">
+                            Evidência Fotográfica
+                          </p>
+                          <img
+                            src={resp.evidencia_url}
+                            alt="Evidência"
+                            className="rounded-xl max-h-48 object-cover border border-gray-150"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -649,23 +746,41 @@ export default function PaginaChecklist() {
       </div>
 
       {/* Botão de Conclusão */}
-      <div className="pt-3 pb-6">
-        <Botao
-          variante="primario"
-          tamanho="lg"
-          larguraTotal
-          carregando={enviando}
-          disabled={!todosRespondidos}
-          onClick={handleConcluir}
-          icone={
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
-        >
-          {todosRespondidos ? 'Concluir inspeção' : `Responda todas (${totalRespondidos}/${itens.length})`}
-        </Botao>
-      </div>
+      {isReadOnly ? (
+        <div className="pt-3 pb-6">
+          <Botao
+            variante="primario"
+            tamanho="lg"
+            larguraTotal
+            onClick={() => router.push('/inspetor/inspecoes')}
+            icone={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            }
+          >
+            Voltar ao Histórico
+          </Botao>
+        </div>
+      ) : (
+        <div className="pt-3 pb-6">
+          <Botao
+            variante="primario"
+            tamanho="lg"
+            larguraTotal
+            carregando={enviando}
+            disabled={!todosRespondidos}
+            onClick={handleConcluir}
+            icone={
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+          >
+            {todosRespondidos ? 'Concluir inspeção' : `Responda todas (${totalRespondidos}/${itens.length})`}
+          </Botao>
+        </div>
+      )}
 
       {/* Modal de Registro de NC (In-Page para não perder o estado dos outros itens!) */}
       {modalNcItem && (

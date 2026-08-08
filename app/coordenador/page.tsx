@@ -33,7 +33,7 @@ export default function FilaValidacao() {
   const router = useRouter()
   const [ncs, setNcs] = useState<any[]>([])
   const [termoBusca, setTermoBusca] = useState('')
-  const [abaAtiva, setAbaAtiva] = useState<'aguardando' | 'encerradas' | 'todas'>('aguardando')
+  const [abaAtiva, setAbaAtiva] = useState<'aguardando' | 'resolucao' | 'encerradas' | 'todas'>('aguardando')
   const [usuario, setUsuario] = useState({ id: '', nome: '' })
   const [carregando, setCarregando] = useState(true)
 
@@ -99,35 +99,42 @@ export default function FilaValidacao() {
           // Buscar as NCs do banco real
           const { data: ncsData } = await supabase
             .from('nao_conformidades')
-            .select('*, ativos(*, categorias_ativos(*)), locais(*)')
+            .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*)')
             .eq('hospital_id', hospitalId)
 
           if (ncsData) {
-            const formatadas = ncsData.map((nc: any) => ({
-              id: nc.id,
-              numero_unico: `NC-${nc.created_at ? new Date(nc.created_at).getFullYear() : '2026'}-${nc.id.substring(0, 4).toUpperCase()}`,
-              descricao: nc.descricao,
-              criticidade: nc.criticidade,
-              status: nc.status,
-              prazo: nc.prazo,
-              created_at: nc.created_at,
-              ativo: nc.ativos ? {
-                id: nc.ativos.id,
-                nome: nc.ativos.nome,
-                categoria: nc.ativos.categorias_ativos?.nome || 'Equipamento',
-                status: nc.ativos.status,
-                codigo_qr: nc.ativos.codigo_qr,
-                patrimonio: nc.ativos.patrimonio,
-              } : null,
-              local: {
-                nome: nc.locais?.nome || 'Sala',
-                unidade: nc.locais?.unidade || 'Unidade',
-                centro_cirurgico: nc.locais?.centro_cirurgico || 'Centro Cirúrgico',
-                hospital: 'Hospital'
-              },
-              responsavel_nome: usuariosMapa.get(nc.responsavel_id) || null,
-              responsavel_id: nc.responsavel_id,
-            }))
+            const formatadas = ncsData.map((nc: any) => {
+              const localAtivo = nc.ativos?.locais || {}
+              const centroCirurgico = localAtivo.centros_cirurgicos || {}
+              const unidade = centroCirurgico.unidades || {}
+              const itemExec = nc.itens_execucao_checklist || {}
+
+              return {
+                id: nc.id,
+                numero_unico: nc.numero_unico || `NC-${nc.criado_em ? new Date(nc.criado_em).getFullYear() : '2026'}-${nc.id.substring(0, 4).toUpperCase()}`,
+                descricao: itemExec.evidencia_texto || 'Não conformidade registrada no checklist.',
+                criticidade: nc.criticidade,
+                status: nc.status,
+                prazo: nc.prazo,
+                created_at: nc.criado_em,
+                ativo: nc.ativos ? {
+                  id: nc.ativos.id,
+                  nome: nc.ativos.nome,
+                  categoria: nc.ativos.categorias_ativos?.nome || 'Equipamento',
+                  status: nc.ativos.status,
+                  codigo_qr: nc.ativos.codigo_qr,
+                  patrimonio: nc.ativos.patrimonio,
+                } : null,
+                local: {
+                  nome: localAtivo.nome || 'Sala',
+                  unidade: unidade.nome || 'Unidade',
+                  centro_cirurgico: centroCirurgico.nome || 'Centro Cirúrgico',
+                  hospital: 'Hospital'
+                },
+                responsavel_nome: usuariosMapa.get(nc.responsavel_id) || null,
+                responsavel_id: nc.responsavel_id,
+              }
+            })
             setNcs(formatadas)
           }
         }
@@ -190,6 +197,8 @@ export default function FilaValidacao() {
       switch (abaAtiva) {
         case 'aguardando':
           return nc.status === 'aguardando_validacao'
+        case 'resolucao':
+          return nc.status === 'aberta' || nc.status === 'em_andamento'
         case 'encerradas':
           return nc.status === 'encerrada'
         case 'todas':
@@ -210,6 +219,7 @@ export default function FilaValidacao() {
     })
 
   // Contagem rápida por aba
+  const totalEmResolucao = ncs.filter((nc) => nc.status === 'aberta' || nc.status === 'em_andamento').length
   const totalAguardando = ncs.filter((nc) => nc.status === 'aguardando_validacao').length
   const totalEncerradas = ncs.filter((nc) => nc.status === 'encerrada').length
 
@@ -226,28 +236,39 @@ export default function FilaValidacao() {
       </div>
 
       {/* Contador resumo */}
-      <div className="flex gap-3">
-        <div className="flex-1 bg-white rounded-2xl p-4 border border-gray-100 shadow-[var(--shadow-card)]">
+      <div className="flex gap-2">
+        <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Aguardando</span>
-            <div className="w-7 h-7 rounded-full bg-[#7C3AED]/10 flex items-center justify-center">
+            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Em Resolução</span>
+            <div className="w-6.5 h-6.5 rounded-full bg-amber-50 flex items-center justify-center">
+              <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-xl font-extrabold text-gray-900 mt-1">{totalEmResolucao}</p>
+        </div>
+        <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Aguardando</span>
+            <div className="w-6.5 h-6.5 rounded-full bg-[#7C3AED]/10 flex items-center justify-center">
               <svg className="w-3.5 h-3.5 text-[#7C3AED]" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-gray-900 mt-1">{totalAguardando}</p>
+          <p className="text-xl font-extrabold text-gray-900 mt-1">{totalAguardando}</p>
         </div>
-        <div className="flex-1 bg-white rounded-2xl p-4 border border-gray-100 shadow-[var(--shadow-card)]">
+        <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Encerradas</span>
-            <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center">
+            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Encerradas</span>
+            <div className="w-6.5 h-6.5 rounded-full bg-emerald-50 flex items-center justify-center">
               <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-2xl font-extrabold text-gray-900 mt-1">{totalEncerradas}</p>
+          <p className="text-xl font-extrabold text-gray-900 mt-1">{totalEncerradas}</p>
         </div>
       </div>
 
@@ -255,6 +276,7 @@ export default function FilaValidacao() {
       <div className="bg-[#F1F3F6] p-1 rounded-full flex gap-1 overflow-x-auto scrollbar-none shrink-0 select-none">
         {[
           { id: 'aguardando', label: 'Aguardando' },
+          { id: 'resolucao', label: 'Em Resolução' },
           { id: 'encerradas', label: 'Encerradas' },
           { id: 'todas', label: 'Todas' },
         ].map((tab) => {
@@ -264,7 +286,7 @@ export default function FilaValidacao() {
               key={tab.id}
               onClick={() => setAbaAtiva(tab.id as typeof abaAtiva)}
               className={[
-                'flex-1 text-center py-2 px-3 text-[11px] font-bold tracking-tight rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95',
+                'flex-1 text-center py-2 px-2.5 text-[10px] font-bold tracking-tight rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95',
                 ativa
                   ? 'bg-white text-slate-800 shadow-[0_2px_6px_rgba(0,0,0,0.06)]'
                   : 'text-gray-500 hover:text-slate-800',

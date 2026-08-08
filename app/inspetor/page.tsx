@@ -35,16 +35,59 @@ export default function PaginaInicialInspetor() {
         }
 
         if (data) {
-          const formatados = data.map((ativo: any) => ({
-            id: ativo.id,
-            localId: ativo.local_id,
-            tag: ativo.categorias_ativos?.nome || 'Ativo',
-            corTag: (ativo.categorias_ativos?.nome === 'Carrinho de parada' ? 'azul' : 'roxo') as 'azul' | 'roxo',
-            nome: ativo.nome,
-            localizacao: ativo.locais?.nome || 'Sem localização',
-            ultimaInspecao: 'Operacional · Sem inspeções hoje',
-          }))
-          setAtivos(formatados)
+          if (data.length > 0) {
+            const ativosIds = data.map((a: any) => a.id)
+            
+            // Buscar execuções concluídas para esses ativos
+            const { data: execsData } = await supabase
+              .from('execucoes_checklist')
+              .select('*')
+              .in('ativo_id', ativosIds)
+              .eq('status', 'concluida')
+              .order('finalizado_em', { ascending: false })
+
+            const usuariosMapa = new Map()
+            if (execsData && execsData.length > 0) {
+              const userIds = Array.from(new Set(execsData.map((e: any) => e.usuario_id)))
+              const { data: usersData } = await supabase
+                .from('usuarios')
+                .select('id, nome')
+                .in('id', userIds)
+
+              if (usersData) {
+                usersData.forEach((u: any) => usuariosMapa.set(u.id, u.nome))
+              }
+            }
+
+            const formatados = data.map((ativo: any) => {
+              const ultimaExec = execsData?.find((e: any) => e.ativo_id === ativo.id)
+              let textoInspecao = 'Sem inspeções hoje'
+              if (ultimaExec) {
+                const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
+                const formatador = new Intl.DateTimeFormat('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+                const nomeInspetor = usuariosMapa.get(ultimaExec.usuario_id) || 'Inspetor'
+                textoInspecao = `Insp. por ${nomeInspetor} em ${formatador.format(dataInspecao)}`
+              }
+
+              return {
+                id: ativo.id,
+                localId: ativo.local_id,
+                tag: ativo.categorias_ativos?.nome || 'Ativo',
+                corTag: (ativo.categorias_ativos?.nome === 'Carrinho de parada' ? 'azul' : 'roxo') as 'azul' | 'roxo',
+                nome: ativo.nome,
+                localizacao: ativo.locais?.nome || 'Sem localização',
+                ultimaInspecao: textoInspecao,
+              }
+            })
+            setAtivos(formatados)
+          } else {
+            setAtivos([])
+          }
         }
       } catch (err) {
         console.error(err)

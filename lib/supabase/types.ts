@@ -50,6 +50,7 @@ export type StatusNaoConformidade =
   | 'em_correcao'
   | 'aguardando_validacao'
   | 'encerrada'
+  | 'correcao_recusada'
 
 export type FrequenciaChecklist =
   | 'diario'
