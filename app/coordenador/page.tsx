@@ -19,6 +19,7 @@ const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' |
   em_correcao: 'laranja',
   aguardando_validacao: 'verde',
   encerrada: 'cinza',
+  correcao_recusada: 'vermelho',
 }
 
 const STATUS_LABELS: Record<StatusNaoConformidade, string> = {
@@ -27,6 +28,7 @@ const STATUS_LABELS: Record<StatusNaoConformidade, string> = {
   em_correcao: 'Em Correção',
   aguardando_validacao: 'Aguardando Validação',
   encerrada: 'Encerrada',
+  correcao_recusada: 'Correção Recusada',
 }
 
 export default function FilaValidacao() {

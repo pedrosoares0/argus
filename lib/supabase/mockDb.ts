@@ -60,10 +60,10 @@ export interface MockNaoConformidadeExtended extends NaoConformidade {
 }
 
 const INITIAL_LOCALS: Record<string, MockLocal> = {
-  'loc-001': { id: 'loc-001', nome: 'Sala 01', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
-  'loc-002': { id: 'loc-002', nome: 'Sala 02', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
-  'loc-003': { id: 'loc-003', nome: 'Sala 03', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
-  'loc-004': { id: 'loc-004', nome: 'Sala 04', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
+  'loc-001': { id: 'loc-001', nome: 'Centro Cirúrgico A', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
+  'loc-002': { id: 'loc-002', nome: 'Bloco Cirúrgico B', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
+  'loc-003': { id: 'loc-003', nome: 'Pronto Socorro', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
+  'loc-004': { id: 'loc-004', nome: 'Unidade de Internação', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
   'loc-uti': { id: 'loc-uti', nome: 'Leito 05 (UTI-A)', centro_cirurgico: 'Bloco A (UTI Adulto)', unidade: 'Unidade de Terapia Intensiva', hospital: 'Hospital Sentry' }
 }
 

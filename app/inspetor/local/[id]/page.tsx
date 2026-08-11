@@ -41,6 +41,7 @@ export default function PaginaLocal() {
   const [historicoAberto, setHistoricoAberto] = useState(false)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const [fotoExpandida, setFotoExpandida] = useState<string | null>(null)
 
   useEffect(() => {
     async function carregarDados() {
@@ -251,20 +252,15 @@ export default function PaginaLocal() {
   }
 
   const temNcAberta = ncs.length > 0
-  const maiorCriticidade = temNcAberta
-    ? ncs.reduce((acc, curr) => {
-      if (curr.criticidade === 'critico') return 'critico'
-      if (curr.criticidade === 'importante' && acc !== 'critico') return 'importante'
-      return acc
-    }, 'informativo')
-    : null
+  const ultimaNcAberta = ncs[0]
+  const criticidadeUltimaInspecao = ultimaNcAberta ? ultimaNcAberta.criticidade : null
 
   const statusLabel = temNcAberta
-    ? maiorCriticidade === 'critico' ? 'CRÍTICO' : 'IMPORTANTE'
-    : 'PRONTO'
+    ? criticidadeUltimaInspecao === 'critico' ? 'Crítico' : 'Importante'
+    : 'Pronto'
 
   const statusCor = temNcAberta
-    ? maiorCriticidade === 'critico' ? 'vermelho' : 'laranja'
+    ? criticidadeUltimaInspecao === 'critico' ? 'vermelho' : 'laranja'
     : 'verde'
 
   const ativoPrincipal = ativos[0]
@@ -282,7 +278,7 @@ export default function PaginaLocal() {
   })
 
   return (
-    <div className="px-5 pt-3 pb-10 space-y-6">
+    <div className="px-4 sm:px-5 pt-3 pb-10 space-y-4 sm:space-y-6">
       {/* Voltar */}
       <Link
         href="/inspetor"
@@ -294,48 +290,48 @@ export default function PaginaLocal() {
         Voltar
       </Link>
       {/* ── Card Principal: Ativo / Sala ── */}
-      <div className="bg-white rounded-[24px] p-6 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80">
+      <div className="bg-white rounded-2xl sm:rounded-[24px] p-4 sm:p-5 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80">
         {/* Nome + Badge de Prontidão */}
         <div className="flex items-start justify-between gap-3 mb-1 min-w-0">
-          <div className="flex items-start gap-3.5 min-w-0">
+          <div className="flex items-start gap-3 min-w-0">
             {isCarrinho && (
               <img
-                src="/icon-carrinho2.webp"
+                src="/icon-carrinho.webp"
                 alt="Carrinho de Parada"
-                className="w-24 h-24 object-contain shrink-0 mt-0.5"
+                className="w-16 h-16 object-contain shrink-0 mt-0.5"
               />
             )}
             <div className="min-w-0">
-              <h1 className="text-[22px] font-bold text-gray-900 tracking-tight leading-tight">
+              <h1 className="text-base sm:text-[20px] font-bold text-gray-900 tracking-tight leading-tight">
                 {tituloExibido}
               </h1>
-              <p className="text-[13px] text-gray-500 mt-0.5">{subtituloExibido}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{subtituloExibido}</p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <PillTag cor={statusCor}>
+            <PillTag cor={statusCor} className="scale-90 sm:scale-100 origin-right">
               {statusLabel}
             </PillTag>
           </div>
         </div>
 
         {/* Separador */}
-        <div className="h-px bg-gray-100 my-4" />
+        <div className="h-px bg-gray-100 my-3.5" />
 
         {/* Prontidão Visual */}
-        <div className="space-y-3">
-          <p className="text-[11px] font-bold text-gray-450 tracking-wider uppercase">
+        <div className="space-y-2">
+          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-wider uppercase">
             Itens do Checklist e Avaliação
           </p>
           {ultimoChecklistItens.length > 0 ? (
-            <div className="space-y-1.5 mt-2 bg-slate-50/50 rounded-2xl p-4 border border-slate-100/60">
+            <div className="space-y-1.5 mt-2 bg-slate-50/50 rounded-xl p-3 border border-slate-100/60">
               {ultimoChecklistItens.map((item, idx) => {
                 const isNc = item.resposta === 'nao_conforme'
                 return (
                   <div
                     key={idx}
                     className={[
-                      'flex items-center justify-between px-3 py-2 rounded-xl transition-all',
+                      'flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all',
                       isNc
                         ? item.criticidade === 'critico'
                           ? 'bg-red-50/60 border border-red-100/40 shadow-[0_1px_4px_rgba(239,68,68,0.03)]'
@@ -351,7 +347,7 @@ export default function PaginaLocal() {
                           : 'bg-emerald-500'
                       ].join(' ')} />
                       <span className={[
-                        'text-[13px] truncate',
+                        'text-xs truncate',
                         isNc ? 'text-slate-900 font-bold' : 'text-slate-700 font-medium'
                       ].join(' ')}>
                         {item.secao}
@@ -359,7 +355,7 @@ export default function PaginaLocal() {
                     </div>
 
                     <span className={[
-                      'text-[11px] font-bold uppercase tracking-wider',
+                      'text-[9px] sm:text-[10px] font-bold uppercase tracking-wider',
                       isNc
                         ? item.criticidade === 'critico' ? 'text-red-650' : 'text-amber-650'
                         : 'text-emerald-650'
@@ -371,17 +367,17 @@ export default function PaginaLocal() {
               })}
             </div>
           ) : (
-            <div className="text-center py-6 bg-slate-50/40 border border-slate-100/50 rounded-2xl text-xs text-slate-400 font-medium">
+            <div className="text-center py-6 bg-slate-50/40 border border-slate-100/50 rounded-xl text-xs text-slate-400 font-medium">
               Sem dados de checklist recentes.
             </div>
           )}
         </div>
 
         {/* CTA — Iniciar Ronda */}
-        <div className="mt-5">
+        <div className="mt-4">
           <Botao
             variante="primario"
-            tamanho="lg"
+            tamanho="md"
             larguraTotal
             onClick={() => router.push(`/inspetor/checklist/ronda-${local.id}`)}
             icone={
@@ -407,27 +403,6 @@ export default function PaginaLocal() {
           minute: '2-digit'
         })
 
-        const criticidadeCores = {
-          critico: 'bg-red-50 text-red-700 border-red-100',
-          importante: 'bg-amber-50 text-amber-700 border-amber-100',
-          informativo: 'bg-blue-50 text-blue-700 border-blue-100'
-        }
-
-        const statusCores = {
-          aberta: 'bg-slate-50 text-slate-650 border-slate-100',
-          em_analise: 'bg-sky-50 text-sky-700 border-sky-100',
-          em_correcao: 'bg-amber-50 text-amber-700 border-amber-100',
-          aguardando_validacao: 'bg-purple-50 text-purple-700 border-purple-100',
-          encerrada: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-          correcao_recusada: 'bg-rose-50 text-rose-700 border-rose-100'
-        }
-
-        const criticidadeLabel = {
-          critico: 'NC Crítica',
-          importante: 'NC Importante',
-          informativo: 'NC Informativa'
-        }
-
         const itemExec = ultimaNc.itens_execucao_checklist || {}
         const exec = itemExec.execucoes_checklist || {}
         const nomeInspetor = exec.usuarios?.nome || 'Inspetor'
@@ -444,92 +419,92 @@ export default function PaginaLocal() {
         })
         const dataFormatada = formatadorDataCurta.format(dataCriacao).replace(', ', ' às ')
 
-        const corPill = 
+        const corPill =
           ultimaNc.criticidade === 'critico' ? 'vermelho' :
-          ultimaNc.criticidade === 'importante' ? 'laranja' : 'azul'
+            ultimaNc.criticidade === 'importante' ? 'laranja' : 'azul'
 
-        const labelPill = 
-          ultimaNc.criticidade === 'critico' ? 'CRÍTICO' :
-          ultimaNc.criticidade === 'importante' ? 'IMPORTANTE' : 'INFORMATIVO'
+        const labelPill =
+          ultimaNc.criticidade === 'critico' ? 'Crítico' :
+            ultimaNc.criticidade === 'importante' ? 'Importante' : 'Informativo'
 
         return (
-          <div className="space-y-3">
-            <p className="text-[12px] font-bold text-slate-400 tracking-wider uppercase px-1">
+          <div className="space-y-2.5">
+            <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 tracking-wider uppercase px-1">
               Última Não Conformidade Aberta
             </p>
 
-            <div className="bg-white rounded-[32px] p-6 shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-gray-100/90 space-y-4">
-              {/* Cabeçalho: Título + Subtítulo + Badge de Criticidade */}
+            <div className="bg-white rounded-2xl sm:rounded-[24px] p-4 sm:p-5 shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-gray-100/90 space-y-4">
+              {/* Cabeçalho: Título + Subtítulo + Badge */}
               <div className="flex items-start justify-between gap-3 min-w-0">
                 <div className="min-w-0 space-y-0.5">
-                  <h3 className="text-[26px] font-bold text-gray-900 tracking-tight leading-tight">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
                     {secaoAfetada}
                   </h3>
-                  <p className="text-[13px] text-gray-500 font-medium">
+                  <p className="text-xs text-gray-400 font-medium">
                     Registrada por {nomeInspetor} em {dataFormatada}
                   </p>
                 </div>
 
-                <div className="shrink-0 pt-1">
-                  <PillTag cor={corPill}>
+                <div className="shrink-0 pt-0.5">
+                  <PillTag cor={corPill} className="scale-90 sm:scale-100 origin-right">
                     {labelPill}
                   </PillTag>
                 </div>
               </div>
 
               {/* Bloco: Problema Relatado */}
-              <div className="space-y-1 pt-1">
-                <p className="text-[11px] font-bold text-[#8E9BBA] uppercase tracking-wider">
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                   PROBLEMA RELATADO
                 </p>
-                <p className="text-[17px] font-bold text-gray-900 leading-snug">
+                <p className="text-sm font-bold text-gray-900 leading-snug">
                   {descricaoEvidencia}
                 </p>
               </div>
 
-              {/* Imagem de Evidência (Estilo Figma) */}
+              {/* Imagem de Evidência com Borderglass & Cantos Arredondados */}
               {temFotoReal && (
-                <div className="pt-2">
-                  <div className="relative overflow-hidden rounded-[24px] border border-gray-100 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+                <div className="space-y-2 pt-0.5">
+                  <div 
+                    onClick={() => setFotoExpandida(fotoUrl)}
+                    className="relative overflow-hidden rounded-xl border border-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.06)] ring-1 ring-black/5 cursor-pointer hover:opacity-98 transition-all group"
+                  >
                     <img
                       src={fotoUrl}
                       alt="Evidência da Não Conformidade"
-                      className="w-full h-auto max-h-[320px] object-cover"
+                      className="w-full h-auto max-h-[180px] sm:max-h-[220px] object-cover group-hover:scale-[1.01] transition-transform duration-300 rounded-xl"
                     />
+                    {/* Overlay de Borda de Vidro Ultra-Subtil & Delicada */}
+                    <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/70 shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)] ring-1 ring-inset ring-white/40" />
+                  </div>
+
+                  {/* Informação de quem tirou e quando (Embaixo da imagem) */}
+                  <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium px-0.5 pt-0.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0c-.693.044-1.336.438-1.736 1.039l-.822 1.316Z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                      </svg>
+                      <span className="truncate">Registrada por <strong className="text-gray-700 font-semibold">{nomeInspetor}</strong></span>
+                    </div>
+                    <span className="text-gray-450 font-semibold shrink-0">{dataFormatada}</span>
                   </div>
                 </div>
               )}
-
-              {/* Rodapé com Botão e Data */}
-              <div className="pt-2 flex flex-col items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => router.push(`/nao-conformidades/${ultimaNc.id}`)}
-                  className="w-full py-3 rounded-full text-[13px] font-bold text-[#246BFD] bg-[#246BFD]/6 hover:bg-[#246BFD]/12 active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  Ver detalhes da NC
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
-                <span className="text-[12px] font-medium text-[#8E9BBA] text-center">
-                  Registrada por {nomeInspetor} em {dataFormatada}
-                </span>
-              </div>
             </div>
           </div>
         )
       })()}
 
       {/* ── Histórico de Inspeções (Colapsável) ── */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <button
           type="button"
           onClick={() => setHistoricoAberto(!historicoAberto)}
           className="w-full flex items-center justify-between px-1 cursor-pointer select-none py-1 group"
         >
           <div className="flex items-center gap-2">
-            <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
+            <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
               Histórico de Inspeções
             </p>
             <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
@@ -538,33 +513,6 @@ export default function PaginaLocal() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Filtro de Data */}
-            {historicoAberto && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1.5 bg-white border border-gray-200/60 rounded-full px-2.5 py-1 shadow-xs"
-              >
-                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                </svg>
-                <input
-                  type="date"
-                  value={dataFiltro}
-                  onChange={(e) => setDataFiltro(e.target.value)}
-                  className="text-xs font-semibold text-gray-700 bg-transparent outline-none border-none cursor-pointer p-0 w-24"
-                />
-                {dataFiltro && (
-                  <button
-                    type="button"
-                    onClick={() => setDataFiltro('')}
-                    className="text-gray-400 hover:text-black transition-colors cursor-pointer text-[10px] font-bold px-1"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            )}
-
             <svg
               className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${historicoAberto ? 'rotate-180' : ''}`}
               fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
@@ -575,73 +523,80 @@ export default function PaginaLocal() {
         </button>
 
         {historicoAberto && (
-          <div className="animate-[fadeIn_0.2s_ease-out] space-y-3">
+          <div className="animate-[fadeIn_0.2s_ease-out] space-y-2.5">
             {historicoFiltrado.length > 0 ? (
-              <div className="bg-white rounded-[24px] shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
                 {historicoFiltrado.map((ins) => {
-                  const cores = {
-                    conforme: {
-                      bg: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-                      badge: 'Conforme',
-                      iconBg: 'bg-emerald-500',
-                      icon: (
-                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                      )
-                    },
-                    critico: {
-                      bg: 'bg-red-50 text-red-700 border-red-100',
-                      badge: 'NC Crítica',
-                      iconBg: 'bg-red-500',
-                      icon: (
-                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                        </svg>
-                      )
-                    },
-                    importante: {
-                      bg: 'bg-amber-50 text-amber-700 border-amber-100',
-                      badge: 'NC Importante',
-                      iconBg: 'bg-amber-500',
-                      icon: (
-                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" />
-                        </svg>
-                      )
-                    },
-                    informativo: {
-                      bg: 'bg-blue-50 text-blue-700 border-blue-100',
-                      badge: 'NC Informativa',
-                      iconBg: 'bg-blue-500',
-                      icon: (
-                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                        </svg>
-                      )
-                    }
+                  let corPill: 'verde' | 'laranja' | 'vermelho' = 'verde'
+                  let labelPill = 'Pronto'
+
+                  if (ins.resultado === 'critico') {
+                    corPill = 'vermelho'
+                    labelPill = 'Crítico'
+                  } else if (ins.resultado === 'importante' || ins.resultado === 'informativo') {
+                    corPill = 'laranja'
+                    labelPill = 'Importante'
                   }
 
-                  const cfg = cores[ins.resultado as keyof typeof cores] || cores.conforme
+                  const iconBgClass =
+                    corPill === 'vermelho' ? 'bg-gradient-to-b from-[#F45F63] to-[#EA3A3A]' :
+                      corPill === 'laranja' ? 'bg-gradient-to-b from-[#FF9E3D] to-[#F78725]' :
+                        'bg-gradient-to-b from-[#54D362] to-[#31B44A]'
 
                   return (
                     <button
                       key={ins.id}
                       type="button"
                       onClick={() => router.push(`/inspetor/checklist/${ativoPrincipal.id}?execId=${ins.id}`)}
-                      className="w-full flex items-center justify-between py-4 px-5 hover:bg-slate-50/50 transition-all text-left cursor-pointer"
+                      className="w-full flex items-center justify-between py-3 px-4 hover:bg-slate-50/50 transition-all text-left cursor-pointer"
                     >
-                      <div className="flex items-start gap-3.5 min-w-0">
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
                         {/* Status Badge Icon */}
-                        <div className={`w-8 h-8 rounded-full ${cfg.iconBg} flex items-center justify-center shrink-0 shadow-sm mt-0.5`}>
-                          {cfg.icon}
+                        <div className={`w-8 h-8 rounded-full ${iconBgClass} flex items-center justify-center shrink-0 shadow-sm mt-0.5 text-white`}>
+                          {corPill === 'verde' && (
+                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none">
+                              <path
+                                fill="#0AB01E"
+                                d="M12 2a2 2 0 0 1 1.414.586l.828.828a2 2 0 0 0 1.414.586h1.172a2 2 0 0 1 2 2v1.172a2 2 0 0 0 .586 1.414l.828.828A2 2 0 0 1 21 10.828v1.172a2 2 0 0 1-.586 1.414l-.828.828a2 2 0 0 0-.586 1.414v1.172a2 2 0 0 1-2 2h-1.172a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 10.828 21h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 6 19h-1.172a2 2 0 0 1-2-2v-1.172a2 2 0 0 0-.586-1.414l-.828.828A2 2 0 0 1 3 12v-1.172a2 2 0 0 1 .586-1.414l.828-.828A2 2 0 0 0 5 7.172V6a2 2 0 0 1 2-2h1.172a2 2 0 0 0 1.414-.586l.828-.828A2 2 0 0 1 12 2z"
+                              />
+                              <path
+                                stroke="#54D362"
+                                strokeWidth="2.6"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M8.5 12.5l2.5 2.5 4.5-5"
+                              />
+                            </svg>
+                          )}
+                          {corPill === 'vermelho' && (
+                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none">
+                              <circle cx="12" cy="12" r="10" fill="#EA1517" />
+                              <path
+                                stroke="#F45F63"
+                                strokeWidth="2.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M9 9l6 6m0-6l-6 6"
+                              />
+                            </svg>
+                          )}
+                          {corPill === 'laranja' && (
+                            <svg className="w-4.5 h-4.5 text-[#F86201]" viewBox="0 0 24 24" fill="currentColor">
+                              <path fillRule="evenodd" clipRule="evenodd" d="M10.788 3.21c.548-.96 1.876-.96 2.424 0l8.23 14.403c.532.931-.14 2.087-1.212 2.087H3.77c-1.072 0-1.744-1.156-1.212-2.087L10.788 3.21zM12 8a.75.75 0 00-.75.75v4.5a.75.75 0 001.5 0v-4.5A.75.75 0 0012 8zm0 8a1 1 0 100-2 1 1 0 000 2z" />
+                            </svg>
+                          )}
                         </div>
 
-                        <div className="min-w-0 space-y-1">
-                          <p className="text-[14px] font-bold text-gray-900 tracking-tight">
-                            Ronda: {ins.variante}
-                          </p>
-                          <p className="text-[12px] text-gray-600 font-medium leading-none">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-bold text-gray-900 tracking-tight leading-tight">
+                              Ronda: {ins.variante}
+                            </p>
+                            <PillTag cor={corPill} className="!text-[10px] !pl-1.5 !pr-2.5 !py-0.5 gap-1 shrink-0 scale-90 origin-left">
+                              {labelPill}
+                            </PillTag>
+                          </div>
+                          <p className="text-xs text-gray-600 font-medium leading-none">
                             Inspetor: <span className="text-gray-900 font-semibold">{ins.usuario}</span>
                           </p>
                           <p className="text-[11px] text-gray-400 font-medium">
@@ -650,11 +605,8 @@ export default function PaginaLocal() {
                         </div>
                       </div>
 
-                      {/* Status do lado direito */}
-                      <div className="flex items-center gap-2.5 shrink-0 ml-3">
-                        <span className={`inline-flex px-3 py-1 rounded-full text-[11px] font-extrabold border uppercase tracking-wider ${cfg.bg}`}>
-                          {cfg.badge}
-                        </span>
+                      {/* Apenas seta do lado direito */}
+                      <div className="flex items-center shrink-0 ml-1">
                         <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                         </svg>
@@ -664,13 +616,38 @@ export default function PaginaLocal() {
                 })}
               </div>
             ) : (
-              <div className="bg-white rounded-[24px] p-8 text-center text-gray-400 border border-gray-100/80 text-xs font-semibold">
+              <div className="bg-white rounded-2xl p-8 text-center text-gray-400 border border-gray-100/80 text-xs font-semibold">
                 Nenhuma inspeção encontrada {dataFiltro ? 'para este dia' : 'no histórico'}.
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* Modal Lightbox para foto expandida */}
+      {fotoExpandida && (
+        <div 
+          onClick={() => setFotoExpandida(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn cursor-zoom-out"
+        >
+          <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">
+            <img
+              src={fotoExpandida}
+              alt="Evidência Ampliada"
+              className="max-w-full max-h-[85vh] rounded-[24px] object-contain shadow-2xl border border-white/10"
+            />
+            <button
+              type="button"
+              onClick={() => setFotoExpandida(null)}
+              className="absolute -top-12 right-0 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full backdrop-blur-sm transition-all"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

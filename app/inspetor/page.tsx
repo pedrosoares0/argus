@@ -167,35 +167,36 @@ export default function PaginaInicialInspetor() {
   }
 
   return (
-    <div className="px-5 pt-2 space-y-5">
+    <div className="px-4 sm:px-5 pt-2 space-y-4 sm:space-y-5">
 
       {/* Card Principal: Leitura do Carrinho / Scan Rápido */}
-      <div className="bg-white rounded-[32px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 text-center space-y-4">
-        {/* Ícone de Scanner Estilo macOS */}
-        <div className="mx-auto w-16 h-16 rounded-[22px] bg-gradient-to-b from-[#246BFD] to-[#1253F6] flex items-center justify-center text-white shadow-[0_8px_20px_rgba(36,107,253,0.25)] border border-white/20">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-          </svg>
+      <div className="bg-white rounded-2xl sm:rounded-[24px] p-4 sm:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 text-center space-y-3.5">
+        {/* Ícone de Câmera 3D macOS */}
+        <div className="mx-auto w-12 h-12 flex items-center justify-center">
+          <img 
+            src="/icon-camera-macos.png" 
+            alt="Câmera Scanner" 
+            className="w-12 h-12 object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.12)] active:scale-95 transition-transform" 
+          />
         </div>
 
         <div>
-          <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
             Conferência Rápida
           </h2>
-          <p className="text-[13px] text-gray-500 font-medium leading-relaxed mt-1 max-w-xs mx-auto">
+          <p className="text-xs sm:text-[13px] text-gray-500 font-medium leading-relaxed mt-0.5 max-w-xs mx-auto">
             Aponte a câmera para a etiqueta do equipamento para abrir a verificação de prontidão.
           </p>
         </div>
 
         {/* Botão de Câmera */}
-        <div className="pt-1 flex flex-col items-center gap-3">
+        <div className="pt-0.5 flex flex-col items-center gap-2.5">
           <Botao
             variante="primario"
-            tamanho="lg"
+            tamanho="md"
             onClick={() => router.push('/inspetor/scanner')}
             icone={
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
               </svg>
             }
@@ -207,7 +208,7 @@ export default function PaginaInicialInspetor() {
           <button
             type="button"
             onClick={() => setMostrarModalCodigo(true)}
-            className="text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors py-1 px-3 cursor-pointer"
+            className="text-[11px] font-bold text-gray-500 hover:text-gray-900 transition-colors py-0.5 px-2 cursor-pointer"
           >
             Digitar código manualmente
           </button>
@@ -215,9 +216,9 @@ export default function PaginaInicialInspetor() {
       </div>
 
       {/* Divisora de Seção */}
-      <div className="flex items-center gap-3 py-1">
+      <div className="flex items-center gap-2.5 py-0.5">
         <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">
+        <span className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">
           OU SELECIONE MANUALMENTE
         </span>
         <div className="flex-1 h-px bg-gray-200" />
@@ -231,7 +232,7 @@ export default function PaginaInicialInspetor() {
       />
 
       {/* Lista de Carrinhos (Visual exato da 2ª imagem) */}
-      <div className="space-y-3 pb-4">
+      <div className="space-y-2.5 pb-4">
         {carregando ? (
           <div className="text-center py-8 text-sm text-gray-400 font-semibold animate-pulse">
             Carregando ativos do hospital...
@@ -247,17 +248,17 @@ export default function PaginaInicialInspetor() {
               <div
                 key={item.id}
                 onClick={() => router.push(`/inspetor/local/${item.localId}`)}
-                className="bg-white rounded-[32px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100/90 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
+                className="bg-white rounded-[20px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100/90 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <div className="flex items-center justify-between gap-4 w-full">
+                <div className="flex items-center justify-between gap-3 w-full">
                   {/* Info Esquerda */}
-                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
                     {isCarrinho && (
                       <img 
-                        src="/icon-carrinho2.webp" 
+                        src="/icon-carrinho.webp" 
                         alt="Carrinho de Parada" 
-                        className="w-24 h-24 object-contain shrink-0" 
+                        className="w-14 h-14 sm:w-16 sm:h-16 object-contain shrink-0" 
                       />
                     )}
                     <div className="min-w-0 space-y-0.5">
@@ -268,15 +269,15 @@ export default function PaginaInicialInspetor() {
                           </PillTag>
                         </div>
                       )}
-                      <h3 className="text-[17px] font-bold text-[#1E293B] tracking-tight break-words">
+                      <h3 className="text-sm sm:text-base font-bold text-[#1E293B] tracking-tight break-words">
                         {item.nome}
                       </h3>
                       
-                      <div className="space-y-0.5 pt-1">
-                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider leading-none">
+                      <div className="space-y-0.5 pt-0.5">
+                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider leading-none">
                           Última inspeção:
                         </p>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 mt-0.5">
                           {item.statusUltima !== 'sem_inspecao' && (
                             <span className={[
                               'w-2 h-2 rounded-full shrink-0',
@@ -285,7 +286,7 @@ export default function PaginaInicialInspetor() {
                               item.statusUltima === 'informativo' ? 'bg-blue-500' : 'bg-emerald-500'
                             ].join(' ')} />
                           )}
-                          <span className="text-[13px] font-medium text-slate-600 leading-none">
+                          <span className="text-xs sm:text-[13px] font-medium text-slate-600 leading-none">
                             {item.ultimaInspecao}
                           </span>
                         </div>
@@ -294,8 +295,8 @@ export default function PaginaInicialInspetor() {
                   </div>
 
                   {/* Botão Círculo com Seta (Direita) */}
-                  <div className="w-9 h-9 rounded-full bg-[#F4F6FA] flex items-center justify-center text-gray-400 hover:text-texto transition-colors shrink-0">
-                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                  <div className="w-8 h-8 rounded-full bg-[#F4F6FA] flex items-center justify-center text-gray-400 hover:text-texto transition-colors shrink-0">
+                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </div>

@@ -188,3 +188,21 @@ ALTER TABLE public.historico_status_nao_conformidade ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS historico_status_all ON public.historico_status_nao_conformidade;
 CREATE POLICY historico_status_all ON public.historico_status_nao_conformidade FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
+-- Politicas para permitir que usuarios gravem e atualizem seu proprio perfil
+DROP POLICY IF EXISTS usuarios_insert ON public.usuarios;
+CREATE POLICY usuarios_insert ON public.usuarios FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS usuarios_update ON public.usuarios;
+CREATE POLICY usuarios_update ON public.usuarios FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+-- Politicas para permitir o registro de execucoes de checklist
+ALTER TABLE public.execucoes_checklist ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS execucoes_checklist_all ON public.execucoes_checklist;
+CREATE POLICY execucoes_checklist_all ON public.execucoes_checklist FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+-- Politicas para permitir o registro dos itens da execucao do checklist
+ALTER TABLE public.itens_execucao_checklist ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS itens_execucao_checklist_all ON public.itens_execucao_checklist;
+CREATE POLICY itens_execucao_checklist_all ON public.itens_execucao_checklist FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+

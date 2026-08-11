@@ -4,20 +4,34 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { Avatar } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
 const ROLES = [
-  { valor: 'inspetor', label: 'Inspetor(a) de Enfermagem' },
-  { valor: 'coordenador', label: 'Coordenador(a)' },
-  { valor: 'engenharia_clinica', label: 'Engenharia Clínica' },
-  { valor: 'gestor', label: 'Gestor(a)' },
-  { valor: 'administrador', label: 'Administrador(a)' },
+  { 
+    valor: 'inspetor', 
+    label: 'Inspetor', 
+    desc: 'Enfermagem',
+    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg',
+    fallback: 'IN' 
+  },
+  { 
+    valor: 'engenharia_clinica', 
+    label: 'Engenharia', 
+    desc: 'Engenharia Clínica',
+    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/red.jpg',
+    fallback: 'EN' 
+  },
 ]
 
 export default function PaginaCadastro() {
   const router = useRouter()
   const [nomeCompleto, setNomeCompleto] = useState('')
   const [email, setEmail] = useState('')
+  const [numeroConselho, setNumeroConselho] = useState('')
+  const [statusValidacao, setStatusValidacao] = useState<'idle' | 'validando' | 'valido' | 'nao_encontrado'>('idle')
+  const [infoConselho, setInfoConselho] = useState<{ nome: string; tipo: string; situacao: string } | null>(null)
+
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [perfilSelecionado, setPerfilSelecionado] = useState('inspetor')
@@ -35,7 +49,7 @@ export default function PaginaCadastro() {
     async function carregarHospitais() {
       try {
         const supabase = criarClienteSupabase() as any
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('hospitais')
           .select('id, nome')
         
@@ -49,6 +63,40 @@ export default function PaginaCadastro() {
     }
     carregarHospitais()
   }, [])
+
+  // Validação em tempo real do número do conselho (CRM, COREN, CREA)
+  useEffect(() => {
+    if (!numeroConselho || numeroConselho.trim().length < 4) {
+      setStatusValidacao('idle')
+      setInfoConselho(null)
+      return
+    }
+
+    setStatusValidacao('validando')
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/validar-conselho', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ numeroConselho: numeroConselho.trim() })
+        })
+        const data = await res.json()
+        if (data.valido) {
+          setStatusValidacao('valido')
+          setInfoConselho(data.profissional)
+        } else {
+          setStatusValidacao('nao_encontrado')
+          setInfoConselho(null)
+        }
+      } catch (err) {
+        console.error('Erro na validação do conselho:', err)
+        setStatusValidacao('nao_encontrado')
+        setInfoConselho(null)
+      }
+    }, 450)
+
+    return () => clearTimeout(timer)
+  }, [numeroConselho])
 
   async function handleCadastrar(e: React.FormEvent) {
     e.preventDefault()
@@ -70,7 +118,7 @@ export default function PaginaCadastro() {
     try {
       const supabase = criarClienteSupabase() as any
 
-      // Registrar o usuário no Supabase Auth com metadados para o trigger do perfil
+      // 1. Registrar o usuário no Supabase Auth com metadados
       const { data, error } = await supabase.auth.signUp({
         email,
         password: senha,
@@ -79,6 +127,7 @@ export default function PaginaCadastro() {
             hospital_id: hospitalId,
             nome: nomeCompleto,
             perfil: perfilSelecionado,
+            numero_conselho: numeroConselho,
           }
         }
       })
@@ -91,46 +140,40 @@ export default function PaginaCadastro() {
 
       setSucesso('Conta criada com sucesso!')
 
-      // Se o usuário foi autenticado imediatamente (confirmação de email desativada)
+      // 2. Vincular dados diretamente na tabela public.usuarios
       if (data.user) {
-        // Buscar perfil criado na tabela public.usuarios (com retentativas para dar tempo ao trigger do Postgres)
-        let profile = null
-        for (let i = 0; i < 4; i++) {
-          const { data: p } = await supabase
-            .from('usuarios')
-            .select('id, nome, perfil')
-            .eq('id', data.user.id)
-            .single()
-          
-          if (p) {
-            profile = p
-            break
-          }
-          await new Promise((resolve) => setTimeout(resolve, 250))
+        try {
+          await supabase.from('usuarios').upsert({
+            id: data.user.id,
+            nome: nomeCompleto,
+            email: email,
+            perfil: perfilSelecionado,
+            hospital_id: hospitalId,
+            numero_conselho: numeroConselho
+          })
+        } catch (dbErr) {
+          console.error('Erro ao upsertar na tabela usuarios:', dbErr)
         }
 
-        if (profile) {
-          // Ponte com a sessão simulada no LocalStorage para retrocompatibilidade
-          localStorage.setItem('sentry_usuario_atual', JSON.stringify({
-            id: profile.id,
-            nome: profile.nome,
-            perfil: profile.perfil
-          }))
+        // Ponte com a sessão simulada no LocalStorage para retrocompatibilidade
+        localStorage.setItem('sentry_usuario_atual', JSON.stringify({
+          id: data.user.id,
+          nome: nomeCompleto,
+          perfil: perfilSelecionado
+        }))
 
-          const rotas: Record<string, string> = {
-            inspetor: '/inspetor',
-            coordenador: '/coordenador',
-            engenharia_clinica: '/engenharia',
-            gestor: '/gestor',
-            administrador: '/admin',
-          }
-
-          router.push(rotas[profile.perfil] || '/inspetor')
-        } else {
-          router.push('/login?mensagem=Cadastro realizado. Faça login para continuar.')
+        // Redirecionamento imediato para a tela respectiva
+        const rotas: Record<string, string> = {
+          inspetor: '/inspetor',
+          engenharia_clinica: '/engenharia',
+          coordenador: '/coordenador',
         }
+
+        setTimeout(() => {
+          router.push(rotas[perfilSelecionado] || '/inspetor')
+        }, 500)
       } else {
-        router.push('/login?mensagem=Cadastro realizado. Por favor, faça login.')
+        router.push('/login?mensagem=Cadastro realizado. Faça login para continuar.')
       }
 
     } catch (err: any) {
@@ -218,22 +261,91 @@ export default function PaginaCadastro() {
               </select>
             </div>
 
-            {/* Perfil/Cargo */}
+            {/* Número do Conselho (COREN / CRM / CREA) */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
+                Número do Conselho (COREN / CRM / CREA)
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: COREN-BA 123456"
+                value={numeroConselho}
+                onChange={(e) => setNumeroConselho(e.target.value)}
+                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
+              />
+
+              {/* Status de Validação do Conselho */}
+              {statusValidacao === 'validando' && (
+                <p className="text-[11px] font-semibold text-slate-400 mt-1 ml-1 flex items-center gap-1.5 animate-pulse">
+                  <span>🔍 Verificando conselho profissional...</span>
+                </p>
+              )}
+
+              {statusValidacao === 'valido' && infoConselho && (
+                <div className="mt-1.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span>
+                    Verificado: <strong>{infoConselho.nome}</strong> ({infoConselho.tipo})
+                  </span>
+                </div>
+              )}
+
+              {statusValidacao === 'nao_encontrado' && (
+                <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/60 text-amber-700 text-xs font-medium flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>
+                    Registro não encontrado na base oficial. <strong>Cadastro de teste liberado normalmente.</strong>
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Perfil / Cargo — Seletor por Avatares */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1 block">
                 Perfil / Cargo
               </label>
-              <select
-                value={perfilSelecionado}
-                onChange={(e) => setPerfilSelecionado(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 outline-none focus:border-[#246BFD] transition-all cursor-pointer"
-              >
-                {ROLES.map(r => (
-                  <option key={r.valor} value={r.valor}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+              <div className="flex justify-around items-center bg-[#F4F6FA] border border-gray-200/80 rounded-2xl p-3">
+                {ROLES.map((r) => {
+                  const ativo = perfilSelecionado === r.valor
+                  return (
+                    <button
+                      key={r.valor}
+                      type="button"
+                      onClick={() => setPerfilSelecionado(r.valor)}
+                      className="flex flex-col items-center gap-1.5 focus:outline-none group select-none cursor-pointer flex-1"
+                    >
+                      <div
+                        className={`rounded-full p-0.5 aspect-square flex items-center justify-center transition-all duration-200 ${
+                          ativo
+                            ? 'ring-2 ring-[#246BFD]/40 ring-offset-2 scale-105 shadow-[0_2px_8px_rgba(36,107,253,0.15)]'
+                            : 'opacity-60 hover:opacity-100 hover:scale-105 active:scale-95'
+                        }`}
+                      >
+                        <Avatar size="md">
+                          <Avatar.Image
+                            alt={r.label}
+                            src={r.avatarUrl}
+                          />
+                          <Avatar.Fallback>{r.fallback}</Avatar.Fallback>
+                        </Avatar>
+                      </div>
+                      <div className="text-center leading-tight">
+                        <span
+                          className={`text-[11px] font-bold tracking-tight block transition-colors ${
+                            ativo ? 'text-[#246BFD]' : 'text-gray-700 group-hover:text-gray-900'
+                          }`}
+                        >
+                          {r.label}
+                        </span>
+                        <span className="text-[9.5px] font-medium text-gray-400 block mt-0.5">
+                          {r.desc}
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             {/* Senha */}

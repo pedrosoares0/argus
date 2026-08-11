@@ -1,22 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { setUsuarioLogado, DEFAULT_USER, COORDENADOR_USER } from '@/lib/supabase/mockDb'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
-type PerfilUsuario = 'inspetor' | 'coordenador' | 'engenharia' | 'gestor'
+import { Avatar } from '@/components/ui/Avatar'
 
-const PERFIS: { valor: PerfilUsuario; label: string; desc: string; icone: string }[] = [
-  { valor: 'inspetor', label: 'Inspetor', desc: 'Enfermeiros e Técnicos em campo', icone: '📋' },
-  { valor: 'coordenador', label: 'Coordenador', desc: 'Visão setorial e validação de NCs', icone: '🔑' },
-  { valor: 'engenharia', label: 'Engenharia Clínica', desc: 'Manutenção e reparo de ativos', icone: '🛠️' },
-  { valor: 'gestor', label: 'Gestor', desc: 'Painéis, indicadores e SLA', icone: '📊' },
+type PerfilUsuario = 'inspetor' | 'coordenador' | 'engenharia'
+
+const PERFIS: { valor: PerfilUsuario; label: string; desc: string; avatarUrl: string; fallback: string }[] = [
+  { 
+    valor: 'inspetor', 
+    label: 'Inspetor', 
+    desc: 'Enfermeiros e Técnicos em campo', 
+    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg',
+    fallback: 'IN' 
+  },
+  { 
+    valor: 'engenharia', 
+    label: 'Engenharia Clínica', 
+    desc: 'Manutenção e reparo de ativos', 
+    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/red.jpg',
+    fallback: 'EN' 
+  },
+  { 
+    valor: 'coordenador', 
+    label: 'Coordenação', 
+    desc: 'Visão setorial e validação de NCs', 
+    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/purple.jpg',
+    fallback: 'CO' 
+  },
 ]
 
-export default function PaginaLogin() {
+function FormularioLogin() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -167,10 +186,8 @@ export default function PaginaLogin() {
                   const ativo = perfilSelecionado === p.valor
                   const labelCurto: Record<string, string> = {
                     inspetor: 'Inspetor',
-                    coordenador: 'Coord.',
                     engenharia: 'Engenharia',
-                    gestor: 'Gestor',
-                    admin: 'Admin',
+                    coordenador: 'Coordenação',
                   }
                   
                   return (
@@ -183,25 +200,29 @@ export default function PaginaLogin() {
                           inspetor: 'inspetor@gmail.com',
                           coordenador: 'coordenador@gmail.com',
                           engenharia: 'engenharia@gmail.com',
-                          gestor: 'gestor.paulo@sentry.com',
-                          admin: 'admin.sentry@sentry.com',
                         }
                         setEmail(emails[p.valor])
                         setSenha('123456')
                       }}
-                      className="flex flex-col items-center gap-1 focus:outline-none group select-none cursor-pointer"
+                      className="flex flex-col items-center gap-1.5 focus:outline-none group select-none cursor-pointer"
                     >
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center text-base transition-all duration-200 border ${
+                        className={`rounded-full p-0.5 aspect-square flex items-center justify-center transition-all duration-200 ${
                           ativo
-                            ? 'bg-[#246BFD] border-[#246BFD] text-white shadow-[0_3px_8px_rgba(36,107,253,0.3)] scale-[1.03]'
-                            : 'bg-white/40 border-white/20 text-gray-700 hover:bg-white/60 hover:border-white/40 active:scale-95'
+                            ? 'ring-2 ring-[#246BFD]/30 ring-offset-2 scale-105 shadow-[0_2px_8px_rgba(36,107,253,0.15)]'
+                            : 'opacity-60 hover:opacity-100 hover:scale-105 active:scale-95'
                         }`}
                       >
-                        {p.icone}
+                        <Avatar size="md">
+                          <Avatar.Image
+                            alt={p.label}
+                            src={p.avatarUrl}
+                          />
+                          <Avatar.Fallback>{p.fallback}</Avatar.Fallback>
+                        </Avatar>
                       </div>
                       <span
-                        className={`text-[9px] font-extrabold tracking-tight text-center whitespace-nowrap transition-colors ${
+                        className={`text-[10px] font-bold tracking-tight text-center whitespace-nowrap transition-colors ${
                           ativo ? 'text-[#246BFD]' : 'text-gray-400 group-hover:text-gray-600'
                         }`}
                       >
@@ -283,5 +304,13 @@ export default function PaginaLogin() {
 
       </div>
     </div>
+  )
+}
+
+export default function PaginaLogin() {
+  return (
+    <Suspense fallback={<div className="min-h-[100dvh] flex items-center justify-center bg-[#F4F6FA] text-sm text-gray-400">Carregando...</div>}>
+      <FormularioLogin />
+    </Suspense>
   )
 }

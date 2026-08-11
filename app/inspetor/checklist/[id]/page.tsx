@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import type { RespostaItem, CriticidadeItem } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
-export default function PaginaChecklist() {
+function ComponenteChecklist() {
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
@@ -468,7 +468,8 @@ export default function PaginaChecklist() {
             descricao: descricao,
             criticidade: criticidade,
             evidenciaUrl: item.evidencia_url || null,
-            nomeInspetor: usuario?.nome || 'Inspetor'
+            nomeInspetor: usuario?.nome || 'Inspetor',
+            emailInspetor: usuario?.email || null
           }).catch(err => console.error('Erro de envio de email:', err))
         }
       } else {
@@ -512,7 +513,7 @@ export default function PaginaChecklist() {
   }
 
   return (
-    <div className="px-5 pt-4 pb-10 space-y-5">
+    <div className="px-4 sm:px-5 pt-3 pb-10 space-y-4">
       {/* Voltar */}
       <Link
         href={isReadOnly ? '/inspetor/inspecoes' : `/inspetor/local/${ativo.local_id}`}
@@ -525,38 +526,38 @@ export default function PaginaChecklist() {
       </Link>
 
       {/* Card de Contexto */}
-      <div className="bg-white rounded-[24px] p-6 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 space-y-4">
+      <div className="bg-white rounded-2xl p-4 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 space-y-3.5">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">{ativo.nome}</h1>
+          <h1 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">{ativo.nome}</h1>
 
           {/* Seletor de Modelo */}
           {isReadOnly ? (
-            <div className="mt-2.5">
-              <span className="inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#246BFD]/8 border border-[#246BFD]/15 text-[#246BFD]">
+            <div className="mt-2">
+              <span className="inline-flex px-3 py-1 rounded-full text-[11px] font-bold bg-[#246BFD]/8 border border-[#246BFD]/15 text-[#246BFD]">
                 Visualizando: {modeloSelecionado?.nome_variante || 'Checklist'}
               </span>
             </div>
           ) : (
-            <div className="mt-2.5">
-              <span className="inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 border border-amber-200/60 text-amber-700">
+            <div className="mt-2">
+              <span className="inline-flex px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100/80 border border-slate-200/60 text-slate-600">
                 Modalidade: Por plantão
               </span>
             </div>
           )}
         </div>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-[13px] font-semibold">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold">
             <span className="text-gray-500">Progresso</span>
             <span className="text-gray-900 tabular-nums">{totalRespondidos} / {itens.length}</span>
           </div>
-          <div className="w-full h-[6px] bg-gray-100 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div className="h-full bg-[#246BFD] rounded-full transition-all duration-500 ease-out" style={{ width: `${progresso}%` }} />
           </div>
         </div>
       </div>
 
       {/* Lista de Seções — cards individuais */}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {itens.map((secao) => {
           const resp = respostas[secao.id] || { resposta: null }
           const aberta = expandida === secao.id
@@ -565,8 +566,8 @@ export default function PaginaChecklist() {
           const StatusIcon = () => {
             if (resp.resposta === 'conforme') {
               return (
-                <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                   </svg>
                 </div>
@@ -574,8 +575,8 @@ export default function PaginaChecklist() {
             }
             if (resp.resposta === 'nao_conforme') {
               return (
-                <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shrink-0">
+                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
@@ -583,8 +584,8 @@ export default function PaginaChecklist() {
             }
             if (resp.resposta === 'nao_se_aplica') {
               return (
-                <div className="w-7 h-7 rounded-full bg-gray-300 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center shrink-0">
+                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
                   </svg>
                 </div>
@@ -592,7 +593,7 @@ export default function PaginaChecklist() {
             }
             // Pendente
             return (
-              <div className="w-7 h-7 rounded-full border-2 border-gray-200 shrink-0" />
+              <div className="w-6 h-6 rounded-full border-2 border-gray-200 shrink-0" />
             )
           }
 
@@ -601,7 +602,7 @@ export default function PaginaChecklist() {
               key={secao.id}
               id={`secao-${secao.id}`}
               className={[
-                'bg-white rounded-[20px] overflow-hidden transition-all duration-200',
+                'bg-white rounded-xl sm:rounded-[20px] overflow-hidden transition-all duration-200',
                 aberta
                   ? 'shadow-[0_2px_16px_rgba(0,0,0,0.06)] border border-gray-200/80'
                   : 'shadow-[0_1px_4px_rgba(0,0,0,0.03)] border border-gray-100/80',
@@ -611,11 +612,11 @@ export default function PaginaChecklist() {
               <button
                 type="button"
                 onClick={() => setExpandida(aberta ? null : secao.id)}
-                className="w-full flex items-center justify-between px-5 py-4 text-left cursor-pointer hover:bg-gray-50/40 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3.5 text-left cursor-pointer hover:bg-gray-50/40 transition-colors"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <StatusIcon />
-                  <span className="text-[15px] font-semibold text-gray-900">{secao.nome}</span>
+                  <span className="text-sm font-semibold text-gray-900">{secao.nome}</span>
                 </div>
                 <svg
                   className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${aberta ? 'rotate-180' : ''}`}
@@ -627,21 +628,21 @@ export default function PaginaChecklist() {
 
               {/* Conteúdo Expandido */}
               {aberta && (
-                <div className="px-5 pb-5 space-y-4 animate-[fadeIn_0.15s_ease-out]">
+                <div className="px-4 pb-4 space-y-3.5 animate-[fadeIn_0.15s_ease-out]">
                   {/* Separador sutil */}
                   <div className="h-px bg-gray-100" />
 
                   {/* Materiais em card inset */}
                   {secao.materiaisReferencia.length > 0 && (
-                    <div className="bg-[#F4F6FA] rounded-2xl p-4 space-y-2">
-                      <p className="text-[10px] font-bold text-gray-400 tracking-[0.08em] uppercase">
+                    <div className="bg-[#F4F6FA] rounded-xl p-3 space-y-1.5">
+                      <p className="text-[9px] font-bold text-gray-400 tracking-[0.08em] uppercase">
                         Verifique os materiais
                       </p>
-                      <div className="space-y-1.5">
+                      <div className="space-y-1">
                         {secao.materiaisReferencia.map((mat: string, idx: number) => (
-                          <div key={idx} className="flex items-start gap-2.5">
-                            <div className="w-1 h-1 rounded-full bg-gray-300 mt-[9px] shrink-0" />
-                            <span className="text-[15px] text-gray-600 leading-snug">{mat}</span>
+                          <div key={idx} className="flex items-start gap-2">
+                            <div className="w-1 h-1 rounded-full bg-gray-300 mt-[7px] shrink-0" />
+                            <span className="text-sm text-gray-600 leading-snug">{mat}</span>
                           </div>
                         ))}
                       </div>
@@ -649,13 +650,13 @@ export default function PaginaChecklist() {
                   )}
 
                   {/* Ações — botões estilo Apple */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-1.5">
                     {/* Conforme */}
                     <button
                       type="button"
                       onClick={() => !isReadOnly && setResposta(secao.id, 'conforme')}
                       className={[
-                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
+                        'relative py-2.5 rounded-xl text-[10px] font-extrabold tracking-tight transition-all duration-200 border',
                         'flex flex-col items-center justify-center gap-1',
                         isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
                         resp.resposta === 'conforme'
@@ -663,7 +664,7 @@ export default function PaginaChecklist() {
                           : 'bg-white border-gray-200 text-[#34C759]' + (isReadOnly ? '' : ' hover:bg-[#34C759]/5'),
                       ].join(' ')}
                     >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                       </svg>
                       <span>Conforme</span>
@@ -674,7 +675,7 @@ export default function PaginaChecklist() {
                       type="button"
                       onClick={() => !isReadOnly && setResposta(secao.id, 'nao_conforme')}
                       className={[
-                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
+                        'relative py-2.5 rounded-xl text-[10px] font-extrabold tracking-tight transition-all duration-200 border',
                         'flex flex-col items-center justify-center gap-1',
                         isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
                         resp.resposta === 'nao_conforme'
@@ -682,7 +683,7 @@ export default function PaginaChecklist() {
                           : 'bg-white border-gray-200 text-[#FF3B30]' + (isReadOnly ? '' : ' hover:bg-[#FF3B30]/5'),
                       ].join(' ')}
                     >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                       <span>Não conforme</span>
@@ -693,7 +694,7 @@ export default function PaginaChecklist() {
                       type="button"
                       onClick={() => !isReadOnly && setResposta(secao.id, 'nao_se_aplica')}
                       className={[
-                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
+                        'relative py-2.5 rounded-xl text-[10px] font-extrabold tracking-tight transition-all duration-200 border',
                         'flex flex-col items-center justify-center gap-1 text-center',
                         isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
                         resp.resposta === 'nao_se_aplica'
@@ -701,7 +702,7 @@ export default function PaginaChecklist() {
                           : 'bg-white border-gray-200 text-[#8E8E93]' + (isReadOnly ? '' : ' hover:bg-[#8E8E93]/5'),
                       ].join(' ')}
                     >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
                       </svg>
                       <span>Não se aplica</span>
@@ -710,26 +711,26 @@ export default function PaginaChecklist() {
 
                   {/* Evidências e Descrição da NC (mostrado quando resposta é nao_conforme e possui descrição/foto) */}
                   {resp.resposta === 'nao_conforme' && (resp.evidencia_texto || resp.evidencia_url) && (
-                    <div className="bg-red-50/50 rounded-2xl p-4 border border-red-100/50 space-y-3 mt-3">
+                    <div className="bg-red-50/50 rounded-xl p-3.5 border border-red-100/50 space-y-2 mt-2.5">
                       {resp.evidencia_texto && (
                         <div>
-                          <p className="text-[10px] font-bold text-red-400 tracking-[0.08em] uppercase">
+                          <p className="text-[9px] font-bold text-red-400 tracking-[0.08em] uppercase">
                             Descrição da NC
                           </p>
-                          <p className="text-[14px] text-gray-700 font-medium leading-relaxed mt-1">
+                          <p className="text-sm text-gray-700 font-medium leading-relaxed mt-0.5">
                             {resp.evidencia_texto}
                           </p>
                         </div>
                       )}
                       {resp.evidencia_url && (
                         <div>
-                          <p className="text-[10px] font-bold text-red-400 tracking-[0.08em] uppercase mb-1">
+                          <p className="text-[9px] font-bold text-red-400 tracking-[0.08em] uppercase mb-1">
                             Evidência Fotográfica
                           </p>
                           <img
                             src={resp.evidencia_url}
                             alt="Evidência"
-                            className="rounded-xl max-h-48 object-cover border border-gray-150"
+                            className="rounded-xl max-h-40 object-cover border border-gray-150"
                           />
                         </div>
                       )}
@@ -744,10 +745,10 @@ export default function PaginaChecklist() {
 
       {/* Botão de Conclusão */}
       {isReadOnly ? (
-        <div className="pt-3 pb-6">
+        <div className="pt-2 pb-6">
           <Botao
             variante="primario"
-            tamanho="lg"
+            tamanho="md"
             larguraTotal
             onClick={() => router.push('/inspetor/inspecoes')}
             icone={
@@ -760,10 +761,10 @@ export default function PaginaChecklist() {
           </Botao>
         </div>
       ) : (
-        <div className="pt-3 pb-6">
+        <div className="pt-2 pb-6">
           <Botao
             variante="primario"
-            tamanho="lg"
+            tamanho="md"
             larguraTotal
             carregando={enviando}
             disabled={!todosRespondidos}
@@ -782,43 +783,43 @@ export default function PaginaChecklist() {
       {/* Modal de Registro de NC (In-Page para não perder o estado dos outros itens!) */}
       {modalNcItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-white rounded-[28px] p-6 max-w-sm w-full shadow-2xl border border-gray-100/80 space-y-5 animate-[scaleIn_0.15s_ease-out] overflow-y-auto max-h-[90vh]">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 max-w-sm w-full shadow-2xl border border-gray-100/80 space-y-4 animate-[scaleIn_0.15s_ease-out] overflow-y-auto max-h-[85vh]">
 
             {/* Header */}
-            <div className="flex items-center justify-between pb-1">
+            <div className="flex items-center justify-between pb-0.5">
               <div>
-                <h3 className="text-base font-extrabold text-gray-900 tracking-tight">Registrar Não Conformidade</h3>
-                <p className="text-[11px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 tracking-tight">Registrar Não Conformidade</h3>
+                <p className="text-[10px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">
                   Item: {modalNcItem.nome}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleCancelarModalNc}
-                className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer"
+                className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer text-xs"
               >
                 ✕
               </button>
             </div>
 
             {/* Descrição */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
                 O que está inconforme?
               </label>
               <textarea
-                rows={3}
+                rows={2.5}
                 required
                 placeholder="Ex: Faltando cânula de Guedel ou laringoscópio sem bateria..."
                 value={ncDescricao}
                 onChange={(e) => setNcDescricao(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[14px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all resize-none"
+                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all resize-none"
               />
             </div>
 
             {/* Evidência */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
                 Evidência Fotográfica
               </label>
 
@@ -842,7 +843,7 @@ export default function PaginaChecklist() {
                   <img
                     src={ncFotoPreview}
                     alt="Preview"
-                    className="w-full h-36 object-cover rounded-xl border border-gray-200"
+                    className="w-full h-28 object-cover rounded-xl border border-gray-200"
                   />
                   <button
                     type="button"
@@ -850,7 +851,7 @@ export default function PaginaChecklist() {
                       setNcFotoPreview(null)
                       setNcFotoFile(null)
                     }}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] font-bold hover:bg-black/80 cursor-pointer"
+                    className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] font-bold hover:bg-black/80 cursor-pointer"
                   >
                     ✕
                   </button>
@@ -859,22 +860,22 @@ export default function PaginaChecklist() {
                 <button
                   type="button"
                   onClick={() => document.getElementById('modal-foto-input')?.click()}
-                  className="w-full h-24 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:border-[#246BFD] hover:text-[#246BFD] transition-colors cursor-pointer"
+                  className="w-full h-18 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-[#246BFD] hover:text-[#246BFD] transition-colors cursor-pointer"
                 >
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                   </svg>
-                  <span className="text-[11px] font-bold">Tirar foto ou anexar</span>
+                  <span className="text-[10px] font-bold">Tirar foto ou anexar</span>
                 </button>
               )}
             </div>
 
             {/* Criticidade */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
                 Criticidade
               </label>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1">
                 {[
                   { valor: 'critico', label: 'Crítico', cor: 'bg-red-50 text-red-700 border-red-200' },
                   { valor: 'importante', label: 'Importante', cor: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -887,8 +888,8 @@ export default function PaginaChecklist() {
                       type="button"
                       onClick={() => setNcCriticidade(c.valor as any)}
                       className={[
-                        'flex-1 py-2 px-1 text-[11px] font-extrabold rounded-xl border text-center transition-all cursor-pointer',
-                        sel ? `${c.cor} border-2 shadow-xs scale-[1.02]` : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                        'flex-1 py-1.5 px-0.5 text-[10px] sm:text-[11px] font-extrabold rounded-xl border text-center transition-all cursor-pointer',
+                        sel ? `${c.cor} border border-current shadow-xs scale-[1.01]` : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
                       ].join(' ')}
                     >
                       {c.label}
@@ -899,13 +900,14 @@ export default function PaginaChecklist() {
             </div>
 
             {/* Ações */}
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-1">
               <Botao
                 type="button"
                 variante="secundario"
                 larguraTotal
                 onClick={handleCancelarModalNc}
                 disabled={ncEnviando}
+                tamanho="sm"
               >
                 Cancelar
               </Botao>
@@ -916,6 +918,7 @@ export default function PaginaChecklist() {
                 onClick={handleSalvarModalNc}
                 carregando={ncEnviando}
                 disabled={!ncDescricao.trim()}
+                tamanho="sm"
               >
                 Confirmar
               </Botao>
@@ -935,6 +938,7 @@ async function enviarEmailResend(dados: {
   criticidade: string
   evidenciaUrl?: string | null
   nomeInspetor?: string
+  emailInspetor?: string | null
 }) {
   try {
     const res = await fetch('/api/send-email', {
@@ -953,4 +957,12 @@ async function enviarEmailResend(dados: {
   } catch (err) {
     console.error('Erro de rede ao enviar e-mail via API interna:', err)
   }
+}
+
+export default function PaginaChecklist() {
+  return (
+    <Suspense fallback={<div className="min-h-[100dvh] flex items-center justify-center bg-[#F4F6FA] text-sm text-gray-400 animate-pulse">Carregando checklist...</div>}>
+      <ComponenteChecklist />
+    </Suspense>
+  )
 }

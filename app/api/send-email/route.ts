@@ -10,17 +10,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Resend API Key não configurada no servidor.' }, { status: 500 })
     }
 
-    const criticidadeCor = 
+    const criticidadeCor =
       dados.criticidade === 'critico' ? '#FF3B30' :
-      dados.criticidade === 'importante' ? '#FF9500' : '#007AFF'
+        dados.criticidade === 'importante' ? '#FF9500' : '#007AFF'
 
-    const criticidadeBg = 
+    const criticidadeBg =
       dados.criticidade === 'critico' ? '#FEF2F2' :
-      dados.criticidade === 'importante' ? '#FFFBEB' : '#EFF6FF'
+        dados.criticidade === 'importante' ? '#FFFBEB' : '#EFF6FF'
 
-    const criticidadeLabel = 
+    const criticidadeLabel =
       dados.criticidade === 'critico' ? 'NC CRÍTICA' :
-      dados.criticidade === 'importante' ? 'NC IMPORTANTE' : 'NC INFORMATIVA'
+        dados.criticidade === 'importante' ? 'NC IMPORTANTE' : 'NC INFORMATIVA'
 
     const nomeAtivo = dados.nomeAtivo || 'Equipamento'
     const nomeInspetor = dados.nomeInspetor || 'Inspetor'
@@ -103,16 +103,6 @@ export async function POST(request: Request) {
 
                   </div>
 
-                  <!-- Foto de Evidência -->
-                  ${temFoto ? `
-                  <div style="margin-bottom: 20px;">
-                    <div style="font-size: 10px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">FOTO DE EVIDÊNCIA</div>
-                    <div style="border-radius: 16px; overflow: hidden; border: 1px solid #E2E8F0; background-color: #F8FAFC;">
-                      <img src="${dados.evidenciaUrl}" alt="Evidência NC" style="width: 100%; max-height: 340px; object-fit: cover; display: block;" />
-                    </div>
-                  </div>
-                  ` : ''}
-
                   <!-- Botão CTA -->
                   <div style="padding-top: 4px; text-align: center;">
                     <a href="https://sentry-clinica.vercel.app/login" style="display: block; width: 100%; padding: 14px 0; background-color: #246BFD; color: #ffffff; border-radius: 9999px; text-decoration: none; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 4px 12px rgba(36,107,253,0.25);">
@@ -137,7 +127,13 @@ export async function POST(request: Request) {
       </html>
     `
 
-    const destinatarios = ['pedro.ssoares05@icloud.com', 'pedrosoaress365@gmail.com']
+    const destinatarios = ['pedrosoaress365@gmail.com', 'p.moraisneto@outlook.com']
+    if (dados.emailInspetor && typeof dados.emailInspetor === 'string' && dados.emailInspetor.trim() !== '') {
+      const emailLimpo = dados.emailInspetor.trim()
+      if (!destinatarios.includes(emailLimpo)) {
+        destinatarios.push(emailLimpo)
+      }
+    }
     const resultados = []
 
     for (const to of destinatarios) {

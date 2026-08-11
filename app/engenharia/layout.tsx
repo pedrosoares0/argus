@@ -56,7 +56,7 @@ export default function LayoutEngenharia({
         <Link href="/engenharia" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity">
           Sentry
         </Link>
-        <PillUsuario nome={usuario.nome} onClick={() => setMenuAberto(true)} />
+        <PillUsuario nome={usuario.nome} perfil={usuario.perfil} onClick={() => setMenuAberto(true)} />
       </header>
 
       {/* Conteúdo principal */}

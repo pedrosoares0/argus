@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { PillTag } from '@/components/ui/PillTag'
+import { Avatar } from '@/components/ui/Avatar'
 
 export default function PaginaHistoricoInspecoes() {
   const router = useRouter()
@@ -77,7 +79,7 @@ export default function PaginaHistoricoInspecoes() {
                   id: exec.id,
                   ativoId: exec.ativo_id,
                   ativo: exec.ativos?.nome || 'Equipamento',
-                  local: exec.ativos?.locais?.nome || 'Sala',
+                  local: (exec.ativos?.locais?.nome && exec.ativos.locais.nome !== 'Sala 01') ? exec.ativos.locais.nome : '',
                   variante: exec.modelos_checklist?.nome_variante || 'Checklist',
                   dataHora: formatador.format(dataInspecao),
                   resultado
@@ -108,22 +110,33 @@ export default function PaginaHistoricoInspecoes() {
   const iniciais = nomeExibido.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
 
   return (
-    <div className="px-5 pt-4 space-y-6">
+    <div className="px-4 sm:px-5 pt-3 space-y-4 sm:space-y-6">
       {/* ── Perfil do Usuário Sleek ── */}
-      <div className="bg-white rounded-[24px] p-5 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 flex items-center justify-between">
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#246BFD] to-[#1253f6] flex items-center justify-center text-white font-bold text-sm shadow-[0_4px_12px_rgba(36,107,253,0.15)] shrink-0">
-            {iniciais}
+      <div className="bg-white rounded-2xl p-4 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="shrink-0">
+            <Avatar size="md">
+              <Avatar.Image
+                alt={nomeExibido}
+                src={
+                  usuario?.perfil === 'engenharia_clinica' || usuario?.perfil === 'engenharia' ? 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/red.jpg' :
+                  usuario?.perfil === 'coordenador' ? 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/purple.jpg' :
+                  usuario?.perfil === 'gestor' ? 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/orange.jpg' :
+                  'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg'
+                }
+              />
+              <Avatar.Fallback>{iniciais}</Avatar.Fallback>
+            </Avatar>
           </div>
           <div className="min-w-0">
-            <p className="text-[15px] font-bold text-gray-900 leading-tight">{nomeExibido}</p>
-            <p className="text-[12px] text-gray-400 font-medium mt-0.5">{cargoExibido}</p>
+            <p className="text-sm sm:text-[15px] font-bold text-gray-900 leading-tight">{nomeExibido}</p>
+            <p className="text-xs text-gray-400 font-medium mt-0.5">{cargoExibido}</p>
           </div>
         </div>
 
         {/* Resumo Rápido */}
         <div className="text-right shrink-0">
-          <p className="text-[16px] font-extrabold text-gray-900 leading-none">{inspecoes.length}</p>
+          <p className="text-sm sm:text-base font-extrabold text-gray-900 leading-none">{inspecoes.length}</p>
           <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Inspeções</p>
         </div>
       </div>
@@ -139,7 +152,7 @@ export default function PaginaHistoricoInspecoes() {
               type="button"
               onClick={() => setFiltro(opt)}
               className={[
-                'flex-1 py-2 rounded-full text-[13px] font-bold transition-all duration-300 ease-out cursor-pointer active:scale-[0.95]',
+                'flex-1 py-1.5 sm:py-2 rounded-full text-xs sm:text-[13px] font-bold transition-all duration-300 ease-out cursor-pointer active:scale-[0.95]',
                 ativo
                   ? 'bg-white text-slate-800 shadow-[0_2px_6px_rgba(0,0,0,0.06)]'
                   : 'text-gray-500 hover:text-slate-800',
@@ -153,7 +166,7 @@ export default function PaginaHistoricoInspecoes() {
 
       {/* ── Lista de Inspeções (Ultra Clean) ── */}
       <div className="space-y-2">
-        <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase px-1">
+        <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-wider uppercase px-1">
           Minhas Inspeções ({filtrados.length})
         </p>
 
@@ -162,84 +175,88 @@ export default function PaginaHistoricoInspecoes() {
             Carregando histórico...
           </div>
         ) : filtrados.length > 0 ? (
-          <div className="bg-white rounded-[24px] shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
             {filtrados.map((ins) => {
-              const cores = {
-                conforme: {
-                  bg: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-                  badge: 'Conforme',
-                  iconBg: 'bg-emerald-500',
-                  icon: (
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  )
-                },
-                critico: {
-                  bg: 'bg-red-50 text-red-700 border-red-100',
-                  badge: 'NC Crítica',
-                  iconBg: 'bg-red-500',
-                  icon: (
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                  )
-                },
-                importante: {
-                  bg: 'bg-amber-50 text-amber-700 border-amber-100',
-                  badge: 'NC Importante',
-                  iconBg: 'bg-amber-500',
-                  icon: (
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" />
-                    </svg>
-                  )
-                },
-                informativo: {
-                  bg: 'bg-blue-50 text-blue-700 border-blue-100',
-                  badge: 'NC Informativa',
-                  iconBg: 'bg-blue-500',
-                  icon: (
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-                    </svg>
-                  )
-                }
+              let corPill: 'verde' | 'laranja' | 'vermelho' = 'verde'
+              let labelPill = 'Pronto'
+
+              if (ins.resultado === 'critico') {
+                corPill = 'vermelho'
+                labelPill = 'Crítico'
+              } else if (ins.resultado === 'importante' || ins.resultado === 'informativo') {
+                corPill = 'laranja'
+                labelPill = 'Importante'
               }
 
-              const cfg = cores[ins.resultado as keyof typeof cores] || cores.conforme
+              const iconBgClass = 
+                corPill === 'vermelho' ? 'bg-gradient-to-b from-[#F45F63] to-[#EA3A3A]' :
+                corPill === 'laranja' ? 'bg-gradient-to-b from-[#FF9E3D] to-[#F78725]' :
+                'bg-gradient-to-b from-[#54D362] to-[#31B44A]'
 
               return (
                 <button
                   key={ins.id}
                   type="button"
                   onClick={() => router.push(`/inspetor/checklist/${ins.ativoId}?execId=${ins.id}`)}
-                  className="w-full flex items-center justify-between py-4 px-5 hover:bg-slate-50/50 transition-all text-left cursor-pointer"
+                  className="w-full flex items-center justify-between py-3 px-4 hover:bg-slate-50/50 transition-all text-left cursor-pointer"
                 >
-                  <div className="flex items-start gap-3.5 min-w-0">
-                    {/* Status Badge Icon */}
-                    <div className={`w-8 h-8 rounded-full ${cfg.iconBg} flex items-center justify-center shrink-0 shadow-sm mt-0.5`}>
-                      {cfg.icon}
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    {/* Status Badge Icon — Identical to PillTag inner icon */}
+                    <div className={`w-8 h-8 rounded-full ${iconBgClass} flex items-center justify-center shrink-0 shadow-sm mt-0.5 text-white`}>
+                      {corPill === 'verde' && (
+                        <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none">
+                          <path
+                            fill="#0AB01E"
+                            d="M12 2a2 2 0 0 1 1.414.586l.828.828a2 2 0 0 0 1.414.586h1.172a2 2 0 0 1 2 2v1.172a2 2 0 0 0 .586 1.414l.828.828A2 2 0 0 1 21 10.828v1.172a2 2 0 0 1-.586 1.414l-.828.828a2 2 0 0 0-.586 1.414v1.172a2 2 0 0 1-2 2h-1.172a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 10.828 21h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 6 19h-1.172a2 2 0 0 1-2-2v-1.172a2 2 0 0 0-.586-1.414l-.828-.828A2 2 0 0 1 3 12v-1.172a2 2 0 0 1 .586-1.414l.828-.828A2 2 0 0 0 5 7.172V6a2 2 0 0 1 2-2h1.172a2 2 0 0 0 1.414-.586l.828-.828A2 2 0 0 1 12 2z"
+                          />
+                          <path
+                            stroke="#54D362"
+                            strokeWidth="2.6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M8.5 12.5l2.5 2.5 4.5-5"
+                          />
+                        </svg>
+                      )}
+                      {corPill === 'vermelho' && (
+                        <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none">
+                          <circle cx="12" cy="12" r="10" fill="#EA1517" />
+                          <path
+                            stroke="#F45F63"
+                            strokeWidth="2.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 9l6 6m0-6l-6 6"
+                          />
+                        </svg>
+                      )}
+                      {corPill === 'laranja' && (
+                        <svg className="w-4.5 h-4.5 text-[#F86201]" viewBox="0 0 24 24" fill="currentColor">
+                          <path fillRule="evenodd" clipRule="evenodd" d="M10.788 3.21c.548-.96 1.876-.96 2.424 0l8.23 14.403c.532.931-.14 2.087-1.212 2.087H3.77c-1.072 0-1.744-1.156-1.212-2.087L10.788 3.21zM12 8a.75.75 0 00-.75.75v4.5a.75.75 0 001.5 0v-4.5A.75.75 0 0012 8zm0 8a1 1 0 100-2 1 1 0 000 2z" />
+                        </svg>
+                      )}
                     </div>
 
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-[14px] font-bold text-gray-900 tracking-tight">
-                        {ins.ativo}
-                      </p>
-                      <p className="text-[12px] text-gray-600 font-medium leading-none">
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-bold text-gray-900 tracking-tight leading-tight">
+                          {ins.ativo}
+                        </p>
+                        <PillTag cor={corPill} className="!text-[10px] !pl-1.5 !pr-2.5 !py-0.5 gap-1 shrink-0 scale-90 origin-left">
+                          {labelPill}
+                        </PillTag>
+                      </div>
+                      <p className="text-xs text-gray-600 font-medium leading-none">
                         Ronda: <span className="text-gray-900 font-semibold">{ins.variante}</span>
                       </p>
                       <p className="text-[11px] text-gray-400 font-medium">
-                        {ins.local} · Realizada em {ins.dataHora}
+                        {ins.local ? `${ins.local} · ` : ''}Realizada em {ins.dataHora}
                       </p>
                     </div>
                   </div>
 
-                  {/* Status do lado direito */}
-                  <div className="flex items-center gap-2.5 shrink-0 ml-3">
-                    <span className={`inline-flex px-3 py-1 rounded-full text-[11px] font-extrabold border uppercase tracking-wider ${cfg.bg}`}>
-                      {cfg.badge}
-                    </span>
+                  {/* Apenas seta do lado direito */}
+                  <div className="flex items-center shrink-0 ml-1">
                     <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
@@ -249,7 +266,7 @@ export default function PaginaHistoricoInspecoes() {
             })}
           </div>
         ) : (
-          <div className="bg-white rounded-[24px] p-8 text-center text-gray-400 border border-gray-100/80">
+          <div className="bg-white rounded-2xl p-8 text-center text-gray-400 border border-gray-100/80">
             Nenhuma inspeção encontrada.
           </div>
         )}

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
 @import 'tailwindcss';
 
 /* ================================================================
@@ -5,6 +6,13 @@
    Background: #F4F6FA
    Sombras ultra-suaves, cards minimalistas, badges limpos
    ================================================================ */
+
+.font-nunito {
+  font-family: "Nunito", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+}
 
 @theme {
   /* ---- Cores do sistema ---- */
@@ -67,8 +75,8 @@ button,
 a,
 [role="button"] {
   transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
-              opacity 150ms ease,
-              box-shadow 200ms ease;
+    opacity 150ms ease,
+    box-shadow 200ms ease;
 }
 
 button:active,
@@ -82,6 +90,7 @@ a:active,
   width: 3px;
   height: 3px;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.08);
   border-radius: 9999px;
@@ -89,11 +98,25 @@ a:active,
 
 /* Animações */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes scanLine {
-  0%, 100% { top: 10%; }
-  50%      { top: 90%; }
+
+  0%,
+  100% {
+    top: 10%;
+  }
+
+  50% {
+    top: 90%;
+  }
 }
