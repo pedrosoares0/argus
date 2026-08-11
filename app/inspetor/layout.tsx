@@ -18,14 +18,17 @@ export default function LayoutInspetor({
 
   useEffect(() => {
     const stored = localStorage.getItem('sentry_usuario_atual')
-    if (stored) {
+    if (!stored) {
+      const nextPath = window.location.pathname + window.location.search
+      router.push(`/login?next=${encodeURIComponent(nextPath)}`)
+    } else {
       try {
         setUsuario(JSON.parse(stored))
       } catch (e) {
         console.error(e)
       }
     }
-  }, [])
+  }, [router])
 
   const nomeExibido = usuario?.nome || 'Usuário'
   const perfilExibido = usuario?.perfil === 'inspetor' ? 'Inspetor(a)' : usuario?.perfil === 'coordenador' ? 'Coordenador(a)' : usuario?.perfil === 'engenharia_clinica' ? 'Engenharia Clínica' : usuario?.perfil === 'gestor' ? 'Gestor(a)' : 'Administrador(a)'

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { setUsuarioLogado, DEFAULT_USER, COORDENADOR_USER } from '@/lib/supabase/mockDb'
 import { criarClienteSupabase } from '@/lib/supabase/client'
@@ -18,6 +18,7 @@ const PERFIS: { valor: PerfilUsuario; label: string; desc: string; icone: string
 
 export default function PaginaLogin() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [perfilSelecionado, setPerfilSelecionado] = useState<PerfilUsuario>('inspetor')
@@ -104,7 +105,7 @@ export default function PaginaLogin() {
         perfil: profile.perfil
       }))
 
-      // Redireciona baseado no perfil real
+      // Redireciona baseado no perfil real ou parâmetro next
       const rotas: Record<string, string> = {
         inspetor: '/inspetor',
         coordenador: '/coordenador',
@@ -113,7 +114,12 @@ export default function PaginaLogin() {
         administrador: '/admin',
       }
 
-      router.push(rotas[profile.perfil] || '/inspetor')
+      const nextParam = searchParams?.get('next')
+      if (nextParam) {
+        router.push(nextParam)
+      } else {
+        router.push(rotas[profile.perfil] || '/inspetor')
+      }
     } catch (err: any) {
       console.error(err)
       setErro('Erro na conexão com o servidor.')
