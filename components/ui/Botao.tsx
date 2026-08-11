@@ -42,7 +42,7 @@ export function Botao({
           'bg-gradient-to-b from-[#246bfd] to-[#1253f6]',
           'text-white',
           'border-[3px] border-white/90',
-          'shadow-[0_14px_30px_-4px_rgba(30,107,251,0.45)]',
+          'shadow-[0_4px_14px_rgba(36,107,253,0.18)]',
           'hover:brightness-105',
         ].filter(Boolean).join(' '),
 

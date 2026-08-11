@@ -273,23 +273,34 @@ export default function PaginaChecklist() {
     try {
       let uploadedUrl = null
       if (ncFotoFile) {
-        const supabase = criarClienteSupabase() as any
-        const fileExt = ncFotoFile.name.split('.').pop()
-        const fileName = `${Math.random()}.${fileExt}`
-        const filePath = `${fileName}`
+        try {
+          const supabase = criarClienteSupabase() as any
+          const fileExt = ncFotoFile.name.split('.').pop()
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('evidencias')
-          .upload(filePath, ncFotoFile)
-
-        if (!uploadError && uploadData) {
-          const { data: publicUrlData } = supabase.storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
             .from('evidencias')
-            .getPublicUrl(filePath)
-          uploadedUrl = publicUrlData.publicUrl
-        } else {
-          console.error('Erro de upload:', uploadError)
-          uploadedUrl = null
+            .upload(fileName, ncFotoFile)
+
+          if (!uploadError && uploadData) {
+            const { data: publicUrlData } = supabase.storage
+              .from('evidencias')
+              .getPublicUrl(fileName)
+            uploadedUrl = publicUrlData.publicUrl
+          } else {
+            console.error('Erro de upload Supabase Storage:', uploadError)
+          }
+        } catch (e) {
+          console.error('Erro no upload de foto:', e)
+        }
+
+        // Fallback de segurança: se o bucket do Supabase não retornar a URL pública, converte para Base64 Data URL
+        if (!uploadedUrl) {
+          uploadedUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(ncFotoFile)
+          })
         }
       }
 
@@ -404,6 +415,8 @@ export default function PaginaChecklist() {
                 ativo_id: ativo.id,
                 criticidade: item.criticidade,
                 status: 'aberta',
+                descricao: item.evidencia_texto || null,
+                evidencia_url: item.evidencia_url || null,
                 numero_unico: `NC-${new Date().getFullYear()}-${item.id.substring(0, 4).toUpperCase()}`
               })
 
@@ -411,6 +424,15 @@ export default function PaginaChecklist() {
               console.error('Erro ao inserir NC manualmente:', insertNcError)
               throw insertNcError
             }
+          } else {
+            // Garantir que a NC criada pela trigger possua a foto de evidencia_url e a descricao salvas
+            await supabase
+              .from('nao_conformidades')
+              .update({
+                evidencia_url: item.evidencia_url || null,
+                descricao: item.evidencia_texto || null
+              })
+              .eq('id', triggerNc[0].id)
           }
         }
 
@@ -516,21 +538,18 @@ export default function PaginaChecklist() {
       {/* Card de Contexto */}
       <div className="bg-white rounded-[24px] p-6 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 space-y-4">
         <div>
-          <p className="text-[11px] font-bold text-[#0284C7] tracking-wider uppercase">
-            {ativo.locais?.nome || 'Sala'}
-          </p>
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight mt-1">{ativo.nome}</h1>
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">{ativo.nome}</h1>
           
           {/* Seletor de Modelo */}
           {isReadOnly ? (
-            <div className="mt-3">
+            <div className="mt-2.5">
               <span className="inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#246BFD]/8 border border-[#246BFD]/15 text-[#246BFD]">
                 Visualizando: {modeloSelecionado?.nome_variante || 'Checklist'}
               </span>
             </div>
           ) : (
-            <div className="mt-3">
-              <span className="inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 border border-amber-500/20 text-amber-600">
+            <div className="mt-2.5">
+              <span className="inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 border border-amber-200/60 text-amber-700">
                 Variante: Por plantão
               </span>
             </div>

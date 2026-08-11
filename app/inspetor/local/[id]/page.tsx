@@ -260,8 +260,8 @@ export default function PaginaLocal() {
     : null
 
   const statusLabel = temNcAberta
-    ? maiorCriticidade === 'critico' ? 'Não pronta' : maiorCriticidade === 'importante' ? 'Com restrição' : 'Informativo'
-    : 'Pronta'
+    ? maiorCriticidade === 'critico' ? 'NÃO PRONTA' : maiorCriticidade === 'importante' ? 'COM RESTRIÇÃO' : 'INFORMATIVO'
+    : 'PRONTA'
 
   const statusCor = temNcAberta
     ? maiorCriticidade === 'critico' ? 'vermelho' : maiorCriticidade === 'importante' ? 'laranja' : 'azul'
@@ -269,7 +269,7 @@ export default function PaginaLocal() {
 
   const ativoPrincipal = ativos[0]
   const tituloExibido = ativoPrincipal ? ativoPrincipal.nome : local.nome
-  const subtituloExibido = ativoPrincipal ? `${local.nome} · ${local.setor}` : local.setor
+  const subtituloExibido = local.setor || 'Centro Cirúrgico'
   const isCarrinho = tituloExibido.toLowerCase().includes('carrinho de parada') || tituloExibido.toLowerCase().includes('carrinho')
 
   const historicoFiltrado = historico.filter((ins) => {
@@ -434,7 +434,7 @@ export default function PaginaLocal() {
         const secaoAfetada = itemExec.item_congelado?.descricao?.split(' — ')[0] || 'Geral'
         const descricaoEvidencia = itemExec.evidencia_texto || ultimaNc.descricao || 'Sem descrição detalhada.'
         const fotoUrl = itemExec.evidencia_url || ultimaNc.evidencia_url
-        const temFotoReal = fotoUrl && !fotoUrl.includes('unsplash.com')
+        const temFotoReal = Boolean(fotoUrl && typeof fotoUrl === 'string' && fotoUrl.trim() !== '' && !fotoUrl.includes('unsplash.com'))
 
         const formatadorDataCurta = new Intl.DateTimeFormat('pt-BR', {
           day: '2-digit',
