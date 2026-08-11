@@ -30,7 +30,7 @@ export default function PaginaHistoricoInspecoes() {
             // 2. Buscar as execuções de checklist do hospital
             const { data: execsData, error: execsError } = await supabase
               .from('execucoes_checklist')
-              .select('*, ativos(*, locais(*))')
+              .select('*, ativos(*, locais(*)), modelos_checklist(nome_variante)')
               .eq('hospital_id', profile.hospital_id)
               .eq('status', 'concluida')
               .order('finalizado_em', { ascending: false })
@@ -40,38 +40,35 @@ export default function PaginaHistoricoInspecoes() {
             if (execsData && execsData.length > 0) {
               const execsIds = execsData.map((e: any) => e.id)
               
-              // Buscar todos os itens associados para saber se tem NC
+              // Buscar todos os itens associados para saber se tem NC e criticidade
               const { data: itemsData } = await supabase
                 .from('itens_execucao_checklist')
-                .select('execucao_id, resposta')
+                .select('execucao_id, resposta, criticidade')
                 .in('execucao_id', execsIds)
 
-              const itemsMapa = new Map()
+              const execsNcMapa = new Map()
               if (itemsData) {
                 itemsData.forEach((it: any) => {
-                  const arr = itemsMapa.get(it.execucao_id) || []
-                  arr.push(it)
-                  itemsMapa.set(it.execucao_id, arr)
+                  if (it.resposta === 'nao_conforme') {
+                    const currentHighest = execsNcMapa.get(it.execucao_id)
+                    if (!currentHighest || 
+                        (it.criticidade === 'critico') || 
+                        (it.criticidade === 'importante' && currentHighest !== 'critico')) {
+                      execsNcMapa.set(it.execucao_id, it.criticidade)
+                    }
+                  }
                 })
               }
 
               const formatadas = execsData.map((exec: any) => {
-                const execItems = itemsMapa.get(exec.id) || []
-                const temNc = execItems.some((it: any) => it.resposta === 'nao_conforme')
-                const totalItems = execItems.length
-                
-                let status: 'conforme' | 'com_nc' = 'conforme'
-                let detalheStatus = 'Conforme'
-                if (temNc) {
-                  status = 'com_nc'
-                  const countNc = execItems.filter((it: any) => it.resposta === 'nao_conforme').length
-                  detalheStatus = `${countNc} NC${countNc > 1 ? 's' : ''}`
-                }
+                const criticidadeNc = execsNcMapa.get(exec.id)
+                const resultado = criticidadeNc || 'conforme'
 
                 const dataInspecao = new Date(exec.finalizado_em || exec.iniciado_em)
                 const formatador = new Intl.DateTimeFormat('pt-BR', {
                   day: '2-digit',
                   month: '2-digit',
+                  year: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit'
                 })
@@ -81,12 +78,9 @@ export default function PaginaHistoricoInspecoes() {
                   ativoId: exec.ativo_id,
                   ativo: exec.ativos?.nome || 'Equipamento',
                   local: exec.ativos?.locais?.nome || 'Sala',
-                  tipo: 'Checklist',
+                  variante: exec.modelos_checklist?.nome_variante || 'Checklist',
                   dataHora: formatador.format(dataInspecao),
-                  status,
-                  detalheStatus,
-                  secoesRespondidas: totalItems,
-                  totalSecoes: totalItems
+                  resultado
                 }
               })
 
@@ -105,7 +99,8 @@ export default function PaginaHistoricoInspecoes() {
 
   const filtrados = inspecoes.filter((ins) => {
     if (filtro === 'todas') return true
-    return ins.status === filtro
+    if (filtro === 'conforme') return ins.resultado === 'conforme'
+    return ins.resultado !== 'conforme'
   })
 
   const nomeExibido = usuario?.nome || 'Usuário'
@@ -169,34 +164,81 @@ export default function PaginaHistoricoInspecoes() {
         ) : filtrados.length > 0 ? (
           <div className="bg-white rounded-[24px] shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
             {filtrados.map((ins) => {
-              const dot = ins.status === 'conforme' ? 'bg-emerald-500' : 'bg-red-500'
-              const textColors = ins.status === 'conforme' ? 'text-emerald-600' : 'text-red-500'
+              const cores = {
+                conforme: {
+                  bg: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                  badge: 'Conforme',
+                  iconBg: 'bg-emerald-500',
+                  icon: (
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  )
+                },
+                critico: {
+                  bg: 'bg-red-50 text-red-700 border-red-100',
+                  badge: 'NC Crítica',
+                  iconBg: 'bg-red-500',
+                  icon: (
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                  )
+                },
+                importante: {
+                  bg: 'bg-amber-50 text-amber-700 border-amber-100',
+                  badge: 'NC Importante',
+                  iconBg: 'bg-amber-500',
+                  icon: (
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" />
+                    </svg>
+                  )
+                },
+                informativo: {
+                  bg: 'bg-blue-50 text-blue-700 border-blue-100',
+                  badge: 'NC Informativa',
+                  iconBg: 'bg-blue-500',
+                  icon: (
+                    <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                    </svg>
+                  )
+                }
+              }
+
+              const cfg = cores[ins.resultado as keyof typeof cores] || cores.conforme
 
               return (
                 <button
                   key={ins.id}
                   type="button"
                   onClick={() => router.push(`/inspetor/checklist/${ins.ativoId}?execId=${ins.id}`)}
-                  className="w-full flex items-center justify-between py-4 px-5 hover:bg-gray-50/40 transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center justify-between py-4 px-5 hover:bg-slate-50/50 transition-all text-left cursor-pointer"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    {/* Status Dot */}
-                    <span className={`w-2.5 h-2.5 rounded-full ${dot} shrink-0`} />
+                  <div className="flex items-start gap-3.5 min-w-0">
+                    {/* Status Badge Icon */}
+                    <div className={`w-8 h-8 rounded-full ${cfg.iconBg} flex items-center justify-center shrink-0 shadow-sm mt-0.5`}>
+                      {cfg.icon}
+                    </div>
 
-                    <div className="min-w-0">
-                      <p className="text-[15px] font-bold text-gray-900 leading-tight">
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-[14px] font-bold text-gray-900 tracking-tight">
                         {ins.ativo}
                       </p>
-                      <p className="text-[12px] text-gray-400 mt-1">
-                        {ins.local} · {ins.dataHora}
+                      <p className="text-[12px] text-gray-600 font-medium leading-none">
+                        Ronda: <span className="text-gray-900 font-semibold">{ins.variante}</span>
+                      </p>
+                      <p className="text-[11px] text-gray-400 font-medium">
+                        {ins.local} · Realizada em {ins.dataHora}
                       </p>
                     </div>
                   </div>
 
                   {/* Status do lado direito */}
-                  <div className="flex items-center gap-2 shrink-0 ml-3">
-                    <span className={`text-[13px] font-bold ${textColors}`}>
-                      {ins.detalheStatus}
+                  <div className="flex items-center gap-2.5 shrink-0 ml-3">
+                    <span className={`inline-flex px-3 py-1 rounded-full text-[11px] font-extrabold border uppercase tracking-wider ${cfg.bg}`}>
+                      {cfg.badge}
                     </span>
                     <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />

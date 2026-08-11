@@ -47,6 +47,8 @@ export default function PaginaInicialInspetor() {
               .order('finalizado_em', { ascending: false })
 
             const usuariosMapa = new Map()
+            const execsNcMapa = new Map()
+
             if (execsData && execsData.length > 0) {
               const userIds = Array.from(new Set(execsData.map((e: any) => e.usuario_id)))
               const { data: usersData } = await supabase
@@ -57,21 +59,41 @@ export default function PaginaInicialInspetor() {
               if (usersData) {
                 usersData.forEach((u: any) => usuariosMapa.set(u.id, u.nome))
               }
+
+              const execsIds = execsData.map((e: any) => e.id)
+              const { data: itemsData } = await supabase
+                .from('itens_execucao_checklist')
+                .select('execucao_id, resposta, criticidade')
+                .in('execucao_id', execsIds)
+
+              if (itemsData) {
+                itemsData.forEach((it: any) => {
+                  if (it.resposta === 'nao_conforme') {
+                    const currentHighest = execsNcMapa.get(it.execucao_id)
+                    if (!currentHighest || 
+                        (it.criticidade === 'critico') || 
+                        (it.criticidade === 'importante' && currentHighest !== 'critico')) {
+                      execsNcMapa.set(it.execucao_id, it.criticidade)
+                    }
+                  }
+                })
+              }
             }
 
             const formatados = data.map((ativo: any) => {
-              const ultimaExec = execsData?.find((e: any) => e.ativo_id === ativo.id)
-              let textoInspecao = 'Sem inspeções hoje'
+              const execsDoAtivo = execsData?.filter((e: any) => e.ativo_id === ativo.id) || []
+              const ultimaExec = execsDoAtivo[0]
+              
+              let textoInspecao = 'Sem inspeções registradas'
+              let statusUltima = 'sem_inspecao'
+
               if (ultimaExec) {
                 const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
-                const formatador = new Intl.DateTimeFormat('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
+                const diaMes = dataInspecao.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                const horaMin = dataInspecao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
                 const nomeInspetor = usuariosMapa.get(ultimaExec.usuario_id) || 'Inspetor'
-                textoInspecao = `Insp. por ${nomeInspetor} em ${formatador.format(dataInspecao)}`
+                textoInspecao = `${nomeInspetor} em ${diaMes} às ${horaMin}`
+                statusUltima = execsNcMapa.get(ultimaExec.id) || 'conforme'
               }
 
               return {
@@ -82,6 +104,7 @@ export default function PaginaInicialInspetor() {
                 nome: ativo.nome,
                 localizacao: ativo.locais?.nome || 'Sem localização',
                 ultimaInspecao: textoInspecao,
+                statusUltima
               }
             })
             setAtivos(formatados)
@@ -218,47 +241,68 @@ export default function PaginaInicialInspetor() {
             Nenhum ativo encontrado.
           </div>
         ) : (
-          ativosFiltrados.map((item, i) => (
-            <div
-              key={item.id}
-              onClick={() => router.push(`/inspetor/local/${item.localId}`)}
-              className="bg-white rounded-[24px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.025)] border border-gray-100 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                {/* Info Esquerda */}
-                <div className="space-y-2">
-                  <div>
-                    <PillTag cor={item.corTag}>
-                      {item.tag}
-                    </PillTag>
+          ativosFiltrados.map((item, i) => {
+            const isCarrinho = item.tag?.toLowerCase() === 'carrinho de parada' || item.nome?.toLowerCase().includes('carrinho')
+            return (
+              <div
+                key={item.id}
+                onClick={() => router.push(`/inspetor/local/${item.localId}`)}
+                className="bg-white rounded-[24px] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.025)] border border-gray-100 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <div className="flex items-center justify-between gap-4 w-full">
+                  {/* Info Esquerda */}
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                    {isCarrinho && (
+                      <img 
+                        src="/icon-carrinho.webp" 
+                        alt="Carrinho de Parada" 
+                        className="w-24 h-24 object-contain shrink-0" 
+                      />
+                    )}
+                    <div className="min-w-0 space-y-0.5">
+                      {!isCarrinho && (
+                        <div className="pb-1">
+                          <PillTag cor={item.corTag}>
+                            {item.tag}
+                          </PillTag>
+                        </div>
+                      )}
+                      <h3 className="text-[17px] font-bold text-[#1E293B] tracking-tight break-words">
+                        {item.nome}
+                      </h3>
+                      
+                      <div className="space-y-0.5 pt-1">
+                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider leading-none">
+                          Última inspeção:
+                        </p>
+                        <div className="flex items-center gap-1.5">
+                          {item.statusUltima !== 'sem_inspecao' && (
+                            <span className={[
+                              'w-2 h-2 rounded-full shrink-0',
+                              item.statusUltima === 'critico' ? 'bg-red-500' :
+                              item.statusUltima === 'importante' ? 'bg-amber-500' :
+                              item.statusUltima === 'informativo' ? 'bg-blue-500' : 'bg-emerald-500'
+                            ].join(' ')} />
+                          )}
+                          <span className="text-[13px] font-medium text-slate-600 leading-none">
+                            {item.ultimaInspecao}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-texto tracking-tight">
-                      {item.nome}
-                    </h3>
-                    <p className="text-xs text-gray-500 font-normal mt-0.5">
-                      {item.localizacao}
-                    </p>
-                  </div>
-                  {/* Linha de status com ponto azul */}
-                  <div className="flex items-center gap-1.5 pt-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#246BFD] shrink-0" />
-                    <span className="text-[11px] text-gray-500 font-medium">
-                      {item.ultimaInspecao}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Botão Círculo com Seta (Direita) */}
-                <div className="w-9 h-9 rounded-full bg-[#F4F6FA] flex items-center justify-center text-gray-400 hover:text-texto transition-colors shrink-0 mt-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                  </svg>
+                  {/* Botão Círculo com Seta (Direita) */}
+                  <div className="w-9 h-9 rounded-full bg-[#F4F6FA] flex items-center justify-center text-gray-400 hover:text-texto transition-colors shrink-0">
+                    <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
 

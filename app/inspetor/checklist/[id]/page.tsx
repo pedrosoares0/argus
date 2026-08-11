@@ -172,8 +172,8 @@ export default function PaginaChecklist() {
 
         if (modelosData && modelosData.length > 0) {
           setModelos(modelosData)
-          // Default to 'Completo' model if it exists, otherwise the first one
-          const padrao = modelosData.find((m: any) => m.nome_variante === 'Completo') || modelosData[0]
+          // Default to 'Por plantão' model if it exists, otherwise the first one
+          const padrao = modelosData.find((m: any) => m.nome_variante === 'Por plantão') || modelosData[0]
           setModeloSelecionado(padrao)
         } else {
           setErro('Nenhum modelo de checklist vigente cadastrado para a categoria deste ativo.')
@@ -288,8 +288,8 @@ export default function PaginaChecklist() {
             .getPublicUrl(filePath)
           uploadedUrl = publicUrlData.publicUrl
         } else {
-          console.error('Erro de upload, usando fallback:', uploadError)
-          uploadedUrl = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80'
+          console.error('Erro de upload:', uploadError)
+          uploadedUrl = null
         }
       }
 
@@ -297,7 +297,7 @@ export default function PaginaChecklist() {
         ...prev,
         [modalNcItem.id]: {
           resposta: 'nao_conforme',
-          evidencia_url: uploadedUrl || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80',
+          evidencia_url: uploadedUrl || null,
           evidencia_texto: ncDescricao,
           criticidade: ncCriticidade
         }
@@ -527,23 +527,11 @@ export default function PaginaChecklist() {
                 Visualizando: {modeloSelecionado?.nome_variante || 'Checklist'}
               </span>
             </div>
-          ) : modelos.length > 1 && (
-            <div className="mt-3 flex gap-2">
-              {modelos.map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setModeloSelecionado(m)}
-                  className={[
-                    'px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer',
-                    modeloSelecionado.id === m.id
-                      ? 'bg-[#246BFD] border-[#246BFD] text-white shadow-sm'
-                      : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                  ].join(' ')}
-                >
-                  {m.nome_variante}
-                </button>
-              ))}
+          ) : (
+            <div className="mt-3">
+              <span className="inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-500/10 border border-amber-500/20 text-amber-600">
+                Variante: Por plantão
+              </span>
             </div>
           )}
         </div>

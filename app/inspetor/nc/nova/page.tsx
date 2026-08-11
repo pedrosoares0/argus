@@ -63,8 +63,8 @@ function FormularioNC() {
             .getPublicUrl(filePath)
           uploadedUrl = publicUrlData.publicUrl
         } else {
-          console.error('Erro de upload, usando fallback:', uploadError)
-          uploadedUrl = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80'
+          console.error('Erro de upload:', uploadError)
+          uploadedUrl = null
         }
       }
 
@@ -73,7 +73,7 @@ function FormularioNC() {
         sessionStorage.setItem(`sentry_nc_${secaoId}`, JSON.stringify({
           descricao,
           criticidade,
-          fotoPreview: uploadedUrl || 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80'
+          fotoPreview: uploadedUrl || null
         }))
       }
     } catch (err) {
