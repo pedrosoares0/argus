@@ -456,7 +456,8 @@ export default function PaginaChecklist() {
             nomeAtivo: ativo.nome,
             local: localNome,
             descricao: descricao,
-            criticidade: criticidade
+            criticidade: criticidade,
+            evidenciaUrl: item.evidencia_url || null
           }).catch(err => console.error('Erro de envio de email:', err))
         }
       } else {
@@ -924,6 +925,7 @@ async function enviarEmailResend(dados: {
   local: string
   descricao: string
   criticidade: string
+  evidenciaUrl?: string | null
 }) {
   try {
     const res = await fetch('/api/send-email', {

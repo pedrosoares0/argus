@@ -428,45 +428,29 @@ export default function PaginaLocal() {
           informativo: 'NC Informativa'
         }
 
-        const statusLabel = {
-          aberta: 'Aberta',
-          em_analise: 'Em análise',
-          em_correcao: 'Em correção',
-          aguardando_validacao: 'Aguardando validação',
-          encerrada: 'Encerrada',
-          correcao_recusada: 'Recusada'
-        }
-
         const itemExec = ultimaNc.itens_execucao_checklist || {}
         const exec = itemExec.execucoes_checklist || {}
         const nomeInspetor = exec.usuarios?.nome || 'Inspetor'
         const secaoAfetada = itemExec.item_congelado?.descricao?.split(' — ')[0] || 'Geral'
-        const descricaoEvidencia = itemExec.evidencia_texto || 'Sem descrição detalhada.'
-        const fotoUrl = itemExec.evidencia_url
+        const descricaoEvidencia = itemExec.evidencia_texto || ultimaNc.descricao || 'Sem descrição detalhada.'
+        const fotoUrl = itemExec.evidencia_url || ultimaNc.evidencia_url
         const temFotoReal = fotoUrl && !fotoUrl.includes('unsplash.com')
 
-        const criticidadeEstilos = {
-          critico: {
-            bg: 'bg-red-50/40 border-red-100/50',
-            border: 'border-l-red-500',
-            badge: 'bg-red-50 text-red-700 border-red-100',
-            dot: 'bg-red-500'
-          },
-          importante: {
-            bg: 'bg-amber-50/40 border-amber-100/50',
-            border: 'border-l-amber-500',
-            badge: 'bg-amber-50 text-amber-700 border-amber-100',
-            dot: 'bg-amber-500'
-          },
-          informativo: {
-            bg: 'bg-blue-50/40 border-blue-100/50',
-            border: 'border-l-blue-500',
-            badge: 'bg-blue-50 text-blue-700 border-blue-100',
-            dot: 'bg-blue-500'
-          }
-        }
+        const formatadorDataCurta = new Intl.DateTimeFormat('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+        const dataFormatada = formatadorDataCurta.format(dataCriacao).replace(', ', ' às ')
 
-        const estilo = criticidadeEstilos[ultimaNc.criticidade as keyof typeof criticidadeEstilos] || criticidadeEstilos.informativo
+        const corPill = 
+          ultimaNc.criticidade === 'critico' ? 'vermelho' :
+          ultimaNc.criticidade === 'importante' ? 'laranja' : 'azul'
+
+        const labelPill = 
+          ultimaNc.criticidade === 'critico' ? 'CRÍTICO' :
+          ultimaNc.criticidade === 'importante' ? 'IMPORTANTE' : 'INFORMATIVO'
 
         return (
           <div className="space-y-3">
@@ -474,67 +458,63 @@ export default function PaginaLocal() {
               Última Não Conformidade Aberta
             </p>
 
-            <div className={`bg-white rounded-[24px] p-6 border border-slate-100/80 border-l-4 ${estilo.border} shadow-[0_4px_20px_rgba(0,0,0,0.015)] space-y-4`}>
-              {/* Cabeçalho */}
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md">
-                    {ultimaNc.numero_unico || `NC-${ultimaNc.id.substring(0, 4).toUpperCase()}`}
-                  </span>
-                  <h4 className="text-[17px] font-extrabold text-slate-900 tracking-tight leading-snug">
+            <div className="bg-white rounded-[32px] p-6 shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-gray-100/90 space-y-4">
+              {/* Cabeçalho: Título + Subtítulo + Badge de Criticidade */}
+              <div className="flex items-start justify-between gap-3 min-w-0">
+                <div className="min-w-0 space-y-0.5">
+                  <h3 className="text-[26px] font-bold text-gray-900 tracking-tight leading-tight">
                     {secaoAfetada}
-                  </h4>
+                  </h3>
+                  <p className="text-[13px] text-gray-500 font-medium">
+                    Registrada por {nomeInspetor} em {dataFormatada}
+                  </p>
                 </div>
 
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${estilo.badge}`}>
-                    {criticidadeLabel[ultimaNc.criticidade as keyof typeof criticidadeLabel]}
-                  </span>
+                <div className="shrink-0 pt-1">
+                  <PillTag cor={corPill}>
+                    {labelPill}
+                  </PillTag>
                 </div>
               </div>
 
-              {/* Description Section */}
-              <div className={`rounded-xl p-4 border ${estilo.bg} space-y-2`}>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">
-                  Problema Relatado
+              {/* Bloco: Problema Relatado */}
+              <div className="space-y-1 pt-1">
+                <p className="text-[11px] font-bold text-[#8E9BBA] uppercase tracking-wider">
+                  PROBLEMA RELATADO
                 </p>
-                <p className="text-[14px] text-slate-800 font-semibold leading-relaxed">
+                <p className="text-[17px] font-bold text-gray-900 leading-snug">
                   {descricaoEvidencia}
                 </p>
-
-                {temFotoReal && (
-                  <div className="pt-2">
-                    <img
-                      src={fotoUrl}
-                      alt="Evidência NC"
-                      className="rounded-xl max-h-48 w-full object-cover border border-slate-200/40 shadow-xs"
-                    />
-                  </div>
-                )}
               </div>
 
-              {/* Divider */}
-              <div className="h-px bg-slate-200/50" />
-
-              {/* Footer */}
-              <div className="flex items-center justify-between text-[12px] text-slate-400 font-medium">
-                <div className="flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Registrada por {nomeInspetor} em {formatador.format(dataCriacao)}</span>
+              {/* Imagem de Evidência (Estilo Figma) */}
+              {temFotoReal && (
+                <div className="pt-2">
+                  <div className="relative overflow-hidden rounded-[24px] border border-gray-100 shadow-[0_4px_16px_rgba(0,0,0,0.04)]">
+                    <img
+                      src={fotoUrl}
+                      alt="Evidência da Não Conformidade"
+                      className="w-full h-auto max-h-[320px] object-cover"
+                    />
+                  </div>
                 </div>
+              )}
 
+              {/* Rodapé com Botão e Data */}
+              <div className="pt-2 flex flex-col items-center gap-2">
                 <button
                   type="button"
                   onClick={() => router.push(`/nao-conformidades/${ultimaNc.id}`)}
-                  className="inline-flex items-center gap-1 px-3.5 py-1.5 text-[12px] font-bold text-[#246BFD] bg-white hover:bg-slate-50 border border-slate-100 shadow-[0_1px_4px_rgba(0,0,0,0.02)] active:scale-[0.98] transition-all rounded-full"
+                  className="w-full py-3 rounded-full text-[13px] font-bold text-[#246BFD] bg-[#246BFD]/6 hover:bg-[#246BFD]/12 active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  Ver detalhes
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                  Ver detalhes da NC
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </button>
+                <span className="text-[12px] font-medium text-[#8E9BBA] text-center">
+                  Registrada por {nomeInspetor} em {dataFormatada}
+                </span>
               </div>
             </div>
           </div>
