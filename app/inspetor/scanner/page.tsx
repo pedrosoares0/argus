@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { criarClienteSupabase } from '@/lib/supabase/client'
 
 /**
  * Scanner de QR Code usando getUserMedia do navegador.
@@ -87,26 +88,80 @@ export default function PaginaScanner() {
     animFrameRef.current = requestAnimationFrame(tick)
   }
 
-  function handleQrDetectado(dados: string) {
+  async function handleQrDetectado(dados: string) {
     setEscaneando(false)
     pararCamera()
 
-    // O QR Code contém referência ao local ou ativo
-    // Formato esperado: sentry://local/{id} ou sentry://ativo/{id}
-    const match = dados.match(/sentry:\/\/(local|ativo)\/(.+)/)
-    if (match) {
-      const [, tipo, id] = match
-      if (tipo === 'local') {
-        router.push(`/inspetor/local/${id}`)
-      } else {
-        router.push(`/inspetor/checklist/${id}`)
+    const cleanData = dados.trim()
+
+    try {
+      const supabase = criarClienteSupabase() as any
+
+      // 1. Tentar casar padrão sentry://
+      const match = cleanData.match(/sentry:\/\/(local|ativo)\/(.+)/)
+      if (match) {
+        const [, tipo, id] = match
+        if (tipo === 'local') {
+          router.push(`/inspetor/local/${id}`)
+          return
+        } else {
+          // É um ativo. Consultamos o local_id dele no Supabase para ir para a sala correspondente (RN-025)
+          const { data: ativo } = await supabase
+            .from('ativos')
+            .select('local_id')
+            .eq('id', id)
+            .single()
+          
+          if (ativo) {
+            router.push(`/inspetor/local/${ativo.local_id}`)
+            return
+          }
+          alert('Ativo não encontrado.')
+          setEscaneando(true)
+          iniciarCamera()
+          return
+        }
       }
+
+      // 2. Se for um código puro (ex: "QR-SALA-01" ou "Car.Par1")
+      // Buscar local pelo código QR
+      const { data: local } = await supabase
+        .from('locais')
+        .select('id')
+        .eq('codigo_qr', cleanData)
+        .single()
+
+      if (local) {
+        router.push(`/inspetor/local/${local.id}`)
+        return
+      }
+
+      // Buscar ativo pelo código QR
+      const { data: ativo } = await supabase
+        .from('ativos')
+        .select('local_id')
+        .eq('codigo_qr', cleanData)
+        .single()
+
+      if (ativo) {
+        router.push(`/inspetor/local/${ativo.local_id}`)
+        return
+      }
+
+      alert(`Código QR "${cleanData}" não cadastrado no sistema.`)
+      setEscaneando(true)
+      iniciarCamera()
+    } catch (err) {
+      console.error(err)
+      alert('Erro ao processar o código escaneado.')
+      setEscaneando(true)
+      iniciarCamera()
     }
   }
 
   // Simular detecção para desenvolvimento
   function handleSimularDeteccao() {
-    handleQrDetectado('sentry://local/1')
+    handleQrDetectado('Car.Par1')
   }
 
   return (
