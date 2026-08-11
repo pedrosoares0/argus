@@ -21,14 +21,14 @@ export default function PaginaChecklist() {
   const [itens, setItens] = useState<any[]>([])
   const [respostas, setRespostas] = useState<Record<string, any>>({})
   const [expandida, setExpandida] = useState<string | null>(null)
-  
+
   const [modalNcItem, setModalNcItem] = useState<any | null>(null)
   const [ncDescricao, setNcDescricao] = useState('')
   const [ncCriticidade, setNcCriticidade] = useState<CriticidadeItem>('critico')
   const [ncFotoPreview, setNcFotoPreview] = useState<string | null>(null)
   const [ncFotoFile, setNcFotoFile] = useState<File | null>(null)
   const [ncEnviando, setNcEnviando] = useState(false)
-  
+
   const [carregando, setCarregando] = useState(true)
   const [enviando, setEnviando] = useState(false)
   const [iniciadoEm] = useState(() => new Date().toISOString())
@@ -39,7 +39,7 @@ export default function PaginaChecklist() {
     async function carregarDados() {
       try {
         const supabase = criarClienteSupabase() as any
-        
+
         // 1. Obter usuário logado
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError) {
@@ -54,7 +54,7 @@ export default function PaginaChecklist() {
             .select('*')
             .eq('id', user.id)
             .single()
-          
+
           if (profileError) {
             console.error(profileError)
             setErro(`Erro ao obter perfil: ${profileError.message} (Código ${profileError.code})`)
@@ -116,7 +116,7 @@ export default function PaginaChecklist() {
 
           if (execData) {
             setModeloSelecionado(execData.modelos_checklist)
-            
+
             const { data: itemsExecData, error: itemsExecError } = await supabase
               .from('itens_execucao_checklist')
               .select('*')
@@ -331,7 +331,7 @@ export default function PaginaChecklist() {
     setEnviando(true)
     try {
       const supabase = criarClienteSupabase() as any
-      
+
       // 1. Criar execucoes_checklist
       const { data: exec, error: execError } = await supabase
         .from('execucoes_checklist')
@@ -396,43 +396,31 @@ export default function PaginaChecklist() {
 
       // 3. Garantir a criação das Não Conformidades (fallback da trigger do Postgres) e atualizar status
       const itensNaoConformes = insertedItens.filter((it: any) => it.resposta === 'nao_conforme')
-      
+
       if (itensNaoConformes.length > 0) {
         // Criar as NCs manualmente se a trigger falhar
         for (const item of itensNaoConformes) {
-          const { data: triggerNc } = await supabase
-            .from('nao_conformidades')
-            .select('id')
-            .eq('item_execucao_id', item.id)
-
-          if (!triggerNc || triggerNc.length === 0) {
-            console.log('Trigger de autocriação ausente no banco. Criando NC manualmente...');
-            const { error: insertNcError } = await supabase
+          try {
+            const { data: triggerNc } = await supabase
               .from('nao_conformidades')
-              .insert({
-                hospital_id: ativo.hospital_id,
-                item_execucao_id: item.id,
-                ativo_id: ativo.id,
-                criticidade: item.criticidade,
-                status: 'aberta',
-                descricao: item.evidencia_texto || null,
-                evidencia_url: item.evidencia_url || null,
-                numero_unico: `NC-${new Date().getFullYear()}-${item.id.substring(0, 4).toUpperCase()}`
-              })
+              .select('id')
+              .eq('item_execucao_id', item.id)
 
-            if (insertNcError) {
-              console.error('Erro ao inserir NC manualmente:', insertNcError)
-              throw insertNcError
+            if (!triggerNc || triggerNc.length === 0) {
+              console.log('Trigger de autocriação ausente no banco. Criando NC manualmente...');
+              await supabase
+                .from('nao_conformidades')
+                .insert({
+                  hospital_id: ativo.hospital_id,
+                  item_execucao_id: item.id,
+                  ativo_id: ativo.id,
+                  criticidade: item.criticidade,
+                  status: 'aberta',
+                  numero_unico: `NC-${new Date().getFullYear()}-${item.id.substring(0, 4).toUpperCase()}`
+                })
             }
-          } else {
-            // Garantir que a NC criada pela trigger possua a foto de evidencia_url e a descricao salvas
-            await supabase
-              .from('nao_conformidades')
-              .update({
-                evidencia_url: item.evidencia_url || null,
-                descricao: item.evidencia_texto || null
-              })
-              .eq('id', triggerNc[0].id)
+          } catch (ncErr) {
+            console.error('Erro ao sincronizar NC:', ncErr)
           }
         }
 
@@ -473,13 +461,14 @@ export default function PaginaChecklist() {
           const descricao = item.evidencia_texto || 'Não conformidade registrada no checklist.'
           const criticidade = item.criticidade || 'critico'
           const localNome = `${ativo.locais?.unidade || ''} - ${ativo.locais?.nome || ''}`
-          
+
           await enviarEmailResend({
             nomeAtivo: ativo.nome,
             local: localNome,
             descricao: descricao,
             criticidade: criticidade,
-            evidenciaUrl: item.evidencia_url || null
+            evidenciaUrl: item.evidencia_url || null,
+            nomeInspetor: usuario?.nome || 'Inspetor'
           }).catch(err => console.error('Erro de envio de email:', err))
         }
       } else {
@@ -539,7 +528,7 @@ export default function PaginaChecklist() {
       <div className="bg-white rounded-[24px] p-6 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 space-y-4">
         <div>
           <h1 className="text-xl font-bold text-gray-900 tracking-tight">{ativo.nome}</h1>
-          
+
           {/* Seletor de Modelo */}
           {isReadOnly ? (
             <div className="mt-2.5">
@@ -550,7 +539,7 @@ export default function PaginaChecklist() {
           ) : (
             <div className="mt-2.5">
               <span className="inline-flex px-3.5 py-1.5 rounded-full text-xs font-bold bg-amber-50 border border-amber-200/60 text-amber-700">
-                Variante: Por plantão
+                Modalidade: Por plantão
               </span>
             </div>
           )}
@@ -794,7 +783,7 @@ export default function PaginaChecklist() {
       {modalNcItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
           <div className="bg-white rounded-[28px] p-6 max-w-sm w-full shadow-2xl border border-gray-100/80 space-y-5 animate-[scaleIn_0.15s_ease-out] overflow-y-auto max-h-[90vh]">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between pb-1">
               <div>
@@ -832,7 +821,7 @@ export default function PaginaChecklist() {
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
                 Evidência Fotográfica
               </label>
-              
+
               <input
                 type="file"
                 accept="image/*"
@@ -945,6 +934,7 @@ async function enviarEmailResend(dados: {
   descricao: string
   criticidade: string
   evidenciaUrl?: string | null
+  nomeInspetor?: string
 }) {
   try {
     const res = await fetch('/api/send-email', {

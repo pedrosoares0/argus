@@ -22,7 +22,27 @@ export async function POST(request: Request) {
       dados.criticidade === 'critico' ? 'NC CRÍTICA' :
       dados.criticidade === 'importante' ? 'NC IMPORTANTE' : 'NC INFORMATIVA'
 
-    const temFoto = dados.evidenciaUrl && typeof dados.evidenciaUrl === 'string' && dados.evidenciaUrl.trim() !== '' && !dados.evidenciaUrl.includes('unsplash.com')
+    const nomeAtivo = dados.nomeAtivo || 'Equipamento'
+    const nomeInspetor = dados.nomeInspetor || 'Inspetor'
+    const temFoto = Boolean(dados.evidenciaUrl && typeof dados.evidenciaUrl === 'string' && dados.evidenciaUrl.trim() !== '')
+
+    // Configurar anexos do Resend caso a imagem seja Base64
+    const attachments: any[] = []
+    if (temFoto && dados.evidenciaUrl.startsWith('data:image/')) {
+      try {
+        const matches = dados.evidenciaUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/)
+        if (matches && matches.length === 3) {
+          const ext = matches[1].split('/')[1] || 'png'
+          const base64Content = matches[2]
+          attachments.push({
+            content: base64Content,
+            filename: `evidencia_nc.${ext}`
+          })
+        }
+      } catch (e) {
+        console.error('Erro ao processar anexo de imagem:', e)
+      }
+    }
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -60,15 +80,20 @@ export async function POST(request: Request) {
                     Nova Não Conformidade Aberta
                   </h1>
                   <p style="margin: 0 0 20px 0; font-size: 13px; color: #64748B; font-weight: 500;">
-                    Uma ocorrência foi registrada durante a inspeção e requer atenção.
+                    Uma ocorrência foi registrada durante a inspeção e requer atenção imediata.
                   </p>
 
                   <!-- Card Detalhes -->
                   <div style="background-color: #F8FAFC; border-radius: 16px; padding: 18px; border: 1px solid #F1F5F9; margin-bottom: 20px;">
                     
                     <div style="margin-bottom: 14px;">
+                      <div style="font-size: 10px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">REGISTRADO POR</div>
+                      <div style="font-size: 15px; font-weight: 700; color: #0F172A;">${nomeInspetor}</div>
+                    </div>
+
+                    <div style="margin-bottom: 14px;">
                       <div style="font-size: 10px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">ATIVO</div>
-                      <div style="font-size: 16px; font-weight: 700; color: #0F172A;">${dados.nomeAtivo}</div>
+                      <div style="font-size: 16px; font-weight: 700; color: #0F172A;">${nomeAtivo}</div>
                     </div>
 
                     <div>
@@ -82,8 +107,8 @@ export async function POST(request: Request) {
                   ${temFoto ? `
                   <div style="margin-bottom: 20px;">
                     <div style="font-size: 10px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">FOTO DE EVIDÊNCIA</div>
-                    <div style="border-radius: 16px; overflow: hidden; border: 1px solid #E2E8F0; background-color: #000000;">
-                      <img src="${dados.evidenciaUrl}" alt="Evidência NC" style="width: 100%; max-height: 320px; object-fit: cover; display: block;" />
+                    <div style="border-radius: 16px; overflow: hidden; border: 1px solid #E2E8F0; background-color: #F8FAFC;">
+                      <img src="${dados.evidenciaUrl}" alt="Evidência NC" style="width: 100%; max-height: 340px; object-fit: cover; display: block;" />
                     </div>
                   </div>
                   ` : ''}
@@ -118,18 +143,24 @@ export async function POST(request: Request) {
     for (const to of destinatarios) {
       try {
         console.log(`Enviando email via Resend para: ${to}`)
+        const payloadResend: any = {
+          from: 'Sentry <onboarding@resend.dev>',
+          to: to,
+          subject: `[Sentry - ${criticidadeLabel}] ${nomeAtivo}`,
+          html: htmlContent
+        }
+
+        if (attachments.length > 0) {
+          payloadResend.attachments = attachments
+        }
+
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
           },
-          body: JSON.stringify({
-            from: 'Sentry <onboarding@resend.dev>',
-            to: to,
-            subject: `[Sentry] Nova NC Registrada: ${dados.nomeAtivo}`,
-            html: htmlContent
-          })
+          body: JSON.stringify(payloadResend)
         })
 
         const text = await res.text()

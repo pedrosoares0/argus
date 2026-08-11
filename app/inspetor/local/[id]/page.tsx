@@ -260,11 +260,11 @@ export default function PaginaLocal() {
     : null
 
   const statusLabel = temNcAberta
-    ? maiorCriticidade === 'critico' ? 'NÃO PRONTA' : maiorCriticidade === 'importante' ? 'COM RESTRIÇÃO' : 'INFORMATIVO'
-    : 'PRONTA'
+    ? maiorCriticidade === 'critico' ? 'CRÍTICO' : 'IMPORTANTE'
+    : 'PRONTO'
 
   const statusCor = temNcAberta
-    ? maiorCriticidade === 'critico' ? 'vermelho' : maiorCriticidade === 'importante' ? 'laranja' : 'azul'
+    ? maiorCriticidade === 'critico' ? 'vermelho' : 'laranja'
     : 'verde'
 
   const ativoPrincipal = ativos[0]
