@@ -46,7 +46,7 @@ export default function PaginaLocal() {
     async function carregarDados() {
       try {
         const supabase = criarClienteSupabase() as any
-        
+
         // Buscar detalhes do local
         const { data: localData, error: localError } = await supabase
           .from('locais')
@@ -87,7 +87,7 @@ export default function PaginaLocal() {
         if (ativosData) {
           if (ativosData.length > 0) {
             const ativosIds = ativosData.map((a: any) => a.id)
-            
+
             // Buscar execuções concluídas para esses ativos (com joins para carregar dados históricos completos)
             const { data: execsData, error: execsError } = await supabase
               .from('execucoes_checklist')
@@ -108,14 +108,14 @@ export default function PaginaLocal() {
                 .from('itens_execucao_checklist')
                 .select('execucao_id, resposta, criticidade, item_congelado')
                 .in('execucao_id', execsIds)
-              
+
               if (itemsData) {
                 itemsData.forEach((it: any) => {
                   if (it.resposta === 'nao_conforme') {
                     const currentHighest = execsNcMapa.get(it.execucao_id)
-                    if (!currentHighest || 
-                        (it.criticidade === 'critico') || 
-                        (it.criticidade === 'importante' && currentHighest !== 'critico')) {
+                    if (!currentHighest ||
+                      (it.criticidade === 'critico') ||
+                      (it.criticidade === 'importante' && currentHighest !== 'critico')) {
                       execsNcMapa.set(it.execucao_id, it.criticidade)
                     }
                   }
@@ -125,16 +125,16 @@ export default function PaginaLocal() {
                 const ultimaExecId = execsData[0].id
                 const ultimoItems = itemsData.filter((it: any) => it.execucao_id === ultimaExecId)
                 const secoesMapa = new Map<string, { resposta: string; criticidade: string }>()
-                
+
                 ultimoItems.forEach((it: any) => {
                   const desc = it.item_congelado?.descricao || ''
                   const secao = desc.split(' — ')[0] || 'Outros'
-                  
+
                   const atual = secoesMapa.get(secao)
                   if (it.resposta === 'nao_conforme') {
-                    if (!atual || atual.resposta === 'conforme' || 
-                        (it.criticidade === 'critico') || 
-                        (it.criticidade === 'importante' && atual.criticidade !== 'critico')) {
+                    if (!atual || atual.resposta === 'conforme' ||
+                      (it.criticidade === 'critico') ||
+                      (it.criticidade === 'importante' && atual.criticidade !== 'critico')) {
                       secoesMapa.set(secao, { resposta: 'nao_conforme', criticidade: it.criticidade })
                     }
                   } else if (!atual) {
@@ -253,10 +253,10 @@ export default function PaginaLocal() {
   const temNcAberta = ncs.length > 0
   const maiorCriticidade = temNcAberta
     ? ncs.reduce((acc, curr) => {
-        if (curr.criticidade === 'critico') return 'critico'
-        if (curr.criticidade === 'importante' && acc !== 'critico') return 'importante'
-        return acc
-      }, 'informativo')
+      if (curr.criticidade === 'critico') return 'critico'
+      if (curr.criticidade === 'importante' && acc !== 'critico') return 'importante'
+      return acc
+    }, 'informativo')
     : null
 
   const statusLabel = temNcAberta
@@ -299,10 +299,10 @@ export default function PaginaLocal() {
         <div className="flex items-start justify-between gap-3 mb-1 min-w-0">
           <div className="flex items-start gap-3.5 min-w-0">
             {isCarrinho && (
-              <img 
-                src="/icon-carrinho.webp" 
-                alt="Carrinho de Parada" 
-                className="w-24 h-24 object-contain shrink-0 mt-0.5" 
+              <img
+                src="/icon-carrinho2.webp"
+                alt="Carrinho de Parada"
+                className="w-24 h-24 object-contain shrink-0 mt-0.5"
               />
             )}
             <div className="min-w-0">
@@ -332,11 +332,11 @@ export default function PaginaLocal() {
               {ultimoChecklistItens.map((item, idx) => {
                 const isNc = item.resposta === 'nao_conforme'
                 return (
-                  <div 
-                    key={idx} 
+                  <div
+                    key={idx}
                     className={[
                       'flex items-center justify-between px-3 py-2 rounded-xl transition-all',
-                      isNc 
+                      isNc
                         ? item.criticidade === 'critico'
                           ? 'bg-red-50/60 border border-red-100/40 shadow-[0_1px_4px_rgba(239,68,68,0.03)]'
                           : 'bg-amber-50/60 border border-amber-100/40 shadow-[0_1px_4px_rgba(245,158,11,0.03)]'
@@ -346,7 +346,7 @@ export default function PaginaLocal() {
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={[
                         'w-2 h-2 rounded-full shrink-0',
-                        isNc 
+                        isNc
                           ? item.criticidade === 'critico' ? 'bg-red-500' : 'bg-amber-500'
                           : 'bg-emerald-500'
                       ].join(' ')} />
@@ -357,10 +357,10 @@ export default function PaginaLocal() {
                         {item.secao}
                       </span>
                     </div>
-                    
+
                     <span className={[
                       'text-[11px] font-bold uppercase tracking-wider',
-                      isNc 
+                      isNc
                         ? item.criticidade === 'critico' ? 'text-red-650' : 'text-amber-650'
                         : 'text-emerald-650'
                     ].join(' ')}>
@@ -473,7 +473,7 @@ export default function PaginaLocal() {
             <p className="text-[12px] font-bold text-slate-400 tracking-wider uppercase px-1">
               Última Não Conformidade Aberta
             </p>
-            
+
             <div className={`bg-white rounded-[24px] p-6 border border-slate-100/80 border-l-4 ${estilo.border} shadow-[0_4px_20px_rgba(0,0,0,0.015)] space-y-4`}>
               {/* Cabeçalho */}
               <div className="flex items-start justify-between gap-4">
@@ -485,7 +485,7 @@ export default function PaginaLocal() {
                     {secaoAfetada}
                   </h4>
                 </div>
-                
+
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${estilo.badge}`}>
                     {criticidadeLabel[ultimaNc.criticidade as keyof typeof criticidadeLabel]}
@@ -504,10 +504,10 @@ export default function PaginaLocal() {
 
                 {temFotoReal && (
                   <div className="pt-2">
-                    <img 
-                      src={fotoUrl} 
-                      alt="Evidência NC" 
-                      className="rounded-xl max-h-48 w-full object-cover border border-slate-200/40 shadow-xs" 
+                    <img
+                      src={fotoUrl}
+                      alt="Evidência NC"
+                      className="rounded-xl max-h-48 w-full object-cover border border-slate-200/40 shadow-xs"
                     />
                   </div>
                 )}
@@ -560,7 +560,7 @@ export default function PaginaLocal() {
           <div className="flex items-center gap-3">
             {/* Filtro de Data */}
             {historicoAberto && (
-              <div 
+              <div
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1.5 bg-white border border-gray-200/60 rounded-full px-2.5 py-1 shadow-xs"
               >

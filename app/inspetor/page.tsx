@@ -255,7 +255,7 @@ export default function PaginaInicialInspetor() {
                   <div className="flex items-center gap-4 min-w-0 flex-1">
                     {isCarrinho && (
                       <img 
-                        src="/icon-carrinho.webp" 
+                        src="/icon-carrinho2.webp" 
                         alt="Carrinho de Parada" 
                         className="w-24 h-24 object-contain shrink-0" 
                       />
