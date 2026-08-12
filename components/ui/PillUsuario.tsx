@@ -49,12 +49,12 @@ export function PillUsuario({ nome, perfil, className = '', onClick }: PillUsuar
       type="button"
       onClick={onClick}
       className={[
-        'inline-flex items-center gap-2',
+        'inline-flex items-center gap-1.5',
         'bg-white',
         'rounded-full',
-        'pl-1 pr-3 py-1',
-        'shadow-[0_2px_8px_rgba(0,0,0,0.04)]',
-        'border border-gray-100',
+        'pl-1 pr-2.5 py-0.5',
+        'shadow-[0_2px_8px_rgba(0,0,0,0.03)]',
+        'border border-gray-100/80',
         'cursor-pointer hover:bg-gray-50 active:scale-[0.97] transition-all duration-200 outline-none select-none',
         className,
       ].join(' ')}
@@ -63,11 +63,11 @@ export function PillUsuario({ nome, perfil, className = '', onClick }: PillUsuar
         <Avatar.Image alt={nomeLimpo} src={avatarUrl} />
         <Avatar.Fallback>{iniciais}</Avatar.Fallback>
       </Avatar>
-      <div className="flex flex-col items-start leading-none text-left select-none">
-        <span className="text-[8.5px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+      <div className="flex flex-col items-start leading-none text-left select-none pr-0.5">
+        <span className="text-[7.5px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
           {funcao}
         </span>
-        <span className="text-[12px] font-extrabold text-gray-800 tracking-tight">
+        <span className="text-[11px] font-extrabold text-gray-800 tracking-tight">
           {nomeLimpo}
         </span>
       </div>

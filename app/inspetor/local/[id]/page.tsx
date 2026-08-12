@@ -39,6 +39,7 @@ export default function PaginaLocal() {
   const [ultimoChecklistItens, setUltimoChecklistItens] = useState<any[]>([])
   const [dataFiltro, setDataFiltro] = useState('')
   const [historicoAberto, setHistoricoAberto] = useState(false)
+  const [ncAbertaExpandida, setNcAbertaExpandida] = useState(false)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [fotoExpandida, setFotoExpandida] = useState<string | null>(null)
@@ -290,22 +291,26 @@ export default function PaginaLocal() {
         Voltar
       </Link>
       {/* ── Card Principal: Ativo / Sala ── */}
-      <div className="bg-white rounded-2xl sm:rounded-[24px] p-4 sm:p-5 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80">
+      <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/80">
         {/* Nome + Badge de Prontidão */}
-        <div className="flex items-start justify-between gap-3 mb-1 min-w-0">
-          <div className="flex items-start gap-3 min-w-0">
+        <div className="flex items-center justify-between gap-3 mb-1 min-w-0">
+          <div className="flex items-center gap-3.5 min-w-0">
             {isCarrinho && (
-              <img
-                src="/icon-carrinho.webp"
-                alt="Carrinho de Parada"
-                className="w-16 h-16 object-contain shrink-0 mt-0.5"
-              />
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/30">
+                <img
+                  src="/icon-carrinho.webp"
+                  alt="Carrinho de Parada"
+                  className="w-full h-full object-cover"
+                />
+                {/* Sombra interna branca (innershadow branco) */}
+                <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_2.5px_8px_rgba(255,255,255,0.95)] border border-white/25" />
+              </div>
             )}
-            <div className="min-w-0">
-              <h1 className="text-base sm:text-[20px] font-bold text-gray-900 tracking-tight leading-tight">
+            <div className="min-w-0 space-y-0.5">
+              <h1 className="text-sm sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
                 {tituloExibido}
               </h1>
-              <p className="text-xs text-gray-500 mt-0.5">{subtituloExibido}</p>
+              <p className="text-xs text-gray-500 font-semibold">{subtituloExibido}</p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-1.5 shrink-0">
@@ -320,35 +325,35 @@ export default function PaginaLocal() {
 
         {/* Prontidão Visual */}
         <div className="space-y-2">
-          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
             Itens do Checklist e Avaliação
           </p>
           {ultimoChecklistItens.length > 0 ? (
-            <div className="space-y-1.5 mt-2 bg-slate-50/50 rounded-xl p-3 border border-slate-100/60">
+            <div className="space-y-2 mt-2 bg-[#F4F6FA]/50 rounded-[20px] p-3.5 border border-gray-100/80">
               {ultimoChecklistItens.map((item, idx) => {
                 const isNc = item.resposta === 'nao_conforme'
                 return (
                   <div
                     key={idx}
                     className={[
-                      'flex items-center justify-between px-2.5 py-1.5 rounded-xl transition-all',
+                      'flex items-center justify-between px-3 py-2 rounded-xl transition-all border',
                       isNc
                         ? item.criticidade === 'critico'
-                          ? 'bg-red-50/60 border border-red-100/40 shadow-[0_1px_4px_rgba(239,68,68,0.03)]'
-                          : 'bg-amber-50/60 border border-amber-100/40 shadow-[0_1px_4px_rgba(245,158,11,0.03)]'
-                        : 'bg-white border border-slate-100/40 shadow-[0_1px_3px_rgba(0,0,0,0.015)]'
+                          ? 'bg-red-50/70 border-red-200/40 shadow-[0_1px_4px_rgba(239,68,68,0.02)]'
+                          : 'bg-amber-50/70 border-amber-200/40 shadow-[0_1px_4px_rgba(245,158,11,0.02)]'
+                        : 'bg-white border-gray-100/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)]'
                     ].join(' ')}
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={[
-                        'w-2 h-2 rounded-full shrink-0',
+                        'w-1.5 h-1.5 rounded-full shrink-0',
                         isNc
                           ? item.criticidade === 'critico' ? 'bg-red-500' : 'bg-amber-500'
                           : 'bg-emerald-500'
                       ].join(' ')} />
                       <span className={[
                         'text-xs truncate',
-                        isNc ? 'text-slate-900 font-bold' : 'text-slate-700 font-medium'
+                        isNc ? 'text-slate-900 font-bold' : 'text-slate-700 font-semibold'
                       ].join(' ')}>
                         {item.secao}
                       </span>
@@ -428,69 +433,85 @@ export default function PaginaLocal() {
             ultimaNc.criticidade === 'importante' ? 'Importante' : 'Informativo'
 
         return (
-          <div className="space-y-2.5">
-            <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 tracking-wider uppercase px-1">
-              Última Não Conformidade Aberta
-            </p>
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={() => setNcAbertaExpandida(!ncAbertaExpandida)}
+              className="w-full flex items-center justify-between px-1 cursor-pointer select-none py-1 group"
+            >
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
+                Última Não Conformidade Aberta
+              </p>
+              <svg
+                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${ncAbertaExpandida ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
 
-            <div className="bg-white rounded-2xl sm:rounded-[24px] p-4 sm:p-5 shadow-[0_2px_16px_rgba(0,0,0,0.03)] border border-gray-100/90 space-y-4">
-              {/* Cabeçalho: Título + Subtítulo + Badge */}
-              <div className="flex items-start justify-between gap-3 min-w-0">
-                <div className="min-w-0 space-y-0.5">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
-                    {secaoAfetada}
-                  </h3>
-                  <p className="text-xs text-gray-400 font-medium">
-                    Registrada por {nomeInspetor} em {dataFormatada}
-                  </p>
-                </div>
-
-                <div className="shrink-0 pt-0.5">
-                  <PillTag cor={corPill} className="scale-90 sm:scale-100 origin-right">
-                    {labelPill}
-                  </PillTag>
-                </div>
-              </div>
-
-              {/* Bloco: Problema Relatado */}
-              <div className="space-y-0.5">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  PROBLEMA RELATADO
-                </p>
-                <p className="text-sm font-bold text-gray-900 leading-snug">
-                  {descricaoEvidencia}
-                </p>
-              </div>
-
-              {/* Imagem de Evidência com Borderglass & Cantos Arredondados */}
-              {temFotoReal && (
-                <div className="space-y-2 pt-0.5">
-                  <div 
-                    onClick={() => setFotoExpandida(fotoUrl)}
-                    className="relative overflow-hidden rounded-xl border border-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.06)] ring-1 ring-black/5 cursor-pointer hover:opacity-98 transition-all group"
-                  >
-                    <img
-                      src={fotoUrl}
-                      alt="Evidência da Não Conformidade"
-                      className="w-full h-auto max-h-[180px] sm:max-h-[220px] object-cover group-hover:scale-[1.01] transition-transform duration-300 rounded-xl"
-                    />
-                    {/* Overlay de Borda de Vidro Ultra-Subtil & Delicada */}
-                    <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/70 shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)] ring-1 ring-inset ring-white/40" />
-                  </div>
-
-                  {/* Informação de quem tirou e quando (Embaixo da imagem) */}
-                  <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium px-0.5 pt-0.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0c-.693.044-1.336.438-1.736 1.039l-.822 1.316Z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-                      </svg>
-                      <span className="truncate">Registrada por <strong className="text-gray-700 font-semibold">{nomeInspetor}</strong></span>
+            <div className={`grid transition-all duration-300 ease-in-out ${ncAbertaExpandida ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0 pointer-events-none mt-0'}`}>
+              <div className="overflow-hidden">
+                <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/90 space-y-4 mb-2">
+                  {/* Cabeçalho: Título + Subtítulo + Badge */}
+                  <div className="flex items-start justify-between gap-3 min-w-0">
+                    <div className="min-w-0 space-y-0.5">
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
+                        {secaoAfetada}
+                      </h3>
+                      <p className="text-xs text-gray-400 font-medium">
+                        Registrada por {nomeInspetor} em {dataFormatada}
+                      </p>
                     </div>
-                    <span className="text-gray-450 font-semibold shrink-0">{dataFormatada}</span>
+
+                    <div className="shrink-0 pt-0.5">
+                      <PillTag cor={corPill} className="scale-90 sm:scale-100 origin-right">
+                        {labelPill}
+                      </PillTag>
+                    </div>
                   </div>
+
+                  {/* Bloco: Problema Relatado */}
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      PROBLEMA RELATADO
+                    </p>
+                    <p className="text-sm font-bold text-gray-900 leading-snug">
+                      {descricaoEvidencia}
+                    </p>
+                  </div>
+
+                  {/* Imagem de Evidência com Borderglass & Cantos Arredondados */}
+                  {temFotoReal && (
+                    <div className="space-y-2 pt-0.5">
+                      <div 
+                        onClick={() => setFotoExpandida(fotoUrl)}
+                        className="relative overflow-hidden rounded-xl border border-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.06)] ring-1 ring-black/5 cursor-pointer hover:opacity-98 transition-all group"
+                      >
+                        <img
+                          src={fotoUrl}
+                          alt="Evidência da Não Conformidade"
+                          className="w-full h-auto max-h-[180px] sm:max-h-[220px] object-cover group-hover:scale-[1.01] transition-transform duration-300 rounded-xl"
+                        />
+                        {/* Overlay de Borda de Vidro Ultra-Subtil & Delicada */}
+                        <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/70 shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)] ring-1 ring-inset ring-white/40" />
+                      </div>
+
+                      {/* Informação de quem tirou e quando (Embaixo da imagem) */}
+                      <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium px-0.5 pt-0.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0c-.693.044-1.336.438-1.736 1.039l-.822 1.316Z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                          </svg>
+                          <span className="truncate">Registrada por <strong className="text-gray-700 font-semibold">{nomeInspetor}</strong></span>
+                        </div>
+                        <span className="text-gray-450 font-semibold shrink-0">{dataFormatada}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )
@@ -592,9 +613,6 @@ export default function PaginaLocal() {
                             <p className="text-sm font-bold text-gray-900 tracking-tight leading-tight">
                               Ronda: {ins.variante}
                             </p>
-                            <PillTag cor={corPill} className="!text-[10px] !pl-1.5 !pr-2.5 !py-0.5 gap-1 shrink-0 scale-90 origin-left">
-                              {labelPill}
-                            </PillTag>
                           </div>
                           <p className="text-xs text-gray-600 font-medium leading-none">
                             Inspetor: <span className="text-gray-900 font-semibold">{ins.usuario}</span>

@@ -147,15 +147,15 @@ function FormularioLogin() {
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center px-5 py-8 bg-[#F4F6FA] select-none">
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center px-5 py-8 bg-gradient-to-b from-[#79C7FF] via-[#79C7FF]/5 to-[#FAFAFC] to-[50%] select-none">
       <div className="w-full max-w-sm space-y-8 animate-[fadeIn_0.3s_ease-out]">
         
         {/* Cabeçalho de Identidade (Sem mascote blop) */}
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">
             Sentry
           </h1>
-          <p className="text-sm text-gray-400 font-semibold mt-1.5 leading-snug">
+          <p className="text-sm text-white/80 font-semibold mt-1.5 leading-snug">
             Plataforma de Prontidão Operacional <br /> do Centro Cirúrgico
           </p>
 

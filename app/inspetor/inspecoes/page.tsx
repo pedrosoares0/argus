@@ -33,7 +33,7 @@ export default function PaginaHistoricoInspecoes() {
             const { data: execsData, error: execsError } = await supabase
               .from('execucoes_checklist')
               .select('*, ativos(*, locais(*)), modelos_checklist(nome_variante)')
-              .eq('hospital_id', profile.hospital_id)
+              .eq('usuario_id', profile.id)
               .eq('status', 'concluida')
               .order('finalizado_em', { ascending: false })
 
@@ -242,9 +242,6 @@ export default function PaginaHistoricoInspecoes() {
                         <p className="text-sm font-bold text-gray-900 tracking-tight leading-tight">
                           {ins.ativo}
                         </p>
-                        <PillTag cor={corPill} className="!text-[10px] !pl-1.5 !pr-2.5 !py-0.5 gap-1 shrink-0 scale-90 origin-left">
-                          {labelPill}
-                        </PillTag>
                       </div>
                       <p className="text-xs text-gray-600 font-medium leading-none">
                         Ronda: <span className="text-gray-900 font-semibold">{ins.variante}</span>

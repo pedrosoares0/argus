@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "Sentry — Prontidão Operacional",
   description:
     "Plataforma de prontidão operacional do centro cirúrgico. Verifique se ativos, salas e centros estão prontos para operar com segurança.",
+  icons: {
+    icon: "/favicon.webp",
+    shortcut: "/favicon.webp",
+    apple: "/favicon.webp",
+  },
 };
 
 export const viewport: Viewport = {
@@ -26,6 +31,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap"
           rel="stylesheet"
         />
+        <link rel="icon" type="image/webp" href="/favicon.webp" />
+        <link rel="apple-touch-icon" href="/favicon.webp" />
       </head>
       <body className="bg-fundo text-texto antialiased">
         <LenisProvider>{children}</LenisProvider>

@@ -16,7 +16,7 @@
 
 @theme {
   /* ---- Cores do sistema ---- */
-  --color-fundo: #F4F6FA;
+  --color-fundo: #FAFAFC;
   --color-superficie: #FFFFFF;
   --color-superficie-secundaria: #F8FAFC;
 
@@ -67,7 +67,7 @@ html {
 
 body {
   min-height: 100dvh;
-  background-color: #F4F6FA;
+  background-color: #FAFAFC;
 }
 
 /* Feedback tátil suave */

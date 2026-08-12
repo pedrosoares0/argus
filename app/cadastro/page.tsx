@@ -29,8 +29,7 @@ export default function PaginaCadastro() {
   const [nomeCompleto, setNomeCompleto] = useState('')
   const [email, setEmail] = useState('')
   const [numeroConselho, setNumeroConselho] = useState('')
-  const [statusValidacao, setStatusValidacao] = useState<'idle' | 'validando' | 'valido' | 'nao_encontrado'>('idle')
-  const [infoConselho, setInfoConselho] = useState<{ nome: string; tipo: string; situacao: string } | null>(null)
+
 
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
@@ -64,39 +63,7 @@ export default function PaginaCadastro() {
     carregarHospitais()
   }, [])
 
-  // Validação em tempo real do número do conselho (CRM, COREN, CREA)
-  useEffect(() => {
-    if (!numeroConselho || numeroConselho.trim().length < 4) {
-      setStatusValidacao('idle')
-      setInfoConselho(null)
-      return
-    }
 
-    setStatusValidacao('validando')
-    const timer = setTimeout(async () => {
-      try {
-        const res = await fetch('/api/validar-conselho', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ numeroConselho: numeroConselho.trim() })
-        })
-        const data = await res.json()
-        if (data.valido) {
-          setStatusValidacao('valido')
-          setInfoConselho(data.profissional)
-        } else {
-          setStatusValidacao('nao_encontrado')
-          setInfoConselho(null)
-        }
-      } catch (err) {
-        console.error('Erro na validação do conselho:', err)
-        setStatusValidacao('nao_encontrado')
-        setInfoConselho(null)
-      }
-    }, 450)
-
-    return () => clearTimeout(timer)
-  }, [numeroConselho])
 
   async function handleCadastrar(e: React.FormEvent) {
     e.preventDefault()
@@ -274,30 +241,6 @@ export default function PaginaCadastro() {
                 className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
               />
 
-              {/* Status de Validação do Conselho */}
-              {statusValidacao === 'validando' && (
-                <p className="text-[11px] font-semibold text-slate-400 mt-1 ml-1 flex items-center gap-1.5 animate-pulse">
-                  <span>🔍 Verificando conselho profissional...</span>
-                </p>
-              )}
-
-              {statusValidacao === 'valido' && infoConselho && (
-                <div className="mt-1.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-xs font-semibold flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <span>
-                    Verificado: <strong>{infoConselho.nome}</strong> ({infoConselho.tipo})
-                  </span>
-                </div>
-              )}
-
-              {statusValidacao === 'nao_encontrado' && (
-                <div className="mt-1.5 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/60 text-amber-700 text-xs font-medium flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                  <span>
-                    Registro não encontrado na base oficial. <strong>Cadastro de teste liberado normalmente.</strong>
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Perfil / Cargo — Seletor por Avatares */}

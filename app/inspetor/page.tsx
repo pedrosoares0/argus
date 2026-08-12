@@ -169,28 +169,40 @@ export default function PaginaInicialInspetor() {
   return (
     <div className="px-4 sm:px-5 pt-2 space-y-4 sm:space-y-5">
 
-      {/* Card Principal: Leitura do Carrinho / Scan Rápido */}
-      <div className="bg-white rounded-2xl sm:rounded-[24px] p-4 sm:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100 text-center space-y-3.5">
-        {/* Ícone de Câmera 3D macOS */}
-        <div className="mx-auto w-12 h-12 flex items-center justify-center">
+      {/* Card Principal: Leitura do Carrinho / Scan Rápido (Glassmorphism limpo) */}
+      <div 
+        style={{
+          width: '100%',
+          maxWidth: '420px',
+          height: '280px',
+          borderRadius: '41px',
+          background: 'rgba(255, 255, 255, 0.18)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          boxShadow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 1.5px 1.5px 0 rgba(255, 255, 255, 0.25), inset 0 0 8px rgba(255, 255, 255, 0.1), 0 8px 24px rgba(0, 0, 0, 0.05)'
+        }}
+        className="mx-auto flex flex-col justify-center items-center p-6 text-center space-y-4 select-none"
+      >
+        {/* Ícone de Câmera 3D macOS com cantos arredondados */}
+        <div className="w-12 h-12 rounded-[12px] overflow-hidden drop-shadow-[0_8px_16px_rgba(0,0,0,0.1)] active:scale-95 transition-transform shrink-0">
           <img 
             src="/icon-camera-macos.png" 
             alt="Câmera Scanner" 
-            className="w-12 h-12 object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.12)] active:scale-95 transition-transform" 
+            className="w-full h-full object-cover" 
           />
         </div>
 
         <div>
-          <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
+          <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight leading-tight">
             Conferência Rápida
           </h2>
-          <p className="text-xs sm:text-[13px] text-gray-500 font-medium leading-relaxed mt-0.5 max-w-xs mx-auto">
+          <p className="text-xs sm:text-[13px] text-slate-600 font-medium leading-relaxed mt-1 max-w-xs mx-auto">
             Aponte a câmera para a etiqueta do equipamento para abrir a verificação de prontidão.
           </p>
         </div>
 
-        {/* Botão de Câmera */}
-        <div className="pt-0.5 flex flex-col items-center gap-2.5">
+        {/* Botão de Câmera e Digitar código */}
+        <div className="flex flex-col items-center gap-2 shrink-0">
           <Botao
             variante="primario"
             tamanho="md"
@@ -201,32 +213,22 @@ export default function PaginaInicialInspetor() {
               </svg>
             }
           >
-            Escanear etiqueta
+            Escanear
           </Botao>
 
-          {/* Botão Digitar Código */}
           <button
             type="button"
             onClick={() => setMostrarModalCodigo(true)}
-            className="text-[11px] font-bold text-gray-500 hover:text-gray-900 transition-colors py-0.5 px-2 cursor-pointer"
+            className="text-[11px] font-bold text-slate-500 hover:text-slate-800 transition-colors py-0.5 px-2 cursor-pointer"
           >
             Digitar código manualmente
           </button>
         </div>
       </div>
 
-      {/* Divisora de Seção */}
-      <div className="flex items-center gap-2.5 py-0.5">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">
-          OU SELECIONE MANUALMENTE
-        </span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
-
       {/* Input de Busca */}
       <BarraBusca
-        placeholder="Buscar por carrinho ou setor..."
+        placeholder="Buscar por ativos do hospital"
         valor={termoBusca}
         aoMudar={setTermoBusca}
       />
@@ -248,18 +250,22 @@ export default function PaginaInicialInspetor() {
               <div
                 key={item.id}
                 onClick={() => router.push(`/inspetor/local/${item.localId}`)}
-                className="bg-white rounded-[20px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-gray-100/90 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
+                className="bg-white rounded-[28px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100/90 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
                 <div className="flex items-center justify-between gap-3 w-full">
                   {/* Info Esquerda */}
                   <div className="flex items-center gap-3.5 min-w-0 flex-1">
                     {isCarrinho && (
-                      <img 
-                        src="/icon-carrinho.webp" 
-                        alt="Carrinho de Parada" 
-                        className="w-14 h-14 sm:w-16 sm:h-16 object-contain shrink-0" 
-                      />
+                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/30">
+                        <img 
+                          src="/icon-carrinho.webp" 
+                          alt="Carrinho de Parada" 
+                          className="w-full h-full object-cover" 
+                        />
+                        {/* Sombra interna branca (innershadow branco) */}
+                        <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_2.5px_8px_rgba(255,255,255,0.95)] border border-white/25" />
+                      </div>
                     )}
                     <div className="min-w-0 space-y-0.5">
                       {!isCarrinho && (

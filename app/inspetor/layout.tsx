@@ -76,11 +76,13 @@ export default function LayoutInspetor({
     router.push('/login')
   }
 
+  const isGradientPage = pathname === '/inspetor'
+
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#F4F6FA] max-w-md mx-auto relative">
-      {/* Header branco */}
-      <header className="bg-white px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100/80">
-        <Link href="/inspetor" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity">
+    <div className={`min-h-[100dvh] flex flex-col ${isGradientPage ? 'bg-gradient-to-b from-[#79C7FF] via-[#79C7FF]/5 to-[#FAFAFC] to-[50%]' : 'bg-[#FAFAFC]'} max-w-md mx-auto relative`}>
+      {/* Header Condicional */}
+      <header className={`px-5 pt-5 pb-3 flex items-center justify-between transition-all duration-200 ${isGradientPage ? 'bg-transparent' : 'bg-white border-b border-gray-100/80'}`}>
+        <Link href="/inspetor" className={`text-xl font-bold tracking-tight hover:opacity-80 transition-opacity ${isGradientPage ? 'text-white' : 'text-gray-900'}`}>
           Sentry
         </Link>
         <PillUsuario nome={nomeExibido} perfil={usuario?.perfil} onClick={() => setMenuAberto(true)} />
@@ -92,9 +94,9 @@ export default function LayoutInspetor({
       </main>
 
       {/* Nav inferior — Glass flutuante com Efeito Bubble */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <nav className="bg-white/45 backdrop-blur-[18px] rounded-[24px] border border-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center justify-around px-2 py-2.5">
+      <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto px-4 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+        <nav className="bg-white/45 backdrop-blur-[18px] rounded-full border border-white/40 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center justify-around px-2 py-1.5">
             {itensNav.map((item) => {
               const ativo = item.href === '/inspetor'
                 ? pathname === '/inspetor'
@@ -104,8 +106,13 @@ export default function LayoutInspetor({
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={(e) => {
+                    if (item.href === '/inspetor/pendencias') {
+                      e.preventDefault()
+                    }
+                  }}
                   className={[
-                    'flex flex-col items-center gap-0.5 px-3 py-1.5 sm:px-5 sm:py-2 rounded-[18px]',
+                    'flex flex-col items-center gap-0.5 px-3 py-1 sm:px-5 sm:py-1.5 rounded-full',
                     'transition-all duration-300 ease-out active:scale-[0.92]',
                     ativo
                       ? 'text-[#246BFD] bg-[#246BFD]/8 shadow-[inset_0_0_0_1px_rgba(36,107,253,0.05)] font-bold'

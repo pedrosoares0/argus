@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server'
+import nodemailer from 'nodemailer'
 
 export async function POST(request: Request) {
   try {
     const dados = await request.json()
-    const apiKey = process.env.NEXT_PUBLIC_RESEND_API_KEY || ''
 
-    if (!apiKey) {
-      console.error('Erro: NEXT_PUBLIC_RESEND_API_KEY não configurada no servidor.')
-      return NextResponse.json({ error: 'Resend API Key não configurada no servidor.' }, { status: 500 })
+    // Carregar configurações SMTP do ambiente
+    const smtpHost = process.env.SMTP_HOST || ''
+    const smtpPortStr = process.env.SMTP_PORT || '587'
+    const smtpUser = process.env.SMTP_USER || ''
+    const smtpPass = process.env.SMTP_PASS || ''
+    const smtpFrom = process.env.SMTP_FROM || 'Sentry <alertas@sentryclinica.com.br>'
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      console.error('Erro: Configurações SMTP (SMTP_HOST, SMTP_USER, SMTP_PASS) não configuradas no servidor.')
+      return NextResponse.json({ error: 'Configurações SMTP não configuradas no servidor.' }, { status: 500 })
     }
+
+    const smtpPort = parseInt(smtpPortStr, 10) || 587
 
     const criticidadeCor =
       dados.criticidade === 'critico' ? '#FF3B30' :
@@ -26,7 +35,7 @@ export async function POST(request: Request) {
     const nomeInspetor = dados.nomeInspetor || 'Inspetor'
     const temFoto = Boolean(dados.evidenciaUrl && typeof dados.evidenciaUrl === 'string' && dados.evidenciaUrl.trim() !== '')
 
-    // Configurar anexos do Resend caso a imagem seja Base64
+    // Configurar anexos do Nodemailer caso a imagem seja Base64
     const attachments: any[] = []
     if (temFoto && dados.evidenciaUrl.startsWith('data:image/')) {
       try {
@@ -35,8 +44,8 @@ export async function POST(request: Request) {
           const ext = matches[1].split('/')[1] || 'png'
           const base64Content = matches[2]
           attachments.push({
-            content: base64Content,
-            filename: `evidencia_nc.${ext}`
+            filename: `evidencia_nc.${ext}`,
+            content: Buffer.from(base64Content, 'base64')
           })
         }
       } catch (e) {
@@ -134,41 +143,35 @@ export async function POST(request: Request) {
         destinatarios.push(emailLimpo)
       }
     }
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass
+      }
+    })
+
     const resultados = []
 
     for (const to of destinatarios) {
       try {
-        console.log(`Enviando email via Resend para: ${to}`)
-        const payloadResend: any = {
-          from: 'Sentry <onboarding@resend.dev>',
+        console.log(`Enviando e-mail via SMTP/Nodemailer para: ${to}`)
+        const mailOptions = {
+          from: smtpFrom,
           to: to,
           subject: `[Sentry - ${criticidadeLabel}] ${nomeAtivo}`,
-          html: htmlContent
+          html: htmlContent,
+          attachments: attachments
         }
 
-        if (attachments.length > 0) {
-          payloadResend.attachments = attachments
-        }
-
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify(payloadResend)
-        })
-
-        const text = await res.text()
-        if (!res.ok) {
-          console.error(`Erro de resposta do Resend para ${to}:`, text)
-          resultados.push({ to, status: 'erro', details: text })
-        } else {
-          console.log(`Email enviado com sucesso para ${to}:`, text)
-          resultados.push({ to, status: 'sucesso', details: text })
-        }
+        const info = await transporter.sendMail(mailOptions)
+        console.log(`E-mail enviado com sucesso para ${to}:`, info.messageId)
+        resultados.push({ to, status: 'sucesso', details: info.messageId })
       } catch (err: any) {
-        console.error(`Erro de rede do Resend para ${to}:`, err)
+        console.error(`Erro de SMTP para ${to}:`, err)
         resultados.push({ to, status: 'erro', details: err.message || err })
       }
     }
