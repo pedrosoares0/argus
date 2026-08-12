@@ -9,7 +9,7 @@ import { PillTag } from '@/components/ui/PillTag'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import type { StatusAtivo } from '@/lib/supabase/types'
 
-const STATUS_ATIVO: Record<StatusAtivo, { label: string; dot: string; cor: string }> = {
+const STATUS_ATIVO: Record<StatusAtivo, { label: string; dot: string; cor: 'verde' | 'laranja' | 'vermelho' | 'azul' }> = {
   operacional: { label: 'Operacional', dot: 'bg-emerald-500', cor: 'verde' },
   operacional_com_restricoes: { label: 'Com restrição', dot: 'bg-amber-500', cor: 'laranja' },
   indisponivel: { label: 'Indisponível', dot: 'bg-red-500', cor: 'vermelho' },
