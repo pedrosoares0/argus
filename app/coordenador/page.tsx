@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { BarraBusca } from '@/components/ui/BarraBusca'
 import { PillTag } from '@/components/ui/PillTag'
@@ -236,6 +237,26 @@ export default function FilaValidacao() {
           Não conformidades aguardando sua validação
         </p>
       </div>
+
+      {/* Atalho: QR Codes & Etiquetas */}
+      <Link
+        href="/coordenador/ativos"
+        className="flex items-center gap-3.5 bg-white rounded-2xl p-3.5 border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:border-[#7C3AED]/20 hover:shadow-[0_2px_12px_rgba(124,58,237,0.06)] transition-all group active:scale-[0.99] select-none"
+      >
+        <div className="w-10 h-10 rounded-xl bg-[#7C3AED]/8 flex items-center justify-center shrink-0 group-hover:bg-[#7C3AED]/12 transition-colors">
+          <svg className="w-5 h-5 text-[#7C3AED]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h3.375c.621 0 1.125.504 1.125 1.125v3.375c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 8.25V4.875zM3.75 14.625c0-.621.504-1.125 1.125-1.125h3.375c.621 0 1.125.504 1.125 1.125V18c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 18v-3.375zM13.5 4.875c0-.621.504-1.125 1.125-1.125H18c.621 0 1.125.504 1.125 1.125v3.375c0 .621-.504 1.125-1.125 1.125h-3.375a1.125 1.125 0 01-1.125-1.125V4.875z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 14.625v3.375c0 .621.504 1.125 1.125 1.125h1.5m0-5.625v5.625m0 0H18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-1.875m0 2.625V14.625" />
+          </svg>
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[13px] font-bold text-gray-900 tracking-tight">QR Codes & Etiquetas</h3>
+          <p className="text-[11px] text-gray-400 font-medium">Gerar, visualizar e imprimir etiquetas dos ativos</p>
+        </div>
+        <svg className="w-4 h-4 text-gray-300 group-hover:text-[#7C3AED]/50 transition-colors shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </Link>
 
       {/* Contador resumo */}
       <div className="flex gap-2">

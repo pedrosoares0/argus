@@ -6,21 +6,25 @@ import { Botao } from './Botao'
 
 interface QRCodeAtivoProps {
   ativoId: string
+  localId: string
   nomeAtivo: string
   codigoQr: string
   patrimonio?: string | null
 }
 
-export function QRCodeAtivo({ ativoId, nomeAtivo, codigoQr, patrimonio }: QRCodeAtivoProps) {
+export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio }: QRCodeAtivoProps) {
   const [aberto, setAberto] = useState(false)
   const [copiado, setCopiado] = useState(false)
   const qrPrintRef = useRef<HTMLDivElement>(null)
 
-  const valorQr = `sentry://ativo/${ativoId}`
+  // URL real acessível por qualquer câmera de celular — abre direto no navegador
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const valorQr = `${origin}/inspetor/local/${localId}`
 
   async function handleCopiar() {
     try {
-      await navigator.clipboard.writeText(codigoQr)
+      const codigoExibicao = codigoQr || patrimonio || 'Car.Par1'
+      await navigator.clipboard.writeText(codigoExibicao)
       setCopiado(true)
       setTimeout(() => setCopiado(false), 2000)
     } catch (err) {
@@ -29,97 +33,183 @@ export function QRCodeAtivo({ ativoId, nomeAtivo, codigoQr, patrimonio }: QRCode
   }
 
   function handleImprimir() {
-    const conteudoPrint = qrPrintRef.current?.innerHTML
-    const telaImpressao = window.open('', '', 'width=800,height=900')
-    if (telaImpressao && conteudoPrint) {
+    const qrSvgHtml = qrPrintRef.current?.innerHTML || ''
+    const codigoExibicao = codigoQr || patrimonio || 'Car.Par1'
+
+    const telaImpressao = window.open('', '', 'width=700,height=800')
+    if (telaImpressao) {
       telaImpressao.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Imprimir QR Code - ${nomeAtivo}</title>
+            <title>Etiqueta Sentry - ${nomeAtivo}</title>
             <style>
+              @page {
+                size: auto;
+                margin: 0mm;
+              }
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
               body {
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
                 display: flex;
-                flex-direction: column;
                 align-items: center;
                 justify-content: center;
+                min-height: 100vh;
                 height: 100vh;
-                margin: 0;
-                background-color: #fff;
-                color: #000;
+                background-color: #ffffff;
+                color: #0f172a;
               }
-              .container-etiqueta {
-                border: 2px dashed #000;
-                padding: 30px;
-                border-radius: 16px;
+              .etiqueta-wrapper {
+                padding: 20px;
+              }
+              .etiqueta-card {
+                width: 320px;
+                border: 2.5px solid #0f172a;
+                border-radius: 20px;
+                padding: 20px 18px;
+                background: #ffffff;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                background: #fff;
-                max-width: 320px;
                 text-align: center;
+                box-shadow: none;
+                position: relative;
+              }
+              .header-logo {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                border-bottom: 1.5px solid #e2e8f0;
+                padding-bottom: 10px;
+                margin-bottom: 14px;
+              }
+              .brand-title {
+                font-size: 13px;
+                font-weight: 900;
+                letter-spacing: -0.4px;
+                color: #0f172a;
+                text-transform: uppercase;
+              }
+              .brand-subtitle {
+                font-size: 9px;
+                font-weight: 700;
+                color: #64748b;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
               }
               .qr-box {
-                margin-bottom: 16px;
+                margin: 4px 0 12px 0;
+                padding: 10px;
+                background: #ffffff;
+                border: 1.5px solid #cbd5e1;
+                border-radius: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+              .qr-box svg {
+                width: 170px !important;
+                height: 170px !important;
+                display: block;
               }
               .titulo-ativo {
-                font-size: 18px;
-                font-weight: 800;
-                margin: 0 0 6px 0;
+                font-size: 15px;
+                font-weight: 900;
+                color: #0f172a;
+                margin: 0 0 4px 0;
                 text-transform: uppercase;
                 letter-spacing: -0.3px;
+                line-height: 1.25;
               }
-              .info-linha {
-                font-size: 13px;
-                font-weight: 600;
-                color: #333;
-                margin: 2px 0;
+              .badge-digitacao {
+                margin-top: 10px;
+                width: 100%;
+                background-color: #f8fafc;
+                border: 1.5px solid #cbd5e1;
+                border-radius: 10px;
+                padding: 8px 10px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 2px;
               }
-              .info-codigo {
-                font-size: 14px;
+              .badge-label {
+                font-size: 8px;
+                font-weight: 800;
+                color: #64748b;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+              }
+              .badge-code {
+                font-size: 16px;
+                font-weight: 900;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                color: #246BFD;
+                letter-spacing: 1px;
+              }
+              .patrimonio-txt {
+                font-size: 10px;
                 font-weight: 700;
-                font-family: monospace;
-                background-color: #f3f4f6;
-                padding: 4px 8px;
-                border-radius: 6px;
-                margin: 8px 0 0 0;
-                border: 1px solid #e5e7eb;
-                letter-spacing: 0.5px;
+                color: #475569;
+                margin-top: 2px;
               }
               @media print {
                 body {
                   height: auto;
+                  min-height: auto;
+                  background: transparent;
                 }
-                .container-etiqueta {
-                  border: none;
+                .etiqueta-wrapper {
                   padding: 0;
                 }
               }
             </style>
           </head>
           <body>
-            <div class="container-etiqueta">
-              <div class="qr-box">
-                ${conteudoPrint}
+            <div class="etiqueta-wrapper">
+              <div class="etiqueta-card">
+                <div class="header-logo">
+                  <span class="brand-title">Sentry</span>
+                  <span class="brand-subtitle">Identificação de Ativo</span>
+                </div>
+                
+                <div class="qr-box">
+                  ${qrSvgHtml}
+                </div>
+                
+                <h2 class="titulo-ativo">${nomeAtivo}</h2>
+                ${patrimonio ? `<div class="patrimonio-txt">Patrimônio: <b>${patrimonio}</b></div>` : ''}
+
+                <div class="badge-digitacao">
+                  <span class="badge-label">Código para Digitação Manual</span>
+                  <span class="badge-code">${codigoExibicao}</span>
+                </div>
               </div>
-              <h2 class="titulo-ativo">${nomeAtivo}</h2>
-              ${patrimonio ? `<div class="info-linha">Patrimônio: ${patrimonio}</div>` : ''}
-              <div class="info-linha">ID: ${ativoId}</div>
-              <div class="info-codigo">${codigoQr}</div>
             </div>
+
             <script>
               window.onload = function() {
-                window.print();
-                window.close();
-              }
-            </script>
+                setTimeout(function() {
+                  window.print();
+                  window.close();
+                }, 150);
+              };
+            <\/script>
           </body>
         </html>
       `)
       telaImpressao.document.close()
     }
   }
+
+  const codigoExibicao = codigoQr || patrimonio || 'Car.Par1'
 
   return (
     <>
@@ -143,9 +233,9 @@ export function QRCodeAtivo({ ativoId, nomeAtivo, codigoQr, patrimonio }: QRCode
             {/* Header do Modal */}
             <div className="flex items-center justify-between pb-1">
               <div>
-                <h3 className="text-base font-extrabold text-gray-900 tracking-tight">QR Code do Ativo</h3>
+                <h3 className="text-base font-extrabold text-gray-900 tracking-tight">Etiqueta de Identificação</h3>
                 <p className="text-[11px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">
-                  Etiqueta de Identificação
+                  QR Code e Código Manual
                 </p>
               </div>
               <button
@@ -162,20 +252,20 @@ export function QRCodeAtivo({ ativoId, nomeAtivo, codigoQr, patrimonio }: QRCode
             {/* Conteúdo Principal */}
             <div className="flex flex-col items-center justify-center bg-gray-50/50 rounded-2xl p-5 border border-gray-100 text-center">
               
-              {/* O QR Code real (referência para impressão) */}
+              {/* O QR Code real */}
               <div ref={qrPrintRef} className="bg-white p-3 rounded-2xl shadow-xs border border-gray-100">
                 <QRCodeSVG
                   value={valorQr}
-                  size={144}
+                  size={150}
                   bgColor="#FFFFFF"
-                  fgColor="#111827"
+                  fgColor="#0F172A"
                   level="H"
                   includeMargin={false}
                 />
               </div>
 
               {/* Informações do Ativo */}
-              <div className="mt-4 space-y-1 w-full">
+              <div className="mt-4 space-y-0.5 w-full">
                 <h4 className="text-sm font-extrabold text-gray-900 leading-tight uppercase px-2 truncate">
                   {nomeAtivo}
                 </h4>
@@ -184,24 +274,21 @@ export function QRCodeAtivo({ ativoId, nomeAtivo, codigoQr, patrimonio }: QRCode
                     Patrimônio: <span className="font-bold">{patrimonio}</span>
                   </p>
                 )}
-                <p className="text-[10px] text-gray-400 font-semibold">
-                  ID: {ativoId}
-                </p>
               </div>
 
               {/* Código de Backup para digitação manual */}
-              <div className="mt-4 w-full bg-white rounded-xl border border-gray-100 p-2.5 flex flex-col items-center gap-1.5 shadow-2xs">
+              <div className="mt-4 w-full bg-white rounded-xl border border-gray-200/80 p-3 flex flex-col items-center gap-1.5 shadow-2xs">
                 <span className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">
                   Código para Digitação Manual
                 </span>
-                <span className="text-xs font-mono font-extrabold text-gray-800 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200/60 tracking-widest break-all select-all">
-                  {codigoQr}
+                <span className="text-base font-mono font-black text-[#246BFD] bg-[#EBF4FF] px-3 py-1 rounded-lg border border-[#246BFD]/20 tracking-wider select-all">
+                  {codigoExibicao}
                 </span>
                 
                 <button
                   type="button"
                   onClick={handleCopiar}
-                  className="text-[10px] font-bold text-[#246BFD] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-[10px] font-bold text-[#246BFD] hover:underline flex items-center gap-1 cursor-pointer mt-0.5"
                 >
                   {copiado ? (
                     <>
@@ -239,7 +326,7 @@ export function QRCodeAtivo({ ativoId, nomeAtivo, codigoQr, patrimonio }: QRCode
                 larguraTotal
                 onClick={handleImprimir}
               >
-                Imprimir
+                Imprimir Etiqueta
               </Botao>
             </div>
 

@@ -137,6 +137,7 @@ export default function ValidarNC() {
         evidencia_url: itemExec.evidencia_url,
         ativo: ncData.ativos ? {
           id: ncData.ativos.id,
+          local_id: ncData.ativos.local_id,
           nome: ncData.ativos.nome,
           categoria: ncData.ativos.categorias_ativos?.nome || 'Equipamento',
           status: ncData.ativos.status,
@@ -358,6 +359,7 @@ export default function ValidarNC() {
               {nc.ativo && (
                 <QRCodeAtivo
                   ativoId={nc.ativo.id}
+                  localId={nc.ativo.local_id}
                   nomeAtivo={nc.ativo.nome}
                   codigoQr={nc.ativo.codigo_qr}
                   patrimonio={nc.ativo.patrimonio}

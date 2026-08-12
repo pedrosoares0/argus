@@ -124,27 +124,27 @@ export default function PaginaScanner() {
       }
 
       // 2. Se for um código puro (ex: "QR-SALA-01" ou "Car.Par1")
-      // Buscar local pelo código QR
-      const { data: local } = await supabase
+      // Buscar local pelo código QR ou nome
+      const { data: locais } = await supabase
         .from('locais')
         .select('id')
-        .eq('codigo_qr', cleanData)
-        .single()
+        .or(`codigo_qr.ilike.${cleanData},nome.ilike.%${cleanData}%`)
+        .limit(1)
 
-      if (local) {
-        router.push(`/inspetor/local/${local.id}`)
+      if (locais && locais.length > 0) {
+        router.push(`/inspetor/local/${locais[0].id}`)
         return
       }
 
-      // Buscar ativo pelo código QR
-      const { data: ativo } = await supabase
+      // Buscar ativo pelo código QR, patrimônio ou nome
+      const { data: ativos } = await supabase
         .from('ativos')
         .select('local_id')
-        .eq('codigo_qr', cleanData)
-        .single()
+        .or(`codigo_qr.ilike.${cleanData},patrimonio.ilike.${cleanData},nome.ilike.%${cleanData}%`)
+        .limit(1)
 
-      if (ativo) {
-        router.push(`/inspetor/local/${ativo.local_id}`)
+      if (ativos && ativos.length > 0) {
+        router.push(`/inspetor/local/${ativos[0].local_id}`)
         return
       }
 

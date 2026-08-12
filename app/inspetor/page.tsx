@@ -128,38 +128,39 @@ export default function PaginaInicialInspetor() {
 
   async function handleSubmeterCodigo(e: React.FormEvent) {
     e.preventDefault()
-    if (!codigoInput.trim()) return
+    const input = codigoInput.trim()
+    if (!input) return
 
     try {
       const supabase = criarClienteSupabase() as any
       
-      // Buscar local pelo QR
-      const { data: local } = await supabase
+      // 1. Tentar buscar local pelo código QR ou nome
+      const { data: locais } = await supabase
         .from('locais')
         .select('id')
-        .eq('codigo_qr', codigoInput.trim())
-        .single()
+        .or(`codigo_qr.ilike.${input},nome.ilike.%${input}%`)
+        .limit(1)
 
-      if (local) {
+      if (locais && locais.length > 0) {
         setMostrarModalCodigo(false)
-        router.push(`/inspetor/local/${local.id}`)
+        router.push(`/inspetor/local/${locais[0].id}`)
         return
       }
 
-      // Buscar ativo pelo QR
-      const { data: ativo } = await supabase
+      // 2. Tentar buscar ativo por codigo_qr, patrimonio ou nome
+      const { data: ativos } = await supabase
         .from('ativos')
         .select('id, local_id')
-        .eq('codigo_qr', codigoInput.trim())
-        .single()
+        .or(`codigo_qr.ilike.${input},patrimonio.ilike.${input},nome.ilike.%${input}%`)
+        .limit(1)
 
-      if (ativo) {
+      if (ativos && ativos.length > 0) {
         setMostrarModalCodigo(false)
-        router.push(`/inspetor/local/${ativo.local_id}`)
+        router.push(`/inspetor/local/${ativos[0].local_id}`)
         return
       }
 
-      alert('Código QR não encontrado.')
+      alert(`Nenhum ativo ou sala encontrado com o código "${input}".`)
     } catch (err) {
       console.error(err)
       alert('Erro ao buscar o código.')
