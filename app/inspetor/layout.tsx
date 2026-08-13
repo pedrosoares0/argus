@@ -17,7 +17,7 @@ export default function LayoutInspetor({
   const [usuario, setUsuario] = useState<{ nome: string; perfil: string } | null>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('sentry_usuario_atual')
+    const stored = localStorage.getItem('argus_usuario_atual')
     if (!stored) {
       const nextPath = window.location.pathname + window.location.search
       router.push(`/login?next=${encodeURIComponent(nextPath)}`)
@@ -71,7 +71,7 @@ export default function LayoutInspetor({
     } catch (e) {
       console.error(e)
     }
-    localStorage.removeItem('sentry_usuario_atual')
+    localStorage.removeItem('argus_usuario_atual')
     setMenuAberto(false)
     router.push('/login')
   }
@@ -82,8 +82,8 @@ export default function LayoutInspetor({
     <div className={`min-h-[100dvh] flex flex-col ${isGradientPage ? 'bg-gradient-to-b from-[#79C7FF] via-[#79C7FF]/5 to-[#FAFAFC] to-[50%]' : 'bg-[#FAFAFC]'} max-w-md mx-auto relative`}>
       {/* Header Condicional */}
       <header className={`px-5 pt-5 pb-3 flex items-center justify-between transition-all duration-200 ${isGradientPage ? 'bg-transparent' : 'bg-white border-b border-gray-100/80'}`}>
-        <Link href="/inspetor" className={`text-xl font-bold tracking-tight hover:opacity-80 transition-opacity ${isGradientPage ? 'text-white' : 'text-gray-900'}`}>
-          Sentry
+        <Link href="/inspetor" className={`text-xl font-bold tracking-tight hover:opacity-80 transition-opacity font-brand ${isGradientPage ? 'text-white' : 'text-gray-900'}`}>
+          Argus
         </Link>
         <PillUsuario nome={nomeExibido} perfil={usuario?.perfil} onClick={() => setMenuAberto(true)} />
       </header>

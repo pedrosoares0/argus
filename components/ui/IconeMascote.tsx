@@ -6,7 +6,7 @@ interface IconeMascoteProps {
 }
 
 /**
- * Mascote Sentry / Health Tech inspirado no design de referência:
+ * Mascote Argus / Health Tech inspirado no design de referência:
  * Squircle azul com cantos muito suaves, gradiente azul vibrante a ciano,
  * e dois olhinhos brancos característicos.
  */

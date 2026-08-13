@@ -60,11 +60,11 @@ export interface MockNaoConformidadeExtended extends NaoConformidade {
 }
 
 const INITIAL_LOCALS: Record<string, MockLocal> = {
-  'loc-001': { id: 'loc-001', nome: 'Centro Cirúrgico A', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
-  'loc-002': { id: 'loc-002', nome: 'Bloco Cirúrgico B', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
-  'loc-003': { id: 'loc-003', nome: 'Pronto Socorro', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
-  'loc-004': { id: 'loc-004', nome: 'Unidade de Internação', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Sentry' },
-  'loc-uti': { id: 'loc-uti', nome: 'Leito 05 (UTI-A)', centro_cirurgico: 'Bloco A (UTI Adulto)', unidade: 'Unidade de Terapia Intensiva', hospital: 'Hospital Sentry' }
+  'loc-001': { id: 'loc-001', nome: 'Centro Cirúrgico A', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Argus' },
+  'loc-002': { id: 'loc-002', nome: 'Bloco Cirúrgico B', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Argus' },
+  'loc-003': { id: 'loc-003', nome: 'Pronto Socorro', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Argus' },
+  'loc-004': { id: 'loc-004', nome: 'Unidade de Internação', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Argus' },
+  'loc-uti': { id: 'loc-uti', nome: 'Leito 05 (UTI-A)', centro_cirurgico: 'Bloco A (UTI Adulto)', unidade: 'Unidade de Terapia Intensiva', hospital: 'Hospital Argus' }
 }
 
 const INITIAL_ATIVOS: Record<string, MockAtivo> = {
@@ -79,7 +79,7 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
   {
     id: 'nc-1',
     numero_unico: 'NC-2026-001',
-    hospital_id: 'hosp-sentry',
+    hospital_id: 'hosp-argus',
     item_execucao_id: 'item-ex-1',
     ativo_id: 'at-001',
     local_id: 'loc-001',
@@ -118,7 +118,7 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
   {
     id: 'nc-2',
     numero_unico: 'NC-2026-002',
-    hospital_id: 'hosp-sentry',
+    hospital_id: 'hosp-argus',
     item_execucao_id: 'item-ex-2',
     ativo_id: 'at-002',
     local_id: 'loc-002',
@@ -166,7 +166,7 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
   {
     id: 'nc-3',
     numero_unico: 'NC-2026-003',
-    hospital_id: 'hosp-sentry',
+    hospital_id: 'hosp-argus',
     item_execucao_id: 'item-ex-3',
     ativo_id: 'at-003',
     local_id: 'loc-uti',
@@ -231,7 +231,7 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
   {
     id: 'nc-4',
     numero_unico: 'NC-2026-004',
-    hospital_id: 'hosp-sentry',
+    hospital_id: 'hosp-argus',
     item_execucao_id: 'item-ex-4',
     ativo_id: 'at-004',
     local_id: 'loc-003',
@@ -305,7 +305,7 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
   {
     id: 'nc-5',
     numero_unico: 'NC-2026-005',
-    hospital_id: 'hosp-sentry',
+    hospital_id: 'hosp-argus',
     item_execucao_id: 'item-ex-5',
     ativo_id: 'at-005',
     local_id: 'loc-004',
@@ -343,8 +343,8 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
   }
 ]
 
-const STORE_KEY = 'sentry_mock_db_extended'
-const USER_KEY = 'sentry_usuario_atual'
+const STORE_KEY = 'argus_mock_db_extended'
+const USER_KEY = 'argus_usuario_atual'
 
 export const DEFAULT_USER = {
   id: 'usr-eng-1',

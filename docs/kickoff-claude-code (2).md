@@ -1,4 +1,4 @@
-# Kickoff — Sentry (nome provisório) — Plataforma de Prontidão Operacional do Centro Cirúrgico
+# Kickoff — Argus — Plataforma de Prontidão Operacional do Centro Cirúrgico
 
 Este documento é a fonte de verdade para iniciar o projeto. Foi consolidado a partir de uma sessão de planejamento técnico entre o CTO (Peu) e o CEO (Paulo), incluindo regras de negócio originais, decisões de arquitetura e checklists reais já usados no ambiente hospitalar. Leia por completo antes de gerar qualquer código — várias decisões aqui resolvem ambiguidades que o documento de regras de negócio original deixava em aberto.
 
@@ -8,7 +8,7 @@ Este documento é a fonte de verdade para iniciar o projeto. Foi consolidado a p
 
 SaaS web multi-tenant (cada hospital é um tenant) para gestão de prontidão operacional de centro cirúrgico. **O checklist não é o produto** — é o mecanismo de coleta. O produto entrega valor ao calcular, a partir dos checklists e não conformidades, se um ativo, sala ou centro cirúrgico está **pronto para operar com segurança agora**.
 
-Nome provisório: **Sentry** (ainda em definição — não investir identidade visual fixa nesse nome, só usar como placeholder de código/pacote).
+Nome do produto: **Argus**.
 
 ---
 

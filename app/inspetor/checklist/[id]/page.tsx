@@ -453,7 +453,7 @@ function ComponenteChecklist() {
 
         // Limpar sessionStorage
         itens.forEach(item => {
-          sessionStorage.removeItem(`sentry_nc_${item.id}`)
+          sessionStorage.removeItem(`argus_nc_${item.id}`)
         })
 
         // Enviar e-mails de notificação pelo Resend

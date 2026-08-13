@@ -118,7 +118,7 @@ function FormularioLogin() {
       }
 
       // Bridging session profile to mockDb localStorage state so coordinator and engineering pages continue working
-      localStorage.setItem('sentry_usuario_atual', JSON.stringify({
+      localStorage.setItem('argus_usuario_atual', JSON.stringify({
         id: profile.id,
         nome: profile.nome,
         perfil: profile.perfil
@@ -152,8 +152,8 @@ function FormularioLogin() {
         
         {/* Cabeçalho de Identidade (Sem mascote blop) */}
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
-            Sentry
+          <h1 className="text-3xl font-extrabold text-white tracking-tight font-brand">
+            Argus
           </h1>
           <p className="text-sm text-white/80 font-semibold mt-1.5 leading-snug">
             Plataforma de Prontidão Operacional <br /> do Centro Cirúrgico

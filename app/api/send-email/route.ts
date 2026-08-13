@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     const smtpPortStr = process.env.SMTP_PORT || '587'
     const smtpUser = process.env.SMTP_USER || ''
     const smtpPass = process.env.SMTP_PASS || ''
-    const smtpFrom = process.env.SMTP_FROM || 'Sentry <alertas@sentryclinica.com.br>'
+    const smtpFrom = process.env.SMTP_FROM || 'Argus <alertas@argusclinica.com.br>'
 
     if (!smtpHost || !smtpUser || !smtpPass) {
       console.error('Erro: Configurações SMTP (SMTP_HOST, SMTP_USER, SMTP_PASS) não configuradas no servidor.')
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600&display=swap" rel="stylesheet">
       </head>
       <body style="margin: 0; padding: 24px 0; background-color: #F4F6FA; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
         <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
                   <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
                       <td align="left">
-                        <span style="font-size: 18px; font-weight: 800; color: #0F172A; letter-spacing: -0.5px;">Sentry</span>
+                        <span style="font-family: 'Space Grotesk', -apple-system, sans-serif; font-size: 20px; font-weight: 600; color: #0F172A; letter-spacing: -0.5px;">Argus</span>
                       </td>
                       <td align="right">
                         <span style="display: inline-block; padding: 4px 10px; border-radius: 9999px; background-color: ${criticidadeBg}; color: ${criticidadeCor}; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; border: 1px solid ${criticidadeCor}30;">
@@ -114,8 +115,8 @@ export async function POST(request: Request) {
 
                   <!-- Botão CTA -->
                   <div style="padding-top: 4px; text-align: center;">
-                    <a href="https://sentry-clinica.vercel.app/login" style="display: block; width: 100%; padding: 14px 0; background-color: #246BFD; color: #ffffff; border-radius: 9999px; text-decoration: none; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 4px 12px rgba(36,107,253,0.25);">
-                      Acessar Sentry
+                    <a href="https://argus-clinica.vercel.app/login" style="display: block; width: 100%; padding: 14px 0; background-color: #246BFD; color: #ffffff; border-radius: 9999px; text-decoration: none; font-size: 14px; font-weight: 700; text-align: center; box-shadow: 0 4px 12px rgba(36,107,253,0.25);">
+                      Acessar Argus
                     </a>
                   </div>
 
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
                 <!-- Footer -->
                 <div style="padding: 16px 24px; background-color: #FAFAFA; border-top: 1px solid #F1F5F9; text-align: center;">
                   <p style="margin: 0; font-size: 11px; color: #94A3B8; font-weight: 500;">
-                    Sentry · Plataforma de Prontidão Operacional do Centro Cirúrgico
+                    Argus · Plataforma de Prontidão Operacional do Centro Cirúrgico
                   </p>
                 </div>
 
@@ -162,7 +163,7 @@ export async function POST(request: Request) {
         const mailOptions = {
           from: smtpFrom,
           to: to,
-          subject: `[Sentry - ${criticidadeLabel}] ${nomeAtivo}`,
+          subject: `[Argus - ${criticidadeLabel}] ${nomeAtivo}`,
           html: htmlContent,
           attachments: attachments
         }

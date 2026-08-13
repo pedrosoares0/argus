@@ -123,7 +123,7 @@ export default function PaginaCadastro() {
         }
 
         // Ponte com a sessão simulada no LocalStorage para retrocompatibilidade
-        localStorage.setItem('sentry_usuario_atual', JSON.stringify({
+        localStorage.setItem('argus_usuario_atual', JSON.stringify({
           id: data.user.id,
           nome: nomeCompleto,
           perfil: perfilSelecionado
@@ -160,7 +160,7 @@ export default function PaginaCadastro() {
             Criar Conta
           </h1>
           <p className="text-sm text-gray-400 font-semibold mt-1.5 leading-snug">
-            Cadastre o seu perfil na plataforma Sentry
+            Cadastre o seu perfil na plataforma <span className="font-brand font-bold text-gray-700">Argus</span>
           </p>
         </div>
 

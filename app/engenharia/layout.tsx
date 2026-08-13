@@ -17,7 +17,7 @@ export default function LayoutEngenharia({
   const [usuario, setUsuario] = useState({ nome: 'Eng. Carlos', perfil: 'engenharia_clinica' })
 
   useEffect(() => {
-    const stored = localStorage.getItem('sentry_usuario_atual')
+    const stored = localStorage.getItem('argus_usuario_atual')
     if (stored) {
       try {
         const parsed = JSON.parse(stored)
@@ -44,7 +44,7 @@ export default function LayoutEngenharia({
     } catch (e) {
       console.error(e)
     }
-    localStorage.removeItem('sentry_usuario_atual')
+    localStorage.removeItem('argus_usuario_atual')
     setMenuAberto(false)
     router.push('/login')
   }
@@ -53,8 +53,8 @@ export default function LayoutEngenharia({
     <div className="min-h-[100dvh] flex flex-col bg-[#F4F6FA] max-w-md mx-auto relative">
       {/* Header branco */}
       <header className="bg-white px-5 pt-5 pb-3 flex items-center justify-between border-b border-gray-100/80">
-        <Link href="/engenharia" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity">
-          Sentry
+        <Link href="/engenharia" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity font-brand">
+          Argus
         </Link>
         <PillUsuario nome={usuario.nome} perfil={usuario.perfil} onClick={() => setMenuAberto(true)} />
       </header>

@@ -97,8 +97,8 @@ export default function PaginaScanner() {
     try {
       const supabase = criarClienteSupabase() as any
 
-      // 1. Tentar casar padrão sentry://
-      const match = cleanData.match(/sentry:\/\/(local|ativo)\/(.+)/)
+      // 1. Tentar casar padrão argus:// ou sentry://
+      const match = cleanData.match(/(?:argus|sentry):\/\/(local|ativo)\/(.+)/)
       if (match) {
         const [, tipo, id] = match
         if (tipo === 'local') {

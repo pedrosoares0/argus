@@ -54,7 +54,7 @@ export default function ValidarNC() {
 
       // 1. Obter usuário logado
       let currentUser = null
-      const stored = localStorage.getItem('sentry_usuario_atual')
+      const stored = localStorage.getItem('argus_usuario_atual')
       if (stored) {
         try {
           currentUser = JSON.parse(stored)

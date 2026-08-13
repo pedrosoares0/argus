@@ -1,5 +1,5 @@
 /**
- * Tipos do banco de dados Supabase — Sentry
+ * Tipos do banco de dados Supabase — Argus
  *
  * PLACEHOLDER: Este arquivo será substituído pelo output de:
  *   supabase gen types typescript --project-id ilkqkqzhnlmhoxqavcfp > lib/supabase/types.ts

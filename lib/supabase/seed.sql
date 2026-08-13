@@ -1,5 +1,5 @@
 -- =============================================================================
--- Sentry — Script de Seed (Cadastro do Hospital Público Itaberaba e Carrinho de Parada)
+-- Argus — Script de Seed (Cadastro do Hospital Público Itaberaba e Carrinho de Parada)
 -- Respeita estritamente o schema definido em 001_initial_schema.sql.
 -- =============================================================================
 

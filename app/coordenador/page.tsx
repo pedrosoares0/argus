@@ -46,7 +46,7 @@ export default function FilaValidacao() {
         const supabase = criarClienteSupabase() as any
         
         let currentUser = null
-        const stored = localStorage.getItem('sentry_usuario_atual')
+        const stored = localStorage.getItem('argus_usuario_atual')
         if (stored) {
           try {
             currentUser = JSON.parse(stored)

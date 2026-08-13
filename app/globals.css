@@ -1,14 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Space+Grotesk:wght@600;700&display=swap');
 @import 'tailwindcss';
 
 /* ================================================================
-   SENTRY — Design System Clean & Refinado
+   ARGUS — Design System Clean & Refinado
    Background: #F4F6FA
    Sombras ultra-suaves, cards minimalistas, badges limpos
    ================================================================ */
 
 .font-nunito {
   font-family: "Nunito", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+}
+
+.font-brand, .font-space-grotesk {
+  font-family: "Space Grotesk", sans-serif;
   font-optical-sizing: auto;
   font-weight: 600;
   font-style: normal;

@@ -42,7 +42,10 @@ export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio 
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Etiqueta Sentry - ${nomeAtivo}</title>
+            <title>Etiqueta Argus - ${nomeAtivo}</title>
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+            <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
             <style>
               @page {
                 size: auto;
@@ -91,11 +94,12 @@ export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio 
                 margin-bottom: 14px;
               }
               .brand-title {
-                font-size: 13px;
-                font-weight: 900;
+                font-family: "Space Grotesk", sans-serif;
+                font-size: 15px;
+                font-weight: 600;
                 letter-spacing: -0.4px;
                 color: #0f172a;
-                text-transform: uppercase;
+                text-transform: none;
               }
               .brand-subtitle {
                 font-size: 9px;
@@ -176,7 +180,7 @@ export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio 
             <div class="etiqueta-wrapper">
               <div class="etiqueta-card">
                 <div class="header-logo">
-                  <span class="brand-title">Sentry</span>
+                  <span class="brand-title">Argus</span>
                   <span class="brand-subtitle">Identificação de Ativo</span>
                 </div>
                 
