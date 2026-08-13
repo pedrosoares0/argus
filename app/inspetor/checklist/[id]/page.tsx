@@ -34,6 +34,7 @@ function ComponenteChecklist() {
   const [iniciadoEm] = useState(() => new Date().toISOString())
   const [usuario, setUsuario] = useState<any>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [sucesso, setSucesso] = useState(false)
 
   useEffect(() => {
     async function carregarDados() {
@@ -233,6 +234,15 @@ function ComponenteChecklist() {
     carregarItens()
   }, [modeloSelecionado, isReadOnly])
 
+  useEffect(() => {
+    if (sucesso) {
+      const timer = setTimeout(() => {
+        router.push('/inspetor')
+      }, 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [sucesso, router])
+
   const totalRespondidos = Object.values(respostas).filter((r) => r.resposta !== null).length
   const progresso = itens.length > 0 ? Math.round((totalRespondidos / itens.length) * 100) : 0
   const todosRespondidos = itens.length > 0 && totalRespondidos === itens.length
@@ -245,6 +255,14 @@ function ComponenteChecklist() {
       setNcCriticidade('critico')
       setNcFotoPreview(null)
       setNcFotoFile(null)
+
+      // Rolar a tela suavemente para centralizar o formulário de NC inline aberto
+      setTimeout(() => {
+        const el = document.getElementById(`nc-form-${id}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 150)
     } else {
       setRespostas((prev) => ({ ...prev, [id]: { resposta, evidencia_url: null, evidencia_texto: null } }))
       avancarProxima(id)
@@ -398,31 +416,33 @@ function ComponenteChecklist() {
       const itensNaoConformes = insertedItens.filter((it: any) => it.resposta === 'nao_conforme')
 
       if (itensNaoConformes.length > 0) {
-        // Criar as NCs manualmente se a trigger falhar
-        for (const item of itensNaoConformes) {
-          try {
-            const { data: triggerNc } = await supabase
-              .from('nao_conformidades')
-              .select('id')
-              .eq('item_execucao_id', item.id)
-
-            if (!triggerNc || triggerNc.length === 0) {
-              console.log('Trigger de autocriação ausente no banco. Criando NC manualmente...');
-              await supabase
+        // Criar as NCs manualmente se a trigger falhar (em paralelo)
+        await Promise.all(
+          itensNaoConformes.map(async (item: any) => {
+            try {
+              const { data: triggerNc } = await supabase
                 .from('nao_conformidades')
-                .insert({
-                  hospital_id: ativo.hospital_id,
-                  item_execucao_id: item.id,
-                  ativo_id: ativo.id,
-                  criticidade: item.criticidade,
-                  status: 'aberta',
-                  numero_unico: `NC-${new Date().getFullYear()}-${item.id.substring(0, 4).toUpperCase()}`
-                })
+                .select('id')
+                .eq('item_execucao_id', item.id)
+
+              if (!triggerNc || triggerNc.length === 0) {
+                console.log('Trigger de autocriação ausente no banco. Criando NC manualmente...')
+                await supabase
+                  .from('nao_conformidades')
+                  .insert({
+                    hospital_id: ativo.hospital_id,
+                    item_execucao_id: item.id,
+                    ativo_id: ativo.id,
+                    criticidade: item.criticidade,
+                    status: 'aberta',
+                    numero_unico: `NC-${new Date().getFullYear()}-${item.id.substring(0, 4).toUpperCase()}`
+                  })
+              }
+            } catch (ncErr) {
+              console.error('Erro ao sincronizar NC:', ncErr)
             }
-          } catch (ncErr) {
-            console.error('Erro ao sincronizar NC:', ncErr)
-          }
-        }
+          })
+        )
 
         // Atualizar status do ativo e do local de acordo com a criticidade
         const temCritico = itensNaoConformes.some((it: any) => it.criticidade === 'critico')
@@ -439,53 +459,60 @@ function ComponenteChecklist() {
           novoStatusLocal = 'pronta_com_ressalvas'
         }
 
-        // Atualizar ativo no banco
-        await supabase
-          .from('ativos')
-          .update({ status: novoStatusAtivo })
-          .eq('id', ativo.id)
-
-        // Atualizar local no banco
-        await supabase
-          .from('locais')
-          .update({ status: novoStatusLocal })
-          .eq('id', ativo.local_id)
+        // Executar atualizações no banco em paralelo
+        await Promise.all([
+          supabase
+            .from('ativos')
+            .update({ status: novoStatusAtivo })
+            .eq('id', ativo.id),
+          supabase
+            .from('locais')
+            .update({ status: novoStatusLocal })
+            .eq('id', ativo.local_id)
+        ])
 
         // Limpar sessionStorage
         itens.forEach(item => {
           sessionStorage.removeItem(`argus_nc_${item.id}`)
         })
 
-        // Enviar e-mails de notificação pelo Resend
-        for (const item of itensNaoConformes) {
-          const descricao = item.evidencia_texto || 'Não conformidade registrada no checklist.'
-          const criticidade = item.criticidade || 'critico'
-          const localNome = `${ativo.locais?.unidade || ''} - ${ativo.locais?.nome || ''}`
+        // Enviar e-mails de notificação pelo Resend em paralelo (background)
+        Promise.all(
+          itensNaoConformes.map(async (item: any) => {
+            const descricao = item.evidencia_texto || 'Não conformidade registrada no checklist.'
+            const criticidade = item.criticidade || 'critico'
+            const localNome = `${ativo.locais?.unidade || ''} - ${ativo.locais?.nome || ''}`
 
-          await enviarEmailResend({
-            nomeAtivo: ativo.nome,
-            local: localNome,
-            descricao: descricao,
-            criticidade: criticidade,
-            evidenciaUrl: item.evidencia_url || null,
-            nomeInspetor: usuario?.nome || 'Inspetor',
-            emailInspetor: usuario?.email || null
-          }).catch(err => console.error('Erro de envio de email:', err))
-        }
+            try {
+              await enviarEmailResend({
+                nomeAtivo: ativo.nome,
+                local: localNome,
+                descricao: descricao,
+                criticidade: criticidade,
+                evidenciaUrl: item.evidencia_url || null,
+                nomeInspetor: usuario?.nome || 'Inspetor',
+                emailInspetor: usuario?.email || null
+              })
+            } catch (err) {
+              console.error('Erro de envio de email:', err)
+            }
+          })
+        )
       } else {
-        // Se todas as respostas forem conformes, garantir que o ativo/local fiquem operacionais/prontos
-        await supabase
-          .from('ativos')
-          .update({ status: 'operacional' })
-          .eq('id', ativo.id)
-
-        await supabase
-          .from('locais')
-          .update({ status: 'pronta' })
-          .eq('id', ativo.local_id)
+        // Se todas as respostas forem conformes, garantir que o ativo/local fiquem operacionais/prontos (em paralelo)
+        await Promise.all([
+          supabase
+            .from('ativos')
+            .update({ status: 'operacional' })
+            .eq('id', ativo.id),
+          supabase
+            .from('locais')
+            .update({ status: 'pronta' })
+            .eq('id', ativo.local_id)
+        ])
       }
 
-      router.push('/inspetor')
+      setSucesso(true)
     } catch (err) {
       console.error(err)
       alert('Erro inesperado ao concluir checklist.')
@@ -561,6 +588,10 @@ function ComponenteChecklist() {
         {itens.map((secao) => {
           const resp = respostas[secao.id] || { resposta: null }
           const aberta = expandida === secao.id
+          const hasResp = resp.resposta !== null || modalNcItem?.id === secao.id
+          const isConf = resp.resposta === 'conforme'
+          const isNc = resp.resposta === 'nao_conforme' || modalNcItem?.id === secao.id
+          const isNsa = resp.resposta === 'nao_se_aplica'
 
           // Ícone de status baseado na resposta
           const StatusIcon = () => {
@@ -656,12 +687,14 @@ function ComponenteChecklist() {
                       type="button"
                       onClick={() => !isReadOnly && setResposta(secao.id, 'conforme')}
                       className={[
-                        'relative py-2.5 rounded-xl text-[10px] font-extrabold tracking-tight transition-all duration-200 border',
-                        'flex flex-col items-center justify-center gap-1',
+                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
+                        'flex flex-col items-center justify-center gap-1.5',
                         isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
-                        resp.resposta === 'conforme'
-                          ? 'bg-[#34C759] border-[#34C759] text-white shadow-[0_4px_12px_rgba(52,199,89,0.25)] scale-[1.02]'
-                          : 'bg-white border-gray-200 text-[#34C759]' + (isReadOnly ? '' : ' hover:bg-[#34C759]/5'),
+                        isConf
+                          ? 'bg-[#34C759] border-[#34C759] text-white shadow-[0_4px_12px_rgba(52,199,89,0.25)] scale-[1.03] z-10'
+                          : hasResp
+                            ? 'bg-slate-50/50 border-slate-100 text-slate-500 opacity-45 scale-[0.97]'
+                            : 'bg-white border-[#34C759]/30 text-[#34C759] hover:bg-[#34C759]/5',
                       ].join(' ')}
                     >
                       <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -675,12 +708,14 @@ function ComponenteChecklist() {
                       type="button"
                       onClick={() => !isReadOnly && setResposta(secao.id, 'nao_conforme')}
                       className={[
-                        'relative py-2.5 rounded-xl text-[10px] font-extrabold tracking-tight transition-all duration-200 border',
-                        'flex flex-col items-center justify-center gap-1',
+                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
+                        'flex flex-col items-center justify-center gap-1.5',
                         isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
-                        resp.resposta === 'nao_conforme'
-                          ? 'bg-[#FF3B30] border-[#FF3B30] text-white shadow-[0_4px_12px_rgba(255,59,48,0.25)] scale-[1.02]'
-                          : 'bg-white border-gray-200 text-[#FF3B30]' + (isReadOnly ? '' : ' hover:bg-[#FF3B30]/5'),
+                        isNc
+                          ? 'bg-[#FF3B30] border-[#FF3B30] text-white shadow-[0_4px_12px_rgba(255,59,48,0.25)] scale-[1.03] z-10'
+                          : hasResp
+                            ? 'bg-slate-50/50 border-slate-100 text-slate-500 opacity-45 scale-[0.97]'
+                            : 'bg-white border-[#FF3B30]/30 text-[#FF3B30] hover:bg-[#FF3B30]/5',
                       ].join(' ')}
                     >
                       <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -694,12 +729,14 @@ function ComponenteChecklist() {
                       type="button"
                       onClick={() => !isReadOnly && setResposta(secao.id, 'nao_se_aplica')}
                       className={[
-                        'relative py-2.5 rounded-xl text-[10px] font-extrabold tracking-tight transition-all duration-200 border',
-                        'flex flex-col items-center justify-center gap-1 text-center',
+                        'relative py-3 rounded-2xl text-[11px] font-extrabold tracking-tight transition-all duration-200 border',
+                        'flex flex-col items-center justify-center gap-1.5 text-center',
                         isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
-                        resp.resposta === 'nao_se_aplica'
-                          ? 'bg-[#8E8E93] border-[#8E8E93] text-white shadow-[0_4px_12px_rgba(142,142,147,0.25)] scale-[1.02]'
-                          : 'bg-white border-gray-200 text-[#8E8E93]' + (isReadOnly ? '' : ' hover:bg-[#8E8E93]/5'),
+                        isNsa
+                          ? 'bg-[#8E8E93] border-[#8E8E93] text-white shadow-[0_4px_12px_rgba(142,142,147,0.25)] scale-[1.03] z-10'
+                          : hasResp
+                            ? 'bg-slate-50/50 border-slate-100 text-slate-500 opacity-45 scale-[0.97]'
+                            : 'bg-white border-[#8E8E93]/30 text-[#8E8E93] hover:bg-[#8E8E93]/5',
                       ].join(' ')}
                     >
                       <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -708,6 +745,139 @@ function ComponenteChecklist() {
                       <span>Não se aplica</span>
                     </button>
                   </div>
+
+                  {/* Formulário Inline de Registro de Não Conformidade */}
+                  {!isReadOnly && modalNcItem?.id === secao.id && (
+                    <div id={`nc-form-${secao.id}`} className="bg-[#FF3B30]/5 border border-[#FF3B30]/10 rounded-2xl p-4.5 space-y-4 animate-[fadeIn_0.15s_ease-out] mt-3">
+                      <div>
+                        <h4 className="text-xs font-bold text-[#FF3B30] uppercase tracking-wider">
+                          Detalhes da Não Conformidade
+                        </h4>
+                      </div>
+
+                      {/* Descrição */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                          O que está inconforme?
+                        </label>
+                        <textarea
+                          rows={2.5}
+                          required
+                          placeholder="Ex: Faltando cânula de Guedel ou laringoscópio sem bateria..."
+                          value={ncDescricao}
+                          onChange={(e) => setNcDescricao(e.target.value)}
+                          className="w-full bg-white border border-gray-200/80 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#FF3B30] focus:ring-1 focus:ring-[#FF3B30]/10 transition-all resize-none"
+                        />
+                      </div>
+
+                      {/* Evidência */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                          Evidência Fotográfica
+                        </label>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              setNcFotoFile(file)
+                              setNcFotoPreview(URL.createObjectURL(file))
+                            }
+                          }}
+                          className="hidden"
+                          id={`foto-input-${secao.id}`}
+                        />
+
+                        {ncFotoPreview ? (
+                          <div className="relative">
+                            <img
+                              src={ncFotoPreview}
+                              alt="Preview"
+                              className="w-full h-28 object-cover rounded-xl border border-gray-200"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNcFotoPreview(null)
+                                setNcFotoFile(null)
+                              }}
+                              className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] font-bold hover:bg-black/80 cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById(`foto-input-${secao.id}`)?.click()}
+                            className="w-full h-18 rounded-xl border-2 border-dashed border-gray-250 bg-slate-50/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-[#FF3B30] hover:text-[#FF3B30] transition-colors cursor-pointer"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316z" />
+                            </svg>
+                            <span className="text-[10px] font-bold">Tirar foto ou anexar</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Criticidade */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                          Criticidade
+                        </label>
+                        <div className="flex gap-1">
+                          {[
+                            { valor: 'critico', label: 'Crítico', cor: 'bg-red-50 text-red-700 border-red-200' },
+                            { valor: 'importante', label: 'Importante', cor: 'bg-amber-50 text-amber-700 border-amber-200' },
+                            { valor: 'informativo', label: 'Informativo', cor: 'bg-sky-50 text-sky-700 border-sky-200' }
+                          ].map((c) => {
+                            const sel = ncCriticidade === c.valor
+                            return (
+                              <button
+                                key={c.valor}
+                                type="button"
+                                onClick={() => setNcCriticidade(c.valor as any)}
+                                className={[
+                                  'flex-1 py-1.5 px-0.5 text-[10px] sm:text-[11px] font-extrabold rounded-xl border text-center transition-all cursor-pointer',
+                                  sel ? `${c.cor} border border-current shadow-xs scale-[1.01]` : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                ].join(' ')}
+                              >
+                                {c.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Ações */}
+                      <div className="flex gap-2 pt-1">
+                        <Botao
+                          type="button"
+                          variante="secundario"
+                          larguraTotal
+                          onClick={handleCancelarModalNc}
+                          disabled={ncEnviando}
+                          tamanho="sm"
+                        >
+                          Cancelar
+                        </Botao>
+                        <Botao
+                          type="button"
+                          variante="primario"
+                          larguraTotal
+                          onClick={handleSalvarModalNc}
+                          carregando={ncEnviando}
+                          disabled={!ncDescricao.trim()}
+                          tamanho="sm"
+                        >
+                          Confirmar
+                        </Botao>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Evidências e Descrição da NC (mostrado quando resposta é nao_conforme e possui descrição/foto) */}
                   {resp.resposta === 'nao_conforme' && (resp.evidencia_texto || resp.evidencia_url) && (
@@ -780,147 +950,35 @@ function ComponenteChecklist() {
         </div>
       )}
 
-      {/* Modal de Registro de NC (In-Page para não perder o estado dos outros itens!) */}
-      {modalNcItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-[fadeIn_0.15s_ease-out]">
-          <div className="bg-white rounded-2xl p-4 sm:p-5 max-w-sm w-full shadow-2xl border border-gray-100/80 space-y-4 animate-[scaleIn_0.15s_ease-out] overflow-y-auto max-h-[85vh]">
-
-            {/* Header */}
-            <div className="flex items-center justify-between pb-0.5">
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-gray-900 tracking-tight">Registrar Não Conformidade</h3>
-                <p className="text-[10px] text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">
-                  Item: {modalNcItem.nome}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleCancelarModalNc}
-                className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer text-xs"
-              >
-                ✕
-              </button>
+      {/* Alerta de Sucesso Apple-style */}
+      {sucesso && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-[fadeIn_0.2s_ease-out]">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[28px] p-6 max-w-sm w-full shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-white/40 flex flex-col items-center text-center space-y-4 animate-[scaleIn_0.25s_ease-out]">
+            
+            {/* Animated Success Checkmark Ring */}
+            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner border border-emerald-100 relative overflow-hidden group">
+              <svg className="w-8 h-8 animate-[scaleIn_0.3s_ease-out]" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
             </div>
 
-            {/* Descrição */}
-            <div className="space-y-1">
-              <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
-                O que está inconforme?
-              </label>
-              <textarea
-                rows={2.5}
-                required
-                placeholder="Ex: Faltando cânula de Guedel ou laringoscópio sem bateria..."
-                value={ncDescricao}
-                onChange={(e) => setNcDescricao(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all resize-none"
-              />
+            {/* Typography */}
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Inspeção Enviada</h3>
+              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                A ronda foi registrada e os alertas foram disparados com sucesso.
+              </p>
             </div>
 
-            {/* Evidência */}
-            <div className="space-y-1">
-              <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
-                Evidência Fotográfica
-              </label>
-
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    setNcFotoFile(file)
-                    setNcFotoPreview(URL.createObjectURL(file))
-                  }
-                }}
-                className="hidden"
-                id="modal-foto-input"
-              />
-
-              {ncFotoPreview ? (
-                <div className="relative">
-                  <img
-                    src={ncFotoPreview}
-                    alt="Preview"
-                    className="w-full h-28 object-cover rounded-xl border border-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNcFotoPreview(null)
-                      setNcFotoFile(null)
-                    }}
-                    className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] font-bold hover:bg-black/80 cursor-pointer"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => document.getElementById('modal-foto-input')?.click()}
-                  className="w-full h-18 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-[#246BFD] hover:text-[#246BFD] transition-colors cursor-pointer"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                  </svg>
-                  <span className="text-[10px] font-bold">Tirar foto ou anexar</span>
-                </button>
-              )}
-            </div>
-
-            {/* Criticidade */}
-            <div className="space-y-1">
-              <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
-                Criticidade
-              </label>
-              <div className="flex gap-1">
-                {[
-                  { valor: 'critico', label: 'Crítico', cor: 'bg-red-50 text-red-700 border-red-200' },
-                  { valor: 'importante', label: 'Importante', cor: 'bg-amber-50 text-amber-700 border-amber-200' },
-                  { valor: 'informativo', label: 'Informativo', cor: 'bg-sky-50 text-sky-700 border-sky-200' }
-                ].map((c) => {
-                  const sel = ncCriticidade === c.valor
-                  return (
-                    <button
-                      key={c.valor}
-                      type="button"
-                      onClick={() => setNcCriticidade(c.valor as any)}
-                      className={[
-                        'flex-1 py-1.5 px-0.5 text-[10px] sm:text-[11px] font-extrabold rounded-xl border text-center transition-all cursor-pointer',
-                        sel ? `${c.cor} border border-current shadow-xs scale-[1.01]` : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                      ].join(' ')}
-                    >
-                      {c.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Ações */}
-            <div className="flex gap-2 pt-1">
+            {/* CTA button */}
+            <div className="w-full pt-1.5">
               <Botao
-                type="button"
-                variante="secundario"
-                larguraTotal
-                onClick={handleCancelarModalNc}
-                disabled={ncEnviando}
-                tamanho="sm"
-              >
-                Cancelar
-              </Botao>
-              <Botao
-                type="button"
                 variante="primario"
+                tamanho="md"
                 larguraTotal
-                onClick={handleSalvarModalNc}
-                carregando={ncEnviando}
-                disabled={!ncDescricao.trim()}
-                tamanho="sm"
+                onClick={() => router.push('/inspetor')}
               >
-                Confirmar
+                Entendido
               </Botao>
             </div>
 
