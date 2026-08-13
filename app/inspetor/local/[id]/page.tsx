@@ -39,7 +39,7 @@ export default function PaginaLocal() {
   const [ultimoChecklistItens, setUltimoChecklistItens] = useState<any[]>([])
   const [dataFiltro, setDataFiltro] = useState('')
   const [historicoAberto, setHistoricoAberto] = useState(false)
-  const [ncAbertaExpandida, setNcAbertaExpandida] = useState(false)
+  const [ncAbertaExpandida, setNcAbertaExpandida] = useState(true)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [fotoExpandida, setFotoExpandida] = useState<string | null>(null)
@@ -252,16 +252,20 @@ export default function PaginaLocal() {
     )
   }
 
-  const temNcAberta = ncs.length > 0
   const ultimaNcAberta = ncs[0]
-  const criticidadeUltimaInspecao = ultimaNcAberta ? ultimaNcAberta.criticidade : null
+  const ultimaInspecao = historico[0]
 
-  const statusLabel = temNcAberta
-    ? criticidadeUltimaInspecao === 'critico' ? 'Crítico' : 'Importante'
+  const temNcRealmenteAtiva = !!(
+    ultimaNcAberta &&
+    (!ultimaInspecao || new Date(ultimaNcAberta.criado_em).getTime() >= ultimaInspecao.dataOriginal.getTime())
+  )
+
+  const statusLabel = temNcRealmenteAtiva
+    ? (ultimaNcAberta.criticidade === 'critico' ? 'Crítico' : 'Importante')
     : 'Pronto'
 
-  const statusCor = temNcAberta
-    ? criticidadeUltimaInspecao === 'critico' ? 'vermelho' : 'laranja'
+  const statusCor = temNcRealmenteAtiva
+    ? (ultimaNcAberta.criticidade === 'critico' ? 'vermelho' : 'laranja')
     : 'verde'
 
   const ativoPrincipal = ativos[0]
@@ -396,125 +400,174 @@ export default function PaginaLocal() {
         </div>
       </div>
 
-      {/* ── Resumo da Última NC Aberta ── */}
-      {ncs.length > 0 && (() => {
-        const ultimaNc = ncs[0]
-        const dataCriacao = new Date(ultimaNc.criado_em)
-        const formatador = new Intl.DateTimeFormat('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
+      {/* ── Resumo da Última Inspeção ── */}
+      {(temNcRealmenteAtiva || historico.length > 0) && (() => {
+        if (temNcRealmenteAtiva) {
+          const ultimaNc = ncs[0]
+          const dataCriacao = new Date(ultimaNc.criado_em)
+          const itemExec = ultimaNc.itens_execucao_checklist || {}
+          const exec = itemExec.execucoes_checklist || {}
+          const nomeInspetor = exec.usuarios?.nome || 'Inspetor'
+          const secaoAfetada = itemExec.item_congelado?.descricao?.split(' — ')[0] || 'Geral'
+          const descricaoEvidencia = itemExec.evidencia_texto || ultimaNc.descricao || 'Sem descrição detalhada.'
+          const fotoUrl = itemExec.evidencia_url || ultimaNc.evidencia_url
+          const temFotoReal = Boolean(fotoUrl && typeof fotoUrl === 'string' && fotoUrl.trim() !== '' && !fotoUrl.includes('unsplash.com'))
 
-        const itemExec = ultimaNc.itens_execucao_checklist || {}
-        const exec = itemExec.execucoes_checklist || {}
-        const nomeInspetor = exec.usuarios?.nome || 'Inspetor'
-        const secaoAfetada = itemExec.item_congelado?.descricao?.split(' — ')[0] || 'Geral'
-        const descricaoEvidencia = itemExec.evidencia_texto || ultimaNc.descricao || 'Sem descrição detalhada.'
-        const fotoUrl = itemExec.evidencia_url || ultimaNc.evidencia_url
-        const temFotoReal = Boolean(fotoUrl && typeof fotoUrl === 'string' && fotoUrl.trim() !== '' && !fotoUrl.includes('unsplash.com'))
+          const formatadorDataCurta = new Intl.DateTimeFormat('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+          const dataFormatada = formatadorDataCurta.format(dataCriacao).replace(', ', ' às ')
 
-        const formatadorDataCurta = new Intl.DateTimeFormat('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-        const dataFormatada = formatadorDataCurta.format(dataCriacao).replace(', ', ' às ')
+          const corPill =
+            ultimaNc.criticidade === 'critico' ? 'vermelho' :
+              ultimaNc.criticidade === 'importante' ? 'laranja' : 'azul'
 
-        const corPill =
-          ultimaNc.criticidade === 'critico' ? 'vermelho' :
-            ultimaNc.criticidade === 'importante' ? 'laranja' : 'azul'
+          const labelPill =
+            ultimaNc.criticidade === 'critico' ? 'Crítico' :
+              ultimaNc.criticidade === 'importante' ? 'Importante' : 'Informativo'
 
-        const labelPill =
-          ultimaNc.criticidade === 'critico' ? 'Crítico' :
-            ultimaNc.criticidade === 'importante' ? 'Importante' : 'Informativo'
-
-        return (
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => setNcAbertaExpandida(!ncAbertaExpandida)}
-              className="w-full flex items-center justify-between px-1 cursor-pointer select-none py-1 group"
-            >
-              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
-                Última Não Conformidade Aberta
-              </p>
-              <svg
-                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${ncAbertaExpandida ? 'rotate-180' : ''}`}
-                fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+          return (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setNcAbertaExpandida(!ncAbertaExpandida)}
+                className="w-full flex items-center justify-between px-1 cursor-pointer select-none py-1 group"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
-            </button>
+                <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
+                  Última Inspeção
+                </p>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${ncAbertaExpandida ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
 
-            <div className={`grid transition-all duration-300 ease-in-out ${ncAbertaExpandida ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0 pointer-events-none mt-0'}`}>
-              <div className="overflow-hidden">
-                <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/90 space-y-4 mb-2">
-                  {/* Cabeçalho: Título + Subtítulo + Badge */}
-                  <div className="flex items-start justify-between gap-3 min-w-0">
-                    <div className="min-w-0 space-y-0.5">
-                      <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
-                        {secaoAfetada}
-                      </h3>
-                      <p className="text-xs text-gray-400 font-medium">
-                        Registrada por {nomeInspetor} em {dataFormatada}
+              <div className={`grid transition-all duration-300 ease-in-out ${ncAbertaExpandida ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0 pointer-events-none mt-0'}`}>
+                <div className="overflow-hidden">
+                  <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/90 space-y-4 mb-2">
+                    {/* Cabeçalho: Título + Subtítulo + Badge */}
+                    <div className="flex items-start justify-between gap-3 min-w-0">
+                      <div className="min-w-0 space-y-0.5">
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
+                          {secaoAfetada}
+                        </h3>
+                        <p className="text-xs text-gray-400 font-medium">
+                          Registrada por {nomeInspetor} em {dataFormatada}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 pt-0.5">
+                        <PillTag cor={corPill} className="scale-90 sm:scale-100 origin-right">
+                          {labelPill}
+                        </PillTag>
+                      </div>
+                    </div>
+
+                    {/* Bloco: Problema Relatado */}
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        PROBLEMA RELATADO
+                      </p>
+                      <p className="text-sm font-bold text-gray-900 leading-snug">
+                        {descricaoEvidencia}
                       </p>
                     </div>
 
-                    <div className="shrink-0 pt-0.5">
-                      <PillTag cor={corPill} className="scale-90 sm:scale-100 origin-right">
-                        {labelPill}
-                      </PillTag>
-                    </div>
-                  </div>
-
-                  {/* Bloco: Problema Relatado */}
-                  <div className="space-y-0.5">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                      PROBLEMA RELATADO
-                    </p>
-                    <p className="text-sm font-bold text-gray-900 leading-snug">
-                      {descricaoEvidencia}
-                    </p>
-                  </div>
-
-                  {/* Imagem de Evidência com Borderglass & Cantos Arredondados */}
-                  {temFotoReal && (
-                    <div className="space-y-2 pt-0.5">
-                      <div 
-                        onClick={() => setFotoExpandida(fotoUrl)}
-                        className="relative overflow-hidden rounded-xl border border-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.06)] ring-1 ring-black/5 cursor-pointer hover:opacity-98 transition-all group"
-                      >
-                        <img
-                          src={fotoUrl}
-                          alt="Evidência da Não Conformidade"
-                          className="w-full h-auto max-h-[180px] sm:max-h-[220px] object-cover group-hover:scale-[1.01] transition-transform duration-300 rounded-xl"
-                        />
-                        {/* Overlay de Borda de Vidro Ultra-Subtil & Delicada */}
-                        <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/70 shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)] ring-1 ring-inset ring-white/40" />
-                      </div>
-
-                      {/* Informação de quem tirou e quando (Embaixo da imagem) */}
-                      <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium px-0.5 pt-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0c-.693.044-1.336.438-1.736 1.039l-.822 1.316Z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-                          </svg>
-                          <span className="truncate">Registrada por <strong className="text-gray-700 font-semibold">{nomeInspetor}</strong></span>
+                    {/* Imagem de Evidência com Borderglass & Cantos Arredondados */}
+                    {temFotoReal && (
+                      <div className="space-y-2 pt-0.5">
+                        <div 
+                          onClick={() => setFotoExpandida(fotoUrl)}
+                          className="relative overflow-hidden rounded-xl border border-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.06)] ring-1 ring-black/5 cursor-pointer hover:opacity-98 transition-all group"
+                        >
+                          <img
+                            src={fotoUrl}
+                            alt="Evidência da Não Conformidade"
+                            className="w-full h-auto max-h-[180px] sm:max-h-[220px] object-cover group-hover:scale-[1.01] transition-transform duration-300 rounded-xl"
+                          />
+                          {/* Overlay de Borda de Vidro Ultra-Subtil & Delicada */}
+                          <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/70 shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)] ring-1 ring-inset ring-white/40" />
                         </div>
-                        <span className="text-gray-450 font-semibold shrink-0">{dataFormatada}</span>
+
+                        {/* Informação de quem tirou e quando (Embaixo da imagem) */}
+                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium px-0.5 pt-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0c-.693.044-1.336.438-1.736 1.039l-.822 1.316Z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                            </svg>
+                            <span className="truncate">Registrada por <strong className="text-gray-700 font-semibold">{nomeInspetor}</strong></span>
+                          </div>
+                          <span className="text-gray-450 font-semibold shrink-0">{dataFormatada}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )
+          )
+        } else {
+          const ultima = historico[0]
+          return (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setNcAbertaExpandida(!ncAbertaExpandida)}
+                className="w-full flex items-center justify-between px-1 cursor-pointer select-none py-1 group"
+              >
+                <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
+                  Última Inspeção
+                </p>
+                <svg
+                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${ncAbertaExpandida ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+
+              <div className={`grid transition-all duration-300 ease-in-out ${ncAbertaExpandida ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0 pointer-events-none mt-0'}`}>
+                <div className="overflow-hidden">
+                  <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/90 space-y-4 mb-2">
+                    {/* Cabeçalho: Título + Subtítulo + Badge */}
+                    <div className="flex items-start justify-between gap-3 min-w-0">
+                      <div className="min-w-0 space-y-0.5">
+                        <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
+                          Ronda: {ultima.variante}
+                        </h3>
+                        <p className="text-xs text-gray-400 font-medium">
+                          Realizada por {ultima.usuario} em {ultima.dataHora}
+                        </p>
+                      </div>
+
+                      <div className="shrink-0 pt-0.5">
+                        <PillTag cor="verde" className="scale-90 sm:scale-100 origin-right">
+                          Pronto
+                        </PillTag>
+                      </div>
+                    </div>
+
+                    {/* Bloco: Status */}
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        STATUS
+                      </p>
+                      <p className="text-sm font-bold text-emerald-600 leading-snug">
+                        Todos os itens avaliados estão em conformidade.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        }
       })()}
 
       {/* ── Histórico de Inspeções (Colapsável) ── */}
