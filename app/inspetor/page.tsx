@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
@@ -22,6 +23,10 @@ export default function PaginaInicialInspetor() {
   const cacheKey = 'inspetor_ativos_lista'
   const [ativos, setAtivos] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
   const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
+
+  useEffect(() => {
+    router.prefetch('/inspetor/scanner')
+  }, [router])
 
   useEffect(() => {
     async function carregarAtivos() {
@@ -276,10 +281,11 @@ export default function PaginaInicialInspetor() {
           ativosFiltrados.map((item, i) => {
             const isCarrinho = item.tag?.toLowerCase() === 'carrinho de parada' || item.nome?.toLowerCase().includes('carrinho')
             return (
-              <div
+              <Link
                 key={item.id}
-                onClick={() => router.push(`/inspetor/local/${item.localId}`)}
-                className="bg-white rounded-[28px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100/90 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
+                href={`/inspetor/local/${item.localId}`}
+                prefetch={true}
+                className="block bg-white rounded-[28px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100/90 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
                 <div className="flex items-center justify-between gap-3 w-full">
@@ -336,7 +342,7 @@ export default function PaginaInicialInspetor() {
                     </svg>
                   </div>
                 </div>
-              </div>
+              </Link>
             )
           })
         )}

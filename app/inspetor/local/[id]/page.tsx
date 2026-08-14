@@ -8,6 +8,7 @@ import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { PillTag } from '@/components/ui/PillTag'
 import type { StatusAtivo } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 
 /**
  * Tela de detalhes do Local / Sala — Apple-style, hierarquia clara.
@@ -29,199 +30,246 @@ const STATUS_LOCAL = {
 
 export default function PaginaLocal() {
   const router = useRouter()
-
   const params = useParams()
   const localId = params.id as string
 
-  const [local, setLocal] = useState<any>(null)
-  const [ativos, setAtivos] = useState<any[]>([])
-  const [ncs, setNcs] = useState<any[]>([])
-  const [historico, setHistorico] = useState<any[]>([])
-  const [ultimoChecklistItens, setUltimoChecklistItens] = useState<any[]>([])
+  const cacheKey = `inspetor_local_${localId}`
+  const cacheData = dadosCache.get<any>(cacheKey)
+
+  // Recupera ativo correspondente do cache da lista para renderização instantânea
+  const cachedAtivosLista = dadosCache.get<any[]>('inspetor_ativos_lista') || []
+  const ativoDaLista = cachedAtivosLista.find((a: any) => a.localId === localId)
+
+  const [local, setLocal] = useState<any>(() => {
+    if (cacheData?.local) return cacheData.local
+    if (ativoDaLista) {
+      return {
+        id: localId,
+        nome: ativoDaLista.localizacao || 'Sala',
+        setor: 'Centro Cirúrgico',
+        status: 'pronta' as const,
+      }
+    }
+    return null
+  })
+
+  const [ativos, setAtivos] = useState<any[]>(() => {
+    if (cacheData?.ativos) return cacheData.ativos
+    if (ativoDaLista) {
+      return [{
+        id: ativoDaLista.id,
+        nome: ativoDaLista.nome,
+        status: 'operacional' as StatusAtivo,
+        ultimaInspecao: ativoDaLista.ultimaInspecao,
+      }]
+    }
+    return []
+  })
+
+  const [ncs, setNcs] = useState<any[]>(() => cacheData?.ncs || [])
+  const [historico, setHistorico] = useState<any[]>(() => cacheData?.historico || [])
+  const [ultimoChecklistItens, setUltimoChecklistItens] = useState<any[]>(() => cacheData?.ultimoChecklistItens || [])
   const [dataFiltro, setDataFiltro] = useState('')
   const [historicoAberto, setHistoricoAberto] = useState(false)
   const [ncAbertaExpandida, setNcAbertaExpandida] = useState(true)
-  const [carregando, setCarregando] = useState(true)
+  const [carregando, setCarregando] = useState(() => !cacheData && !ativoDaLista)
   const [erro, setErro] = useState<string | null>(null)
   const [fotoExpandida, setFotoExpandida] = useState<string | null>(null)
+
+  // Pré-carregar rota da ronda para que o clique em "Iniciar ronda" seja instantâneo
+  useEffect(() => {
+    if (localId) {
+      router.prefetch(`/inspetor/checklist/ronda-${localId}`)
+    }
+  }, [localId, router])
 
   useEffect(() => {
     async function carregarDados() {
       try {
         const supabase = criarClienteSupabase() as any
 
-        // Buscar detalhes do local
-        const { data: localData, error: localError } = await supabase
-          .from('locais')
-          .select('*, centros_cirurgicos(*)')
-          .eq('id', localId)
-          .single()
+        // 1. Buscar local e ativos em PARALELO com Promise.all
+        const [localRes, ativosRes] = await Promise.all([
+          supabase
+            .from('locais')
+            .select('*, centros_cirurgicos(*)')
+            .eq('id', localId)
+            .single(),
+          supabase
+            .from('ativos')
+            .select('*')
+            .eq('local_id', localId)
+        ])
 
-        if (localError) {
-          console.error(localError)
-          setErro(`Erro ao carregar local: ${localError.message} (Código ${localError.code})`)
+        if (localRes.error) {
+          console.error(localRes.error)
+          setErro(`Erro ao carregar local: ${localRes.error.message} (Código ${localRes.error.code})`)
           return
         }
 
+        const localData = localRes.data
         if (!localData) {
           setErro('Nenhum dado encontrado para esta sala.')
           return
         }
 
-        setLocal({
+        const localFormatado = {
           id: localData.id,
           nome: localData.nome,
           setor: localData.centros_cirurgicos?.nome || 'Centro Cirúrgico',
           status: localData.status as keyof typeof STATUS_LOCAL,
-        })
+        }
+        setLocal(localFormatado)
 
-        // Buscar ativos desse local
-        const { data: ativosData, error: ativosError } = await supabase
-          .from('ativos')
-          .select('*')
-          .eq('local_id', localId)
-
-        if (ativosError) {
-          console.error(ativosError)
-          setErro(`Erro ao carregar ativos: ${ativosError.message} (Código ${ativosError.code})`)
+        const ativosData = ativosRes.data || []
+        if (ativosData.length === 0) {
+          setAtivos([])
+          setHistorico([])
+          setNcs([])
+          setCarregando(false)
           return
         }
 
-        if (ativosData) {
-          if (ativosData.length > 0) {
-            const ativosIds = ativosData.map((a: any) => a.id)
+        const ativosIds = ativosData.map((a: any) => a.id)
 
-            // Buscar execuções concluídas para esses ativos (com joins para carregar dados históricos completos)
-            const { data: execsData, error: execsError } = await supabase
-              .from('execucoes_checklist')
-              .select('*, usuarios(nome), modelos_checklist(nome_variante)')
-              .in('ativo_id', ativosIds)
-              .eq('status', 'concluida')
-              .order('finalizado_em', { ascending: false })
+        // 2. Buscar execuções concluídas e Não Conformidades em PARALELO
+        const [execsRes, ncsRes] = await Promise.all([
+          supabase
+            .from('execucoes_checklist')
+            .select('*, usuarios(nome), modelos_checklist(nome_variante)')
+            .in('ativo_id', ativosIds)
+            .eq('status', 'concluida')
+            .order('finalizado_em', { ascending: false })
+            .limit(10),
+          supabase
+            .from('nao_conformidades')
+            .select('*, itens_execucao_checklist(*, execucoes_checklist(*, usuarios(nome)))')
+            .in('ativo_id', ativosIds)
+            .neq('status', 'encerrada')
+            .order('criado_em', { ascending: false })
+        ])
 
-            if (execsError) {
-              console.error(execsError)
-            }
+        const execsData = execsRes.data || []
+        const ncsData = ncsRes.data || []
+        setNcs(ncsData)
 
-            // Buscar todos os itens executados para identificar se houve não conformidade e sua criticidade
-            const execsNcMapa = new Map()
-            if (execsData && execsData.length > 0) {
-              const execsIds = execsData.map((e: any) => e.id)
-              const { data: itemsData } = await supabase
-                .from('itens_execucao_checklist')
-                .select('execucao_id, resposta, criticidade, item_congelado')
-                .in('execucao_id', execsIds)
+        // 3. Buscar itens executados das execuções recentes
+        let itemsData: any[] = []
+        if (execsData.length > 0) {
+          const execsIds = execsData.slice(0, 5).map((e: any) => e.id)
+          const { data: itensRes } = await supabase
+            .from('itens_execucao_checklist')
+            .select('execucao_id, resposta, criticidade, item_congelado')
+            .in('execucao_id', execsIds)
 
-              if (itemsData) {
-                itemsData.forEach((it: any) => {
-                  if (it.resposta === 'nao_conforme') {
-                    const currentHighest = execsNcMapa.get(it.execucao_id)
-                    if (!currentHighest ||
-                      (it.criticidade === 'critico') ||
-                      (it.criticidade === 'importante' && currentHighest !== 'critico')) {
-                      execsNcMapa.set(it.execucao_id, it.criticidade)
-                    }
-                  }
-                })
-
-                // Preencher o checklist da última execução
-                const ultimaExecId = execsData[0].id
-                const ultimoItems = itemsData.filter((it: any) => it.execucao_id === ultimaExecId)
-                const secoesMapa = new Map<string, { resposta: string; criticidade: string }>()
-
-                ultimoItems.forEach((it: any) => {
-                  const desc = it.item_congelado?.descricao || ''
-                  const secao = desc.split(' — ')[0] || 'Outros'
-
-                  const atual = secoesMapa.get(secao)
-                  if (it.resposta === 'nao_conforme') {
-                    if (!atual || atual.resposta === 'conforme' ||
-                      (it.criticidade === 'critico') ||
-                      (it.criticidade === 'importante' && atual.criticidade !== 'critico')) {
-                      secoesMapa.set(secao, { resposta: 'nao_conforme', criticidade: it.criticidade })
-                    }
-                  } else if (!atual) {
-                    secoesMapa.set(secao, { resposta: 'conforme', criticidade: 'informativo' })
-                  }
-                })
-
-                const secoesLista = Array.from(secoesMapa.entries()).map(([secao, val]) => ({
-                  secao,
-                  resposta: val.resposta,
-                  criticidade: val.criticidade
-                }))
-                setUltimoChecklistItens(secoesLista)
-              }
-            }
-
-            // Mapear ativos com a última inspeção
-            setAtivos(ativosData.map((a: any) => {
-              const ultimaExec = execsData?.find((e: any) => e.ativo_id === a.id)
-              let textoInspecao = 'Sem inspeções hoje'
-              if (ultimaExec) {
-                const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
-                const formatador = new Intl.DateTimeFormat('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-                const nomeInspetor = ultimaExec.usuarios?.nome || 'Inspetor'
-                textoInspecao = `Insp. por ${nomeInspetor} em ${formatador.format(dataInspecao)}`
-              }
-
-              return {
-                id: a.id,
-                nome: a.nome,
-                status: a.status as StatusAtivo,
-                ultimaInspecao: textoInspecao,
-              }
-            }))
-
-            // Definir o histórico completo do ativo principal (o primeiro da lista)
-            const primaryAsset = ativosData[0]
-            if (primaryAsset) {
-              const execsAtivo = execsData?.filter((e: any) => e.ativo_id === primaryAsset.id) || []
-              const historicoFormatado = execsAtivo.map((exec: any) => {
-                const criticidadeNc = execsNcMapa.get(exec.id)
-                const dataInspecao = new Date(exec.finalizado_em || exec.iniciado_em)
-                const formatador = new Intl.DateTimeFormat('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-
-                return {
-                  id: exec.id,
-                  variante: exec.modelos_checklist?.nome_variante || 'Checklist',
-                  usuario: exec.usuarios?.nome || 'Inspetor',
-                  dataHora: formatador.format(dataInspecao),
-                  dataOriginal: dataInspecao,
-                  resultado: criticidadeNc || 'conforme'
-                }
-              })
-              setHistorico(historicoFormatado)
-
-              // Buscar NCs abertas dos ativos desse local para exibir alerta piscante e resumo da última
-              const { data: ncsData, error: ncsError } = await supabase
-                .from('nao_conformidades')
-                .select('*, itens_execucao_checklist(*, execucoes_checklist(*, usuarios(nome)))')
-                .in('ativo_id', ativosIds)
-                .neq('status', 'encerrada')
-                .order('criado_em', { ascending: false })
-
-              if (!ncsError && ncsData) {
-                setNcs(ncsData)
-              }
-            }
-          } else {
-            setAtivos([])
-            setHistorico([])
-            setNcs([])
-          }
+          if (itensRes) itemsData = itensRes
         }
+
+        const execsNcMapa = new Map()
+        itemsData.forEach((it: any) => {
+          if (it.resposta === 'nao_conforme') {
+            const currentHighest = execsNcMapa.get(it.execucao_id)
+            if (!currentHighest ||
+              (it.criticidade === 'critico') ||
+              (it.criticidade === 'importante' && currentHighest !== 'critico')) {
+              execsNcMapa.set(it.execucao_id, it.criticidade)
+            }
+          }
+        })
+
+        // Preencher o checklist da última execução
+        let secoesLista: any[] = []
+        if (execsData.length > 0) {
+          const ultimaExecId = execsData[0].id
+          const ultimoItems = itemsData.filter((it: any) => it.execucao_id === ultimaExecId)
+          const secoesMapa = new Map<string, { resposta: string; criticidade: string }>()
+
+          ultimoItems.forEach((it: any) => {
+            const desc = it.item_congelado?.descricao || ''
+            const secao = desc.split(' — ')[0] || 'Outros'
+
+            const atual = secoesMapa.get(secao)
+            if (it.resposta === 'nao_conforme') {
+              if (!atual || atual.resposta === 'conforme' ||
+                (it.criticidade === 'critico') ||
+                (it.criticidade === 'importante' && atual.criticidade !== 'critico')) {
+                secoesMapa.set(secao, { resposta: 'nao_conforme', criticidade: it.criticidade })
+              }
+            } else if (!atual) {
+              secoesMapa.set(secao, { resposta: 'conforme', criticidade: 'informativo' })
+            }
+          })
+
+          secoesLista = Array.from(secoesMapa.entries()).map(([secao, val]) => ({
+            secao,
+            resposta: val.resposta,
+            criticidade: val.criticidade
+          }))
+        }
+        setUltimoChecklistItens(secoesLista)
+
+        // Mapear ativos formatados
+        const ativosFormatados = ativosData.map((a: any) => {
+          const ultimaExec = execsData.find((e: any) => e.ativo_id === a.id)
+          let textoInspecao = 'Sem inspeções hoje'
+          if (ultimaExec) {
+            const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
+            const formatador = new Intl.DateTimeFormat('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+            const nomeInspetor = ultimaExec.usuarios?.nome || 'Inspetor'
+            textoInspecao = `Insp. por ${nomeInspetor} em ${formatador.format(dataInspecao)}`
+          }
+
+          return {
+            id: a.id,
+            nome: a.nome,
+            status: a.status as StatusAtivo,
+            ultimaInspecao: textoInspecao,
+          }
+        })
+        setAtivos(ativosFormatados)
+
+        // Histórico formatado do ativo principal
+        const primaryAsset = ativosData[0]
+        let historicoFormatado: any[] = []
+        if (primaryAsset) {
+          const execsAtivo = execsData.filter((e: any) => e.ativo_id === primaryAsset.id)
+          historicoFormatado = execsAtivo.map((exec: any) => {
+            const criticidadeNc = execsNcMapa.get(exec.id)
+            const dataInspecao = new Date(exec.finalizado_em || exec.iniciado_em)
+            const formatador = new Intl.DateTimeFormat('pt-BR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+
+            return {
+              id: exec.id,
+              variante: exec.modelos_checklist?.nome_variante || 'Checklist',
+              usuario: exec.usuarios?.nome || 'Inspetor',
+              dataHora: formatador.format(dataInspecao),
+              dataOriginal: dataInspecao,
+              resultado: criticidadeNc || 'conforme'
+            }
+          })
+          setHistorico(historicoFormatado)
+        }
+
+        // Salvar no cache para acesso instantâneo em próximas visitas
+        dadosCache.set(cacheKey, {
+          local: localFormatado,
+          ativos: ativosFormatados,
+          ncs: ncsData,
+          historico: historicoFormatado,
+          ultimoChecklistItens: secoesLista
+        })
+
       } catch (err: any) {
         console.error(err)
         setErro(`Erro de conexão: ${err.message || err}`)
@@ -229,10 +277,11 @@ export default function PaginaLocal() {
         setCarregando(false)
       }
     }
+
     if (localId) {
       carregarDados()
     }
-  }, [localId])
+  }, [localId, cacheKey])
 
   if (erro) {
     return (
@@ -245,10 +294,30 @@ export default function PaginaLocal() {
     )
   }
 
-  if (carregando || !local) {
+  if (carregando && !local) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-[#F4F6FA]">
-        <p className="text-sm font-semibold text-gray-400 animate-pulse">Carregando sala...</p>
+      <div className="px-4 sm:px-5 pt-3 pb-10 space-y-4 sm:space-y-6">
+        <div className="h-5 w-16 bg-gray-200/70 rounded-md animate-pulse" />
+        <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/80 space-y-4 animate-pulse">
+          <div className="flex items-center gap-3.5">
+            <div className="w-14 h-14 rounded-[18px] bg-gray-100 shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-5 w-3/4 bg-gray-200 rounded-md" />
+              <div className="h-3.5 w-1/3 bg-gray-100 rounded" />
+            </div>
+            <div className="w-16 h-6 rounded-full bg-gray-100" />
+          </div>
+          <div className="h-px bg-gray-100 my-3" />
+          <div className="space-y-2">
+            <div className="h-3 w-1/3 bg-gray-200 rounded" />
+            <div className="space-y-2 bg-[#F4F6FA]/50 rounded-[20px] p-3.5 border border-gray-100/80">
+              <div className="h-8 bg-white rounded-xl" />
+              <div className="h-8 bg-white rounded-xl" />
+              <div className="h-8 bg-white rounded-xl" />
+            </div>
+          </div>
+          <div className="h-12 bg-gray-200/70 rounded-full" />
+        </div>
       </div>
     )
   }
@@ -617,11 +686,11 @@ export default function PaginaLocal() {
                         'bg-gradient-to-b from-[#54D362] to-[#31B44A]'
 
                   return (
-                    <button
+                    <Link
                       key={ins.id}
-                      type="button"
-                      onClick={() => router.push(`/inspetor/checklist/${ativoPrincipal.id}?execId=${ins.id}`)}
-                      className="w-full flex items-center justify-between py-3 px-4 hover:bg-slate-50/50 transition-all text-left cursor-pointer"
+                      href={`/inspetor/checklist/${ativoPrincipal.id}?execId=${ins.id}`}
+                      prefetch={true}
+                      className="w-full flex items-center justify-between py-3 px-4 hover:bg-slate-50/50 transition-all text-left cursor-pointer select-none"
                     >
                       <div className="flex items-start gap-3 min-w-0 flex-1">
                         {/* Status Badge Icon */}
@@ -681,7 +750,7 @@ export default function PaginaLocal() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                         </svg>
                       </div>
-                    </button>
+                    </Link>
                   )
                 })}
               </div>

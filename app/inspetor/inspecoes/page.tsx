@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
@@ -224,11 +225,11 @@ export default function PaginaHistoricoInspecoes() {
                 'bg-gradient-to-b from-[#54D362] to-[#31B44A]'
 
               return (
-                <button
+                <Link
                   key={ins.id}
-                  type="button"
-                  onClick={() => router.push(`/inspetor/checklist/${ins.ativoId}?execId=${ins.id}`)}
-                  className="w-full flex items-center justify-between py-3 px-4 hover:bg-slate-50/50 transition-all text-left cursor-pointer"
+                  href={`/inspetor/checklist/${ins.ativoId}?execId=${ins.id}`}
+                  prefetch={true}
+                  className="w-full flex items-center justify-between py-3 px-4 hover:bg-slate-50/50 transition-all text-left cursor-pointer select-none"
                 >
                   <div className="flex items-start gap-3 min-w-0 flex-1">
                     {/* Status Badge Icon — Identical to PillTag inner icon */}
@@ -237,7 +238,7 @@ export default function PaginaHistoricoInspecoes() {
                         <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none">
                           <path
                             fill="#0AB01E"
-                            d="M12 2a2 2 0 0 1 1.414.586l.828.828a2 2 0 0 0 1.414.586h1.172a2 2 0 0 1 2 2v1.172a2 2 0 0 0 .586 1.414l.828.828A2 2 0 0 1 21 10.828v1.172a2 2 0 0 1-.586 1.414l-.828.828a2 2 0 0 0-.586 1.414v1.172a2 2 0 0 1-2 2h-1.172a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 10.828 21h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 6 19h-1.172a2 2 0 0 1-2-2v-1.172a2 2 0 0 0-.586-1.414l-.828-.828A2 2 0 0 1 3 12v-1.172a2 2 0 0 1 .586-1.414l.828-.828A2 2 0 0 0 5 7.172V6a2 2 0 0 1 2-2h1.172a2 2 0 0 0 1.414-.586l.828-.828A2 2 0 0 1 12 2z"
+                            d="M12 2a2 2 0 0 1 1.414.586l.828.828a2 2 0 0 0 1.414.586h1.172a2 2 0 0 1 2 2v1.172a2 2 0 0 0 .586 1.414l.828.828A2 2 0 0 1 21 10.828v1.172a2 2 0 0 1-.586 1.414l-.828.828a2 2 0 0 0-.586 1.414v1.172a2 2 0 0 1-2 2h-1.172a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 10.828 21h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 6 19h-1.172a2 2 0 0 1-2-2v-1.172a2 2 0 0 0-.586-1.414l-.828.828A2 2 0 0 1 3 12v-1.172a2 2 0 0 1 .586-1.414l.828-.828A2 2 0 0 0 5 7.172V6a2 2 0 0 1 2-2h1.172a2 2 0 0 0 1.414-.586l.828-.828A2 2 0 0 1 12 2z"
                           />
                           <path
                             stroke="#54D362"
@@ -288,7 +289,7 @@ export default function PaginaHistoricoInspecoes() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </div>
-                </button>
+                </Link>
               )
             })}
           </div>

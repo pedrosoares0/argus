@@ -209,10 +209,6 @@ export default function CommandMenu({
 						</span>
 					)}
 				</div>
-				<kbd className="hidden sm:inline-flex items-center gap-0.5 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[9px] font-bold text-slate-400">
-					<span>{isApple ? '⌘' : 'Ctrl'}</span>
-					{shortcutKey.toUpperCase()}
-				</kbd>
 			</button>
 
 			{/* 2. Floating Dropdown Menu com Backdrop Blur suave e header livre */}
