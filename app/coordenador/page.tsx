@@ -77,6 +77,7 @@ export default function PaginaCoordenador() {
     async function carregarUsuario() {
       try {
         const supabase = criarClienteSupabase() as any
+        const DEFAULT_HOSPITAL = 'e632822a-0000-0000-0000-000000000001'
 
         let currentUser = null
         const stored = localStorage.getItem('argus_usuario_atual')
@@ -91,47 +92,21 @@ export default function PaginaCoordenador() {
         if (!currentUser) {
           const { data: { user } } = await supabase.auth.getUser()
           if (user) {
-            const { data: profile } = await supabase
+            const { data: profiles } = await supabase
               .from('usuarios')
-              .select('id, nome, perfil, hospital_id')
-              .eq('id', user.id)
-              .single()
-            if (profile) currentUser = profile
-          }
-        }
-
-        if (currentUser) {
-          let hId = currentUser.hospital_id
-          if (!hId) {
-            const { data: profile } = await supabase
-              .from('usuarios')
-              .select('hospital_id')
-              .eq('id', currentUser.id)
-              .single()
-            if (profile?.hospital_id) hId = profile.hospital_id
-          }
-
-          if (!hId) {
-            const { data: primeiroHospital } = await supabase
-              .from('hospitais')
-              .select('id')
+              .select('id, auth_user_id, nome, perfil, hospital_id')
+              .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
               .limit(1)
-              .single()
-            if (primeiroHospital) hId = primeiroHospital.id
+            if (profiles?.[0]) currentUser = profiles[0]
           }
-
-          setHospitalId(hId || '')
-          setUsuarioId(currentUser.id)
-        } else {
-          const { data: primeiroHospital } = await supabase
-            .from('hospitais')
-            .select('id')
-            .limit(1)
-            .single()
-          if (primeiroHospital) setHospitalId(primeiroHospital.id)
         }
+
+        const hId = currentUser?.hospital_id || DEFAULT_HOSPITAL
+        setHospitalId(hId)
+        setUsuarioId(currentUser?.id || '')
       } catch (err) {
         console.error('Erro ao resolver hospital do coordenador:', err)
+        setHospitalId('e632822a-0000-0000-0000-000000000001')
       } finally {
         setCarregandoAuth(false)
       }
@@ -166,20 +141,20 @@ export default function PaginaCoordenador() {
         </p>
       </div>
 
-      {/* Conteúdo da Aba Ativa */}
+      {/* Conteúdo das Abas com Persistência em Memória (Keep-Alive & Prefetch) */}
       <div>
-        {abaAtiva === 'dashboard' && (
+        <div className={abaAtiva === 'dashboard' ? 'block animate-fadeIn' : 'hidden'}>
           <PainelDashboard hospitalId={hospitalId} />
-        )}
-        {abaAtiva === 'ncs' && (
+        </div>
+        <div className={abaAtiva === 'ncs' ? 'block animate-fadeIn' : 'hidden'}>
           <FilaValidacaoNCs hospitalId={hospitalId} usuarioId={usuarioId} />
-        )}
-        {abaAtiva === 'equipe' && (
+        </div>
+        <div className={abaAtiva === 'equipe' ? 'block animate-fadeIn' : 'hidden'}>
           <GestaoEquipe hospitalId={hospitalId} />
-        )}
-        {abaAtiva === 'ativos' && (
+        </div>
+        <div className={abaAtiva === 'ativos' ? 'block animate-fadeIn' : 'hidden'}>
           <GestaoAtivos hospitalId={hospitalId} />
-        )}
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════

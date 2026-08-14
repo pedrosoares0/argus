@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { BarraBusca } from '@/components/ui/BarraBusca'
 import { PillTag } from '@/components/ui/PillTag'
+import { AvatarPerfil } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 import type { StatusNaoConformidade, CriticidadeItem } from '@/lib/supabase/types'
 
 const CRITICIDADE_ORDEM: Record<CriticidadeItem, number> = {
@@ -20,10 +22,11 @@ interface FilaValidacaoNCsProps {
 
 export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProps) {
   const router = useRouter()
-  const [ncs, setNcs] = useState<any[]>([])
+  const cacheKey = `coordenador_ncs_${hospitalId}`
+  const [ncs, setNcs] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
   const [termoBusca, setTermoBusca] = useState('')
   const [abaAtiva, setAbaAtiva] = useState<'abertas' | 'aguardando' | 'encerradas'>('abertas')
-  const [carregando, setCarregando] = useState(true)
+  const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
 
   useEffect(() => {
     async function carregarDados() {
@@ -48,21 +51,24 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
           return 'Inspetor'
         }
 
-        // Buscar usuários para resolver o nome do responsável e inspetor
-        let { data: usuariosData } = await supabase
-          .from('usuarios')
-          .select('id, nome, email, perfil')
+        // Executar busca de usuários e NCs em PARALELO (Promise.all)
+        const [usuariosRes, ncsRes] = await Promise.all([
+          supabase
+            .from('usuarios')
+            .select('id, nome, email, perfil'),
+          supabase
+            .from('nao_conformidades')
+            .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*, execucoes_checklist(usuario_id, usuarios(id, nome, email)))')
+            .eq('hospital_id', hospitalId)
+        ])
+
+        const usuariosData = usuariosRes.data
+        const ncsData = ncsRes.data
 
         const usuariosMapa = new Map()
         if (usuariosData) {
           usuariosData.forEach((u: any) => usuariosMapa.set(u.id, formatarNome(u)))
         }
-
-        // Buscar as NCs com ativo, local e item_execucao com execucao_checklist
-        const { data: ncsData } = await supabase
-          .from('nao_conformidades')
-          .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*, execucoes_checklist(usuario_id, usuarios(id, nome, email)))')
-          .eq('hospital_id', hospitalId)
 
         if (ncsData) {
           const formatadas = ncsData.map((nc: any) => {
@@ -102,15 +108,16 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
             }
           })
           setNcs(formatadas)
+          dadosCache.set(cacheKey, formatadas)
         }
       } catch (err) {
-        console.error(err)
+        console.error('Erro ao carregar NCs:', err)
       } finally {
         setCarregando(false)
       }
     }
     carregarDados()
-  }, [hospitalId])
+  }, [hospitalId, cacheKey])
 
   function calcularTempoDesdeAbertura(dataCriacao: string) {
     const criada = new Date(dataCriacao)
@@ -253,9 +260,28 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
       </div>
 
       {/* Lista de NCs */}
-      {carregando ? (
-        <div className="text-center py-12 text-sm text-gray-400 font-semibold animate-pulse">
-          Carregando não conformidades...
+      {carregando && ncs.length === 0 ? (
+        <div className="space-y-3.5">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 animate-pulse space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="h-5 w-24 bg-gray-200 rounded-full" />
+                <div className="h-3 w-16 bg-gray-200 rounded" />
+              </div>
+              <div className="space-y-1.5">
+                <div className="h-4 w-1/2 bg-gray-200 rounded" />
+                <div className="h-3 w-1/3 bg-gray-200 rounded" />
+              </div>
+              <div className="h-3 w-3/4 bg-gray-100 rounded" />
+              <div className="h-px bg-gray-100 pt-1" />
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-gray-200" />
+                  <div className="h-3 w-28 bg-gray-200 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       ) : ncsFiltradas.length > 0 ? (
         <div className="space-y-3.5">
@@ -335,9 +361,11 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
                   <div className="h-px bg-gray-100 pt-1" />
                   <div className="flex items-center justify-between pt-1">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-5 h-5 rounded-full bg-purple-50 text-[#7C3AED] text-[9px] font-black flex items-center justify-center border border-[#7C3AED]/20 shrink-0">
-                        {iniciaisExibicao}
-                      </div>
+                      <AvatarPerfil
+                        perfil={nomeExibicaoResponsavel ? 'engenharia' : 'inspetor'}
+                        nome={nomeExibicaoResponsavel || nomeExibicaoInspetor}
+                        tamanho="xs"
+                      />
                       <span className="text-[11px] text-gray-500 truncate">
                         {nomeExibicaoResponsavel ? (
                           <>Resp: <span className="font-bold text-gray-700">{nomeExibicaoResponsavel}</span></>

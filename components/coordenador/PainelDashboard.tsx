@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar, AvatarPerfil } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 
 type PeriodoFiltro = '7d' | '15d' | '30d'
 
@@ -107,24 +108,20 @@ function gerarDiasNoPeriodo(periodo: PeriodoFiltro): { data: string; diaSemana: 
 }
 
 /**
- * Anel de Progresso Circular com Efeito 3D Suave (Apple Health Style)
+ * Anel de Progresso Circular Moderno & Limpo (Apple Health Style)
  */
 function AnelCircular3D({
   porcentagem,
   gradienteId,
-  sombraId,
   corInicio,
   corFim,
-  corSombra,
-  tamanho = 82,
-  espessura = 8,
+  tamanho = 74,
+  espessura = 6,
 }: {
   porcentagem: number | null
   gradienteId: string
-  sombraId: string
   corInicio: string
   corFim: string
-  corSombra: string
   tamanho?: number
   espessura?: number
 }) {
@@ -134,58 +131,47 @@ function AnelCircular3D({
   const offset = circunferencia - (pct / 100) * circunferencia
 
   return (
-    <div className="relative flex items-center justify-center select-none p-1 rounded-full bg-gradient-to-b from-white via-slate-50/70 to-slate-100/80 shadow-[0_3px_10px_rgba(0,0,0,0.05),inset_0_1px_1px_rgba(255,255,255,1),inset_0_-1px_2px_rgba(0,0,0,0.04)] border border-slate-100/90">
-      <div className="relative flex items-center justify-center" style={{ width: tamanho, height: tamanho }}>
-        <svg width={tamanho} height={tamanho} className="rotate-[-90deg] overflow-visible">
-          <defs>
-            {/* Gradiente da Barra */}
-            <linearGradient id={gradienteId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={corInicio} />
-              <stop offset="100%" stopColor={corFim} />
-            </linearGradient>
+    <div className="relative flex items-center justify-center select-none" style={{ width: tamanho, height: tamanho }}>
+      <svg width={tamanho} height={tamanho} className="rotate-[-90deg] overflow-visible">
+        <defs>
+          <linearGradient id={gradienteId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={corInicio} />
+            <stop offset="100%" stopColor={corFim} />
+          </linearGradient>
+        </defs>
 
-            {/* Sombra 3D suave do arco */}
-            <filter id={sombraId} x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor={corSombra} floodOpacity="0.4" />
-            </filter>
-          </defs>
+        {/* Trilha de Fundo Suave */}
+        <circle
+          cx={tamanho / 2}
+          cy={tamanho / 2}
+          r={raio}
+          stroke="#F1F5F9"
+          strokeWidth={espessura}
+          fill="transparent"
+        />
 
-          {/* Trilha de Fundo (Canaleta com profundidade) */}
+        {/* Arco de Progresso com Gradiente */}
+        {porcentagem !== null && (
           <circle
             cx={tamanho / 2}
             cy={tamanho / 2}
             r={raio}
-            stroke="#E9EDF5"
+            stroke={`url(#${gradienteId})`}
             strokeWidth={espessura}
+            strokeDasharray={circunferencia}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
             fill="transparent"
+            className="transition-all duration-1000 ease-out"
           />
+        )}
+      </svg>
 
-          {/* Arco de Progresso 3D com Sombra & Gradiente */}
-          {porcentagem !== null && (
-            <circle
-              cx={tamanho / 2}
-              cy={tamanho / 2}
-              r={raio}
-              stroke={`url(#${gradienteId})`}
-              strokeWidth={espessura}
-              strokeDasharray={circunferencia}
-              strokeDashoffset={offset}
-              strokeLinecap="round"
-              fill="transparent"
-              filter={`url(#${sombraId})`}
-              className="transition-all duration-1000 ease-out"
-            />
-          )}
-        </svg>
-
-        {/* Núcleo Central 3D com Porcentagem */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-[50px] h-[50px] rounded-full bg-gradient-to-b from-white to-[#F8FAFC] shadow-[0_2px_5px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,1),inset_0_-1px_1px_rgba(0,0,0,0.03)] border border-slate-100/80 flex items-center justify-center">
-            <span className="text-[16.5px] font-black text-slate-900 tracking-tight leading-none font-brand">
-              {porcentagem !== null ? `${porcentagem}%` : '—'}
-            </span>
-          </div>
-        </div>
+      {/* Porcentagem Centralizada */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-[14px] font-extrabold text-slate-800 tracking-tight leading-none">
+          {porcentagem !== null ? `${porcentagem}%` : '—'}
+        </span>
       </div>
     </div>
   )
@@ -246,11 +232,8 @@ function ColunaPodio({
     <div className="flex flex-col items-center text-center">
       {/* Bloco Superior: Avatar Oficial + Nome + Métricas */}
       <div className="flex flex-col items-center mb-2.5 space-y-1 w-full">
-        {/* Avatar com frame suave */}
-        <Avatar size="sm" className="w-10 h-10 rounded-2xl border border-gray-200/90 shadow-xs bg-slate-100">
-          <Avatar.Image src={avatarUrl} alt={nomeLimpo} />
-          <Avatar.Fallback>{iniciais}</Avatar.Fallback>
-        </Avatar>
+        {/* Avatar Oficial por Perfil */}
+        <AvatarPerfil perfil={inspetor.perfil} nome={inspetor.nome} tamanho="lg" />
 
         {/* Nome do Inspetor */}
         <p className="text-[11.5px] font-black text-gray-900 truncate max-w-[85px] leading-tight pt-0.5">
@@ -297,12 +280,15 @@ function ColunaPodio({
 export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
   const router = useRouter()
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('7d')
-  const [dados, setDados] = useState<DadosDashboard | null>(null)
-  const [carregando, setCarregando] = useState(true)
+  const cacheKey = `coordenador_dashboard_${hospitalId}_${periodo}`
+  const [dados, setDados] = useState<DadosDashboard | null>(() => dadosCache.get<DadosDashboard>(cacheKey))
+  const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
 
   useEffect(() => {
     async function carregarDados() {
-      setCarregando(true)
+      if (!dadosCache.get(cacheKey)) {
+        setCarregando(true)
+      }
       try {
         const supabase = criarClienteSupabase() as any
         const dataInicio = obterDataInicio(periodo)
@@ -312,10 +298,6 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
         const diasPeriodo = periodo === '7d' ? 7 : periodo === '15d' ? 15 : 30
         const dataInicioAnterior = new Date(dataInicio.getTime() - diasPeriodo * 24 * 60 * 60 * 1000)
         const dataInicioAnteriorISO = dataInicioAnterior.toISOString()
-
-        // 1. Rondas (execucoes_checklist com finalizado_em ou iniciado_em)
-        let todasExecucoes: any[] = []
-        const mapaUsuarios = new Map<string, { nome: string; perfil: string; avatarUrl?: string }>()
 
         // Helper robusto para formatar nome
         const formatarNome = (u: any): string => {
@@ -335,121 +317,101 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           return 'Inspetor'
         }
 
-        // Tentar primeiro com join de usuarios
-        const { data: execsComJoin, error: errJoin } = await supabase
-          .from('execucoes_checklist')
-          .select('id, finalizado_em, iniciado_em, usuario_id, status, ativo_id, ativos(nome, local_id, locais(nome, centros_cirurgicos(nome))), usuarios(id, nome, email, perfil, avatar_url)')
-          .eq('status', 'concluida')
-
-        if (!errJoin && execsComJoin) {
-          todasExecucoes = execsComJoin
-          todasExecucoes.forEach((r: any) => {
-            if (r.usuarios && r.usuario_id) {
-              mapaUsuarios.set(r.usuario_id, {
-                nome: formatarNome(r.usuarios),
-                perfil: r.usuarios.perfil || 'inspetor',
-                avatarUrl: r.usuarios.avatar_url,
-              })
-            }
-          })
-        } else {
-          // Fallback sem join caso a FK não esteja mapeada no PostgREST
-          const { data: execsSimples } = await supabase
+        // Executar TODAS as queries em PARALELO simultâneo com Promise.all
+        const [
+          execsRes,
+          usuariosRes,
+          ncsAbertasRes,
+          ncsEncerradasPeriodoRes,
+          ncsEncerradasAnteriorRes,
+          totalNcsAbertasRes,
+          ncsParaRankingRes,
+          ncsTodasPeriodoRes,
+        ] = await Promise.all([
+          supabase
             .from('execucoes_checklist')
-            .select('id, finalizado_em, iniciado_em, usuario_id, status, ativo_id, ativos(nome, local_id, locais(nome, centros_cirurgicos(nome)))')
-            .eq('status', 'concluida')
-          todasExecucoes = execsSimples || []
+            .select('id, finalizado_em, iniciado_em, usuario_id, status, ativo_id, ativos(nome, local_id, locais(nome, centros_cirurgicos(nome))), usuarios(id, nome, email, perfil, avatar_url)')
+            .eq('status', 'concluida'),
+          supabase
+            .from('usuarios')
+            .select('*'),
+          supabase
+            .from('nao_conformidades')
+            .select('id', { count: 'exact' })
+            .eq('hospital_id', hospitalId)
+            .gte('criado_em', dataInicioISO),
+          supabase
+            .from('nao_conformidades')
+            .select('id, criado_em, atualizado_em, status')
+            .eq('hospital_id', hospitalId)
+            .eq('status', 'encerrada')
+            .gte('criado_em', dataInicioISO),
+          supabase
+            .from('nao_conformidades')
+            .select('id, criado_em, atualizado_em, status')
+            .eq('hospital_id', hospitalId)
+            .eq('status', 'encerrada')
+            .gte('criado_em', dataInicioAnteriorISO)
+            .lt('criado_em', dataInicioISO),
+          supabase
+            .from('nao_conformidades')
+            .select('id', { count: 'exact' })
+            .eq('hospital_id', hospitalId)
+            .neq('status', 'encerrada'),
+          supabase
+            .from('nao_conformidades')
+            .select('id, ativo_id, criticidade, ativos(id, nome, categorias_ativos(nome), locais(nome, centros_cirurgicos(nome)))')
+            .eq('hospital_id', hospitalId)
+            .gte('criado_em', dataInicioISO),
+          supabase
+            .from('nao_conformidades')
+            .select('id, criticidade')
+            .eq('hospital_id', hospitalId)
+            .gte('criado_em', dataInicioISO),
+        ])
+
+        const mapaUsuarios = new Map<string, { nome: string; perfil: string; avatarUrl?: string }>()
+        let todasExecucoes: any[] = execsRes.data || []
+
+        // Mapear usuários das execuções
+        todasExecucoes.forEach((r: any) => {
+          if (r.usuarios && r.usuario_id) {
+            mapaUsuarios.set(r.usuario_id, {
+              nome: formatarNome(r.usuarios),
+              perfil: r.usuarios.perfil || 'inspetor',
+              avatarUrl: r.usuarios.avatar_url,
+            })
+          }
+        })
+
+        // Mapear tabela de usuários
+        if (usuariosRes.data && usuariosRes.data.length > 0) {
+          usuariosRes.data.forEach((u: any) => {
+            const info = {
+              nome: formatarNome(u),
+              perfil: u.perfil || 'inspetor',
+              avatarUrl: u.avatar_url,
+            }
+            if (u.id) mapaUsuarios.set(u.id, info)
+            if (u.auth_user_id) mapaUsuarios.set(u.auth_user_id, info)
+          })
         }
 
-        const rondasData = (todasExecucoes || []).filter((r: any) => {
+        const rondasData = todasExecucoes.filter((r: any) => {
           const dataRonda = r.finalizado_em || r.iniciado_em
           if (!dataRonda) return false
           return new Date(dataRonda).getTime() >= dataInicio.getTime()
         })
 
-        // 2. Buscar usuários do banco (trazendo todos os perfis)
-        const { data: todosUsuarios } = await supabase
-          .from('usuarios')
-          .select('id, nome, email, perfil, avatar_url')
+        const ncsAbertasPeriodoData = ncsAbertasRes.data || []
+        const ncsAbertasCount = ncsAbertasRes.count ?? ncsAbertasPeriodoData.length
+        const ncsEncerradasPeriodo = ncsEncerradasPeriodoRes.data || []
+        const ncsEncerradasAnterior = ncsEncerradasAnteriorRes.data || []
+        const totalNcsAbertas = totalNcsAbertasRes.count ?? 0
+        const ncsParaRanking = ncsParaRankingRes.data || []
+        const ncsTodasPeriodo = ncsTodasPeriodoRes.data || []
 
-        if (todosUsuarios && todosUsuarios.length > 0) {
-          todosUsuarios.forEach((u: any) => {
-            mapaUsuarios.set(u.id, {
-              nome: formatarNome(u),
-              perfil: u.perfil || 'inspetor',
-              avatarUrl: u.avatar_url,
-            })
-          })
-        }
-
-        // Se ainda houver algum usuario_id na execução não encontrado no mapa, buscar explicitamente
-        const userIdsNaExecucao: string[] = Array.from(
-          new Set<string>((todasExecucoes || []).map((e: any) => e.usuario_id as string).filter(Boolean))
-        )
-        const userIdsFaltantes = userIdsNaExecucao.filter((id: string) => !mapaUsuarios.has(id))
-        if (userIdsFaltantes.length > 0) {
-          const { data: usuariosFaltantes } = await supabase
-            .from('usuarios')
-            .select('id, nome, email, perfil, avatar_url')
-            .in('id', userIdsFaltantes)
-
-          if (usuariosFaltantes && usuariosFaltantes.length > 0) {
-            usuariosFaltantes.forEach((u: any) => {
-              mapaUsuarios.set(u.id, {
-                nome: formatarNome(u),
-                perfil: u.perfil || 'inspetor',
-                avatarUrl: u.avatar_url,
-              })
-            })
-          }
-        }
-
-        // 2. NCs abertas no período
-        const { data: ncsAbertasPeriodoData, count: ncsAbertasCount } = await supabase
-          .from('nao_conformidades')
-          .select('id', { count: 'exact' })
-          .eq('hospital_id', hospitalId)
-          .gte('criado_em', dataInicioISO)
-
-        // 3. NCs encerradas no período
-        const { data: ncsEncerradasPeriodo } = await supabase
-          .from('nao_conformidades')
-          .select('id, criado_em, atualizado_em, status')
-          .eq('hospital_id', hospitalId)
-          .eq('status', 'encerrada')
-          .gte('criado_em', dataInicioISO)
-
-        // 4. NCs encerradas no período anterior
-        const { data: ncsEncerradasAnterior } = await supabase
-          .from('nao_conformidades')
-          .select('id, criado_em, atualizado_em, status')
-          .eq('hospital_id', hospitalId)
-          .eq('status', 'encerrada')
-          .gte('criado_em', dataInicioAnteriorISO)
-          .lt('criado_em', dataInicioISO)
-
-        // 5. Total de NCs abertas (status != encerrada)
-        const { count: totalNcsAbertas } = await supabase
-          .from('nao_conformidades')
-          .select('id', { count: 'exact' })
-          .eq('hospital_id', hospitalId)
-          .neq('status', 'encerrada')
-
-        // 6. NCs no período com ativo para ranking
-        const { data: ncsParaRanking } = await supabase
-          .from('nao_conformidades')
-          .select('id, ativo_id, criticidade, ativos(id, nome, categorias_ativos(nome), locais(nome, centros_cirurgicos(nome)))')
-          .eq('hospital_id', hospitalId)
-          .gte('criado_em', dataInicioISO)
-
-        // 7. NCs por criticidade no período
-        const { data: ncsTodasPeriodo } = await supabase
-          .from('nao_conformidades')
-          .select('id, criticidade')
-          .eq('hospital_id', hospitalId)
-          .gte('criado_em', dataInicioISO)
-
-        // 8. Itens de execução do período e cálculo de conformidades
+        // Itens de execução do período e cálculo de conformidades
         let totalItensConformes = 0
         let totalItens = 0
         let rondasSemNcNoPeriodo = 0
@@ -477,18 +439,19 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           }
         }
 
-        // 9. Ranking de Inspetores mais ativos no período
+        // Ranking de Inspetores mais ativos no período
         const mapaInspetores = new Map<string, InspetorRanking>()
         rondasData.forEach((r: any) => {
           const uId = r.usuario_id
           if (!uId) return
           if (!mapaInspetores.has(uId)) {
             const uInfo = mapaUsuarios.get(uId)
+            const nomeInsp = uInfo?.nome || (r.usuarios ? formatarNome(r.usuarios) : null) || 'Inspetor'
             mapaInspetores.set(uId, {
               usuarioId: uId,
-              nome: uInfo?.nome || 'Inspetor',
-              perfil: uInfo?.perfil || 'inspetor',
-              avatarUrl: uInfo?.avatarUrl,
+              nome: nomeInsp,
+              perfil: uInfo?.perfil || r.usuarios?.perfil || 'inspetor',
+              avatarUrl: uInfo?.avatarUrl || r.usuarios?.avatar_url,
               totalRondas: 0,
               totalConformes: 0,
               totalNaoConformes: 0,
@@ -609,9 +572,10 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
         // Rondas recentes formatadas
         const rondasRecentesFormatadas = rondasOrdenadas.map((r: any) => {
           const uInfo = mapaUsuarios.get(r.usuario_id)
+          const nomeInsp = uInfo?.nome || (r.usuarios ? formatarNome(r.usuarios) : null) || 'Inspetor'
           return {
             id: r.id,
-            inspetorNome: uInfo?.nome || 'Inspetor',
+            inspetorNome: nomeInsp,
             nomeAtivo: r.ativos?.nome || 'Ativo',
             localNome: r.ativos?.locais?.nome || 'Local',
             centroCirurgicoNome: r.ativos?.locais?.centros_cirurgicos?.nome || 'Centro Cirúrgico',
@@ -620,7 +584,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           }
         })
 
-        setDados({
+        const resultadoCalculado = {
           rondasNoPeriodo: rondasData.length,
           rondasSemNcNoPeriodo,
           ncsAbertasNoPeriodo: ncsAbertasCount || ncsAbertasPeriodoData?.length || 0,
@@ -635,7 +599,10 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           ncsPorCriticidade,
           rondasPorDia,
           rondasRecentes: rondasRecentesFormatadas,
-        })
+        }
+
+        setDados(resultadoCalculado)
+        dadosCache.set(cacheKey, resultadoCalculado)
       } catch (err) {
         console.error('Erro ao carregar dashboard:', err)
       } finally {
@@ -644,7 +611,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
     }
 
     carregarDados()
-  }, [hospitalId, periodo])
+  }, [hospitalId, periodo, cacheKey])
 
   // Taxa de itens aprovados (Opção 3)
   const taxaItensAprovados = useMemo(() => {
@@ -733,105 +700,87 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          PAINEL DE ANÉIS 3D (APPLE FITNESS GAUGE STYLE)
+          PAINEL DE ANÉIS LIMPO & MODERNO (APPLE HEALTH STYLE)
          ══════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-[28px] p-5 border border-gray-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.04)] space-y-4.5">
-        {/* Cabeçalho do Card com Badges 3D */}
-        <div className="flex items-center justify-between pb-3.5 border-b border-gray-100/80">
+      <div className="bg-white rounded-[24px] p-5 border border-slate-100/90 shadow-[var(--shadow-card)] space-y-4">
+        {/* Cabeçalho Limpo */}
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
           <div>
-            <h2 className="text-[14px] font-black text-gray-900 tracking-tight leading-none">
+            <h2 className="text-[13.5px] font-extrabold text-slate-900 tracking-tight leading-none">
               Indicadores de Prontidão
             </h2>
-            <p className="text-[10px] text-gray-400 font-medium mt-1">
+            <p className="text-[10px] text-slate-400 font-medium mt-1">
               Desempenho operacional em {labelPeriodo}
             </p>
           </div>
 
-          {/* Badges 3D Suaves */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Badge Rondas 3D */}
-            <div className="inline-flex items-center gap-1 bg-gradient-to-b from-blue-50 to-blue-100/90 text-blue-700 font-black text-[10.5px] px-3 py-1 rounded-full border border-blue-200/70 shadow-[0_2px_4px_rgba(37,99,235,0.12),inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_1px_rgba(37,99,235,0.1)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_4px_rgba(37,99,235,0.6)]" />
-              <span>{dados.rondasNoPeriodo} rondas</span>
-            </div>
-
-            {/* Badge NCs 3D */}
-            <div className="inline-flex items-center gap-1 bg-gradient-to-b from-red-50 to-red-100/90 text-red-700 font-black text-[10.5px] px-3 py-1 rounded-full border border-red-200/70 shadow-[0_2px_4px_rgba(220,38,38,0.12),inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-1px_1px_rgba(220,38,38,0.1)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_4px_rgba(220,38,38,0.6)]" />
-              <span>{dados.ncsAbertasNoPeriodo} NCs</span>
-            </div>
+          {/* Badges de Resumo */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-600 font-bold text-[10.5px] px-2.5 py-1 rounded-full border border-slate-200/60">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              {dados.rondasNoPeriodo} rondas
+            </span>
+            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 font-bold text-[10.5px] px-2.5 py-1 rounded-full border border-rose-100/80">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+              {dados.ncsAbertasNoPeriodo} NCs
+            </span>
           </div>
         </div>
 
-        {/* Trio de Anéis Circulares 3D com Descrições Detalhadas */}
-        <div className="grid grid-cols-3 divide-x divide-gray-100/90 pt-1">
-          {/* Gauge 1: Rondas 100% OK (Verde / Lima 3D) */}
-          <div className="flex flex-col items-center text-center px-1.5">
+        {/* Trio de Indicadores Circulares com Layout Limpo */}
+        <div className="grid grid-cols-3 divide-x divide-slate-100 pt-1">
+          {/* Indicador 1: Rondas Conformes */}
+          <div className="flex flex-col items-center text-center px-1">
             <AnelCircular3D
               porcentagem={taxaRondasSemFalhas}
-              gradienteId="gradRondasOk3D"
-              sombraId="sombraRondasOk3D"
+              gradienteId="gradRondasOk"
               corInicio="#84CC16"
               corFim="#10B981"
-              corSombra="#10B981"
-              tamanho={78}
-              espessura={7.5}
+              tamanho={72}
+              espessura={6}
             />
-            <h4 className="text-[11.5px] font-black text-gray-900 mt-2.5 leading-tight tracking-tight">
+            <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
               Rondas 100% OK
             </h4>
-            <p className="text-[10px] font-extrabold text-emerald-600 mt-0.5">
-              {dados.rondasSemNcNoPeriodo} de {dados.rondasNoPeriodo} limpas
-            </p>
-            <p className="text-[8.5px] text-gray-400 font-medium leading-tight mt-0.5">
-              Sem pendências
-            </p>
+            <span className="text-[10px] font-bold text-emerald-600 mt-0.5">
+              {dados.rondasSemNcNoPeriodo} de {dados.rondasNoPeriodo}
+            </span>
           </div>
 
-          {/* Gauge 2: Itens Aprovados (Azul / Roxo 3D) */}
-          <div className="flex flex-col items-center text-center px-1.5">
+          {/* Indicador 2: Itens Aprovados */}
+          <div className="flex flex-col items-center text-center px-1">
             <AnelCircular3D
               porcentagem={taxaItensAprovados}
-              gradienteId="gradItensAprovados3D"
-              sombraId="sombraItensAprovados3D"
+              gradienteId="gradItensAprovados"
               corInicio="#38BDF8"
-              corFim="#7C3AED"
-              corSombra="#7C3AED"
-              tamanho={78}
-              espessura={7.5}
+              corFim="#6366F1"
+              tamanho={72}
+              espessura={6}
             />
-            <h4 className="text-[11.5px] font-black text-gray-900 mt-2.5 leading-tight tracking-tight">
+            <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
               Itens Aprovados
             </h4>
-            <p className="text-[10px] font-extrabold text-[#7C3AED] mt-0.5">
-              {dados.totalItensConformes} de {dados.totalItens} itens OK
-            </p>
-            <p className="text-[8.5px] text-gray-400 font-medium leading-tight mt-0.5">
-              Prontos para uso
-            </p>
+            <span className="text-[10px] font-bold text-indigo-600 mt-0.5">
+              {dados.totalItensConformes} de {dados.totalItens}
+            </span>
           </div>
 
-          {/* Gauge 3: Não-Críticas / Controle 3D (Âmbar / Laranja 3D) */}
-          <div className="flex flex-col items-center text-center px-1.5">
+          {/* Indicador 3: Não-Críticas */}
+          <div className="flex flex-col items-center text-center px-1">
             <AnelCircular3D
               porcentagem={taxaNaoCritica}
-              gradienteId="gradNaoCritico3D"
-              sombraId="sombraNaoCritico3D"
+              gradienteId="gradNaoCritico"
               corInicio="#FBBF24"
               corFim="#F97316"
-              corSombra="#F97316"
-              tamanho={78}
-              espessura={7.5}
+              tamanho={72}
+              espessura={6}
             />
-            <h4 className="text-[11.5px] font-black text-gray-900 mt-2.5 leading-tight tracking-tight">
+            <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
               Não-Críticas
             </h4>
-            <p className="text-[10px] font-extrabold text-amber-600 mt-0.5">
-              {Math.max(dados.ncsAbertasNoPeriodo - dados.ncsPorCriticidade.critico, 0)} de {dados.ncsAbertasNoPeriodo} leves
-            </p>
-            <p className="text-[8.5px] text-gray-400 font-medium leading-tight mt-0.5">
-              {dados.ncsPorCriticidade.critico} com risco crítico
-            </p>
+            <span className="text-[10px] font-bold text-amber-600 mt-0.5">
+              {Math.max(dados.ncsAbertasNoPeriodo - dados.ncsPorCriticidade.critico, 0)} de {dados.ncsAbertasNoPeriodo}
+            </span>
           </div>
         </div>
       </div>

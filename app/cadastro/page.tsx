@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { Avatar } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
@@ -321,17 +322,15 @@ export default function PaginaCadastro() {
               />
             </div>
 
-            {/* Botão Cadastrar */}
+            {/* Botão Cadastrar com Efeito Liquid Metal */}
             <div className="pt-2">
-              <Botao
+              <LiquidMetalButton
                 type="submit"
-                variante="primario"
                 tamanho="lg"
                 larguraTotal
                 carregando={carregando}
-              >
-                Cadastrar
-              </Botao>
+                label="Cadastrar"
+              />
             </div>
 
             {/* Link para Login */}

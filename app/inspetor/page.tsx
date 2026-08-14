@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { BarraBusca } from '@/components/ui/BarraBusca'
 import { PillTag } from '@/components/ui/PillTag'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 
 /**
  * Tela inicial do Inspetor — idêntica à 2ª imagem de referência.
@@ -17,109 +19,126 @@ export default function PaginaInicialInspetor() {
   const [mostrarModalCodigo, setMostrarModalCodigo] = useState(false)
   const [codigoInput, setCodigoInput] = useState('')
 
-  // Dados fieis à imagem de referência 2
-  const [ativos, setAtivos] = useState<any[]>([])
-  const [carregando, setCarregando] = useState(true)
+  const cacheKey = 'inspetor_ativos_lista'
+  const [ativos, setAtivos] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
+  const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
 
   useEffect(() => {
     async function carregarAtivos() {
+      if (!dadosCache.get(cacheKey)) {
+        setCarregando(true)
+      }
       try {
         const supabase = criarClienteSupabase() as any
-        const { data, error } = await supabase
-          .from('ativos')
-          .select('*, locais(*), categorias_ativos(*)')
-        
-        if (error) {
-          console.error(error)
-          return
+
+        // Helper para formatar nome
+        const formatarNome = (u: any): string => {
+          if (!u) return 'Inspetor'
+          const nomeCandidato = u.nome || u.full_name || u.name
+          if (nomeCandidato && typeof nomeCandidato === 'string' && nomeCandidato.trim() && nomeCandidato.trim() !== 'Inspetor') {
+            return nomeCandidato.trim()
+          }
+          if (u.email && typeof u.email === 'string') {
+            const parte = u.email.split('@')[0]
+            const partes = parte.split(/[\._\-]/).filter(Boolean)
+            if (partes.length > 0) {
+              return partes.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+            }
+            return parte
+          }
+          return 'Inspetor'
         }
 
-        if (data) {
-          if (data.length > 0) {
-            const ativosIds = data.map((a: any) => a.id)
-            
-            // Buscar execuções concluídas para esses ativos
-            const { data: execsData } = await supabase
-              .from('execucoes_checklist')
-              .select('*')
-              .in('ativo_id', ativosIds)
-              .eq('status', 'concluida')
-              .order('finalizado_em', { ascending: false })
+        // Buscar ativos, execuções e usuários em PARALELO com Promise.all
+        const [ativosRes, execsRes, usuariosRes] = await Promise.all([
+          supabase
+            .from('ativos')
+            .select('*, locais(*), categorias_ativos(*)'),
+          supabase
+            .from('execucoes_checklist')
+            .select('id, ativo_id, usuario_id, status, iniciado_em, finalizado_em')
+            .eq('status', 'concluida')
+            .order('finalizado_em', { ascending: false }),
+          supabase
+            .from('usuarios')
+            .select('id, nome, email'),
+        ])
 
-            const usuariosMapa = new Map()
-            const execsNcMapa = new Map()
+        const data = ativosRes.data
+        const execsData = execsRes.data || []
+        const usersData = usuariosRes.data || []
 
-            if (execsData && execsData.length > 0) {
-              const userIds = Array.from(new Set(execsData.map((e: any) => e.usuario_id)))
-              const { data: usersData } = await supabase
-                .from('usuarios')
-                .select('id, nome')
-                .in('id', userIds)
+        if (data && data.length > 0) {
+          const usuariosMapa = new Map()
+          usersData.forEach((u: any) => usuariosMapa.set(u.id, formatarNome(u)))
 
-              if (usersData) {
-                usersData.forEach((u: any) => usuariosMapa.set(u.id, u.nome))
-              }
+          const execsIds = execsData.map((e: any) => e.id)
+          let itemsData: any[] = []
 
-              const execsIds = execsData.map((e: any) => e.id)
-              const { data: itemsData } = await supabase
-                .from('itens_execucao_checklist')
-                .select('execucao_id, resposta, criticidade')
-                .in('execucao_id', execsIds)
+          if (execsIds.length > 0) {
+            const { data: itensRes } = await supabase
+              .from('itens_execucao_checklist')
+              .select('execucao_id, resposta, criticidade')
+              .in('execucao_id', execsIds.slice(0, 100))
 
-              if (itemsData) {
-                itemsData.forEach((it: any) => {
-                  if (it.resposta === 'nao_conforme') {
-                    const currentHighest = execsNcMapa.get(it.execucao_id)
-                    if (!currentHighest || 
-                        (it.criticidade === 'critico') || 
-                        (it.criticidade === 'importante' && currentHighest !== 'critico')) {
-                      execsNcMapa.set(it.execucao_id, it.criticidade)
-                    }
-                  }
-                })
+            if (itensRes) itemsData = itensRes
+          }
+
+          const execsNcMapa = new Map()
+          itemsData.forEach((it: any) => {
+            if (it.resposta === 'nao_conforme') {
+              const currentHighest = execsNcMapa.get(it.execucao_id)
+              if (
+                !currentHighest ||
+                it.criticidade === 'critico' ||
+                (it.criticidade === 'importante' && currentHighest !== 'critico')
+              ) {
+                execsNcMapa.set(it.execucao_id, it.criticidade)
               }
             }
+          })
 
-            const formatados = data.map((ativo: any) => {
-              const execsDoAtivo = execsData?.filter((e: any) => e.ativo_id === ativo.id) || []
-              const ultimaExec = execsDoAtivo[0]
-              
-              let textoInspecao = 'Sem inspeções registradas'
-              let statusUltima = 'sem_inspecao'
+          const formatados = data.map((ativo: any) => {
+            const execsDoAtivo = execsData.filter((e: any) => e.ativo_id === ativo.id)
+            const ultimaExec = execsDoAtivo[0]
 
-              if (ultimaExec) {
-                const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
-                const diaMes = dataInspecao.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-                const horaMin = dataInspecao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                const nomeInspetor = usuariosMapa.get(ultimaExec.usuario_id) || 'Inspetor'
-                textoInspecao = `${nomeInspetor} em ${diaMes} às ${horaMin}`
-                statusUltima = execsNcMapa.get(ultimaExec.id) || 'conforme'
-              }
+            let textoInspecao = 'Sem inspeções registradas'
+            let statusUltima = 'sem_inspecao'
 
-              return {
-                id: ativo.id,
-                localId: ativo.local_id,
-                tag: ativo.categorias_ativos?.nome || 'Ativo',
-                corTag: (ativo.categorias_ativos?.nome === 'Carrinho de parada' ? 'azul' : 'roxo') as 'azul' | 'roxo',
-                nome: ativo.nome,
-                localizacao: ativo.locais?.nome || 'Sem localização',
-                ultimaInspecao: textoInspecao,
-                statusUltima
-              }
-            })
-            setAtivos(formatados)
-          } else {
-            setAtivos([])
-          }
+            if (ultimaExec) {
+              const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
+              const diaMes = dataInspecao.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+              const horaMin = dataInspecao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+              const nomeInspetor = usuariosMapa.get(ultimaExec.usuario_id) || 'Inspetor'
+              textoInspecao = `${nomeInspetor} em ${diaMes} às ${horaMin}`
+              statusUltima = execsNcMapa.get(ultimaExec.id) || 'conforme'
+            }
+
+            return {
+              id: ativo.id,
+              localId: ativo.local_id,
+              tag: ativo.categorias_ativos?.nome || 'Ativo',
+              corTag: (ativo.categorias_ativos?.nome === 'Carrinho de parada' ? 'azul' : 'roxo') as 'azul' | 'roxo',
+              nome: ativo.nome,
+              localizacao: ativo.locais?.nome || 'Sem localização',
+              ultimaInspecao: textoInspecao,
+              statusUltima,
+            }
+          })
+
+          setAtivos(formatados)
+          dadosCache.set(cacheKey, formatados)
+        } else {
+          setAtivos([])
         }
       } catch (err) {
-        console.error(err)
+        console.error('Erro ao carregar ativos do inspetor:', err)
       } finally {
         setCarregando(false)
       }
     }
     carregarAtivos()
-  }, [])
+  }, [cacheKey])
 
   const ativosFiltrados = ativos.filter(item => 
     item.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
@@ -204,8 +223,7 @@ export default function PaginaInicialInspetor() {
 
         {/* Botão de Câmera e Digitar código */}
         <div className="flex flex-col items-center gap-2 shrink-0">
-          <Botao
-            variante="primario"
+          <LiquidMetalButton
             tamanho="md"
             onClick={() => router.push('/inspetor/scanner')}
             icone={
@@ -213,9 +231,8 @@ export default function PaginaInicialInspetor() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
               </svg>
             }
-          >
-            Escanear
-          </Botao>
+            label="Escanear"
+          />
 
           <button
             type="button"
@@ -236,9 +253,20 @@ export default function PaginaInicialInspetor() {
 
       {/* Lista de Carrinhos (Visual exato da 2ª imagem) */}
       <div className="space-y-2.5 pb-4">
-        {carregando ? (
-          <div className="text-center py-8 text-sm text-gray-400 font-semibold animate-pulse">
-            Carregando ativos do hospital...
+        {carregando && ativos.length === 0 ? (
+          <div className="space-y-2.5">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="bg-white rounded-[28px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100/90 animate-pulse">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-14 h-14 rounded-[18px] bg-gray-100 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-3/5 bg-gray-200 rounded" />
+                    <div className="h-3 w-2/5 bg-gray-100 rounded" />
+                    <div className="h-3 w-4/5 bg-gray-100 rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : ativosFiltrados.length === 0 ? (
           <div className="text-center py-8 text-sm text-gray-400 font-semibold">

@@ -108,7 +108,7 @@ BEGIN
     coalesce(new.raw_user_meta_data->>'nome', case 
       when new.email = 'inspetor@gmail.com' then 'Enf. Pedro Soares'
       when new.email = 'engenharia@gmail.com' then 'Eng. Carlos Eduardo'
-      when new.email = 'coordenador@gmail.com' then 'Coord. Paulo Martins'
+      when new.email = 'coordenador@gmail.com' then 'Coord. Paulo Morais'
       else split_part(new.email, '@', 1)
     end),
     new.email,

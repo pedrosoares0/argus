@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { criarClienteSupabase } from '@/lib/supabase/client'
-import { Avatar } from '@/components/ui/Avatar'
+import { dadosCache } from '@/lib/cache/dadosCache'
+import { Avatar, AvatarPerfil } from '@/components/ui/Avatar'
 
 interface GestaoEquipeProps {
   hospitalId: string
@@ -23,13 +24,18 @@ interface MembroEquipe {
 
 export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
   const [subAba, setSubAba] = useState<'inspetores' | 'engenheiros'>('inspetores')
-  const [inspetores, setInspetores] = useState<MembroEquipe[]>([])
-  const [engenheiros, setEngenheiros] = useState<MembroEquipe[]>([])
-  const [carregando, setCarregando] = useState(true)
+  const cacheKey = `coordenador_equipe_${hospitalId}`
+  const dadosIniciais = dadosCache.get<{ inspetores: MembroEquipe[]; engenheiros: MembroEquipe[] }>(cacheKey)
+
+  const [inspetores, setInspetores] = useState<MembroEquipe[]>(() => dadosIniciais?.inspetores || [])
+  const [engenheiros, setEngenheiros] = useState<MembroEquipe[]>(() => dadosIniciais?.engenheiros || [])
+  const [carregando, setCarregando] = useState(() => !dadosIniciais)
 
   useEffect(() => {
     async function carregarEquipe() {
-      setCarregando(true)
+      if (!dadosCache.get(cacheKey)) {
+        setCarregando(true)
+      }
       try {
         const supabase = criarClienteSupabase() as any
 
@@ -51,7 +57,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
           return 'Inspetor'
         }
 
-        // Buscar usuários
+        // Executar busca de usuários, execuções e NCs em PARALELO (Promise.all)
         let queryUsuarios = supabase
           .from('usuarios')
           .select('id, nome, email, perfil')
@@ -61,7 +67,19 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
           queryUsuarios = queryUsuarios.eq('hospital_id', hospitalId)
         }
 
-        let { data: usuarios } = await queryUsuarios
+        const [usuariosRes, execucoesRes, ncsRes] = await Promise.all([
+          queryUsuarios,
+          supabase
+            .from('execucoes_checklist')
+            .select('id, usuario_id, finalizado_em, iniciado_em, status')
+            .eq('status', 'concluida'),
+          supabase
+            .from('nao_conformidades')
+            .select('id, responsavel_id, status, criado_em')
+            .eq('hospital_id', hospitalId),
+        ])
+
+        let usuarios = usuariosRes.data
         if (!usuarios || usuarios.length === 0) {
           const { data: todosUsuarios } = await supabase
             .from('usuarios')
@@ -77,18 +95,8 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
 
         const inspetoresRaw = usuarios.filter((u: any) => u.perfil === 'inspetor')
         const engenheirosRaw = usuarios.filter((u: any) => u.perfil === 'engenharia_clinica')
-
-        // Buscar execuções de checklist (rondas) por inspetor
-        const { data: execucoes } = await supabase
-          .from('execucoes_checklist')
-          .select('id, usuario_id, finalizado_em, iniciado_em, status')
-          .eq('status', 'concluida')
-
-        // Buscar NCs por responsável (engenheiros)
-        const { data: ncs } = await supabase
-          .from('nao_conformidades')
-          .select('id, responsavel_id, status, criado_em')
-          .eq('hospital_id', hospitalId)
+        const execucoes = execucoesRes.data || []
+        const ncs = ncsRes.data || []
 
         // Mapear dados dos inspetores
         const inspetoresMapeados: MembroEquipe[] = inspetoresRaw.map((u: any) => {
@@ -118,11 +126,13 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
         // Mapear dados dos engenheiros
         const engenheirosMapeados: MembroEquipe[] = engenheirosRaw.map((u: any) => {
           const ncsDoUsuario = (ncs || []).filter((nc: any) => nc.responsavel_id === u.id)
-          const ncsAbertas = ncsDoUsuario.filter((nc: any) => nc.status !== 'encerrada').length
-          const ncsEncerradas = ncsDoUsuario.filter((nc: any) => nc.status === 'encerrada').length
-          const ultimaAcao = ncsDoUsuario.length > 0
-            ? ncsDoUsuario.sort((a: any, b: any) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())[0].criado_em
-            : null
+          const resolvidos = ncsDoUsuario.filter((nc: any) => nc.status === 'encerrada')
+          const ordenadas = ncsDoUsuario.sort((a: any, b: any) => {
+            const dataA = new Date(a.criado_em || 0).getTime()
+            const dataB = new Date(b.criado_em || 0).getTime()
+            return dataB - dataA
+          })
+          const ultimaAcao = ordenadas.length > 0 ? ordenadas[0].criado_em : null
 
           return {
             id: u.id,
@@ -131,14 +141,15 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
             perfil: u.perfil,
             rondasRealizadas: 0,
             ultimaRonda: null,
-            ncsResponsavel: ncsAbertas + ncsEncerradas,
-            ncsResolvidas: ncsEncerradas,
+            ncsResponsavel: ncsDoUsuario.length,
+            ncsResolvidas: resolvidos.length,
             ultimaAcao,
           }
         })
 
         setInspetores(inspetoresMapeados)
         setEngenheiros(engenheirosMapeados)
+        dadosCache.set(cacheKey, { inspetores: inspetoresMapeados, engenheiros: engenheirosMapeados })
       } catch (err) {
         console.error('Erro ao carregar equipe:', err)
       } finally {
@@ -147,7 +158,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
     }
 
     carregarEquipe()
-  }, [hospitalId])
+  }, [hospitalId, cacheKey])
 
   function formatarTempoRelativo(data: string | null) {
     if (!data) return 'Sem registro'
@@ -290,12 +301,9 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
                   key={membro.id}
                   className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-[var(--shadow-card)] transition-all"
                 >
-                  {/* Header do card com Avatar oficial */}
+                  {/* Header do card com Avatar oficial por perfil */}
                   <div className="flex items-center gap-3">
-                    <Avatar size="md">
-                      <Avatar.Image src={avatarUrl} alt={membro.nome} />
-                      <Avatar.Fallback>{iniciais}</Avatar.Fallback>
-                    </Avatar>
+                    <AvatarPerfil perfil={membro.perfil} nome={membro.nome} tamanho="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="text-[13px] font-bold text-gray-900 truncate">{membro.nome}</h3>

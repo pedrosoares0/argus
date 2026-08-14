@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { setUsuarioLogado, DEFAULT_USER, COORDENADOR_USER } from '@/lib/supabase/mockDb'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
@@ -68,7 +69,7 @@ function FormularioLogin() {
           options: {
             data: {
               hospital_id: 'e632822a-0000-0000-0000-000000000001',
-              nome: email === 'inspetor@gmail.com' ? 'Enf. Pedro Soares' : email === 'engenharia@gmail.com' ? 'Eng. Carlos Eduardo' : 'Coord. Paulo Martins',
+              nome: email === 'inspetor@gmail.com' ? 'Enf. Pedro Soares' : email === 'engenharia@gmail.com' ? 'Eng. Carlos Eduardo' : 'Coord. Paulo Morais',
               perfil: email === 'inspetor@gmail.com' ? 'inspetor' : email === 'engenharia@gmail.com' ? 'engenharia_clinica' : 'coordenador'
             }
           }
@@ -276,17 +277,15 @@ function FormularioLogin() {
               />
             </div>
 
-            {/* Botão Entrar */}
+            {/* Botão Entrar com Efeito Liquid Metal */}
             <div className="pt-2">
-              <Botao
+              <LiquidMetalButton
                 type="submit"
-                variante="primario"
                 tamanho="lg"
                 larguraTotal
                 carregando={carregando}
-              >
-                Entrar
-              </Botao>
+                label="Entrar"
+              />
             </div>
 
             {/* Link para Cadastro */}

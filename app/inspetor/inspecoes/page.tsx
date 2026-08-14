@@ -3,91 +3,111 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 import { PillTag } from '@/components/ui/PillTag'
 import { Avatar } from '@/components/ui/Avatar'
 
 export default function PaginaHistoricoInspecoes() {
   const router = useRouter()
   const [filtro, setFiltro] = useState<'todas' | 'conforme' | 'com_nc'>('todas')
-  const [inspecoes, setInspecoes] = useState<any[]>([])
-  const [carregando, setCarregando] = useState(true)
-  const [usuario, setUsuario] = useState<any>(null)
+  const cacheKey = 'inspetor_historico_inspecoes'
+  const [inspecoes, setInspecoes] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
+  const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
+  const [usuario, setUsuario] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('argus_usuario_atual')
+        if (stored) return JSON.parse(stored)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    return null
+  })
 
   useEffect(() => {
     async function carregarDados() {
+      if (!dadosCache.get(cacheKey)) {
+        setCarregando(true)
+      }
       try {
         const supabase = criarClienteSupabase() as any
         
-        // 1. Obter usuário logado
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          const { data: profile } = await supabase
-            .from('usuarios')
-            .select('*')
-            .eq('id', user.id)
-            .single()
-          setUsuario(profile)
-          
-          if (profile) {
-            // 2. Buscar as execuções de checklist do hospital
-            const { data: execsData, error: execsError } = await supabase
-              .from('execucoes_checklist')
-              .select('*, ativos(*, locais(*)), modelos_checklist(nome_variante)')
-              .eq('usuario_id', profile.id)
-              .eq('status', 'concluida')
-              .order('finalizado_em', { ascending: false })
+        let profile = usuario
+        if (!profile?.id) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: userProfile } = await supabase
+              .from('usuarios')
+              .select('*')
+              .eq('id', user.id)
+              .single()
+            if (userProfile) {
+              profile = userProfile
+              setUsuario(userProfile)
+            }
+          }
+        }
 
-            if (execsError) throw execsError
+        if (profile?.id) {
+          // Buscar execuções com joins
+          const { data: execsData, error: execsError } = await supabase
+            .from('execucoes_checklist')
+            .select('*, ativos(*, locais(*)), modelos_checklist(nome_variante)')
+            .eq('usuario_id', profile.id)
+            .eq('status', 'concluida')
+            .order('finalizado_em', { ascending: false })
 
-            if (execsData && execsData.length > 0) {
-              const execsIds = execsData.map((e: any) => e.id)
-              
-              // Buscar todos os itens associados para saber se tem NC e criticidade
-              const { data: itemsData } = await supabase
-                .from('itens_execucao_checklist')
-                .select('execucao_id, resposta, criticidade')
-                .in('execucao_id', execsIds)
+          if (execsError) throw execsError
 
-              const execsNcMapa = new Map()
-              if (itemsData) {
-                itemsData.forEach((it: any) => {
-                  if (it.resposta === 'nao_conforme') {
-                    const currentHighest = execsNcMapa.get(it.execucao_id)
-                    if (!currentHighest || 
-                        (it.criticidade === 'critico') || 
-                        (it.criticidade === 'importante' && currentHighest !== 'critico')) {
-                      execsNcMapa.set(it.execucao_id, it.criticidade)
-                    }
+          if (execsData && execsData.length > 0) {
+            const execsIds = execsData.map((e: any) => e.id)
+            
+            const { data: itemsData } = await supabase
+              .from('itens_execucao_checklist')
+              .select('execucao_id, resposta, criticidade')
+              .in('execucao_id', execsIds)
+
+            const execsNcMapa = new Map()
+            if (itemsData) {
+              itemsData.forEach((it: any) => {
+                if (it.resposta === 'nao_conforme') {
+                  const currentHighest = execsNcMapa.get(it.execucao_id)
+                  if (!currentHighest || 
+                      (it.criticidade === 'critico') || 
+                      (it.criticidade === 'importante' && currentHighest !== 'critico')) {
+                    execsNcMapa.set(it.execucao_id, it.criticidade)
                   }
-                })
-              }
-
-              const formatadas = execsData.map((exec: any) => {
-                const criticidadeNc = execsNcMapa.get(exec.id)
-                const resultado = criticidadeNc || 'conforme'
-
-                const dataInspecao = new Date(exec.finalizado_em || exec.iniciado_em)
-                const formatador = new Intl.DateTimeFormat('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })
-
-                return {
-                  id: exec.id,
-                  ativoId: exec.ativo_id,
-                  ativo: exec.ativos?.nome || 'Equipamento',
-                  local: (exec.ativos?.locais?.nome && exec.ativos.locais.nome !== 'Sala 01') ? exec.ativos.locais.nome : '',
-                  variante: exec.modelos_checklist?.nome_variante || 'Checklist',
-                  dataHora: formatador.format(dataInspecao),
-                  resultado
                 }
               })
-
-              setInspecoes(formatadas)
             }
+
+            const formatadas = execsData.map((exec: any) => {
+              const criticidadeNc = execsNcMapa.get(exec.id)
+              const resultado = criticidadeNc || 'conforme'
+
+              const dataInspecao = new Date(exec.finalizado_em || exec.iniciado_em)
+              const formatador = new Intl.DateTimeFormat('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+
+              return {
+                id: exec.id,
+                ativoId: exec.ativo_id,
+                ativo: exec.ativos?.nome || 'Equipamento',
+                local: (exec.ativos?.locais?.nome && exec.ativos.locais.nome !== 'Sala 01') ? exec.ativos.locais.nome : '',
+                variante: exec.modelos_checklist?.nome_variante || 'Checklist',
+                dataHora: formatador.format(dataInspecao),
+                resultado
+              }
+            })
+
+            setInspecoes(formatadas)
+            dadosCache.set(cacheKey, formatadas)
           }
         }
       } catch (err) {
@@ -97,7 +117,7 @@ export default function PaginaHistoricoInspecoes() {
       }
     }
     carregarDados()
-  }, [])
+  }, [cacheKey])
 
   const filtrados = inspecoes.filter((ins) => {
     if (filtro === 'todas') return true
@@ -170,9 +190,19 @@ export default function PaginaHistoricoInspecoes() {
           Minhas Inspeções ({filtrados.length})
         </p>
 
-        {carregando ? (
-          <div className="text-center py-8 text-sm text-gray-400 font-semibold animate-pulse">
-            Carregando histórico...
+        {carregando && inspecoes.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden animate-pulse">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="w-full flex items-center justify-between py-3.5 px-4">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-4 w-2/5 bg-gray-200 rounded" />
+                    <div className="h-3 w-1/3 bg-gray-100 rounded" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : filtrados.length > 0 ? (
           <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">

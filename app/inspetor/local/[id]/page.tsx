@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { PillTag } from '@/components/ui/PillTag'
 import type { StatusAtivo } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
@@ -382,10 +383,9 @@ export default function PaginaLocal() {
           )}
         </div>
 
-        {/* CTA — Iniciar Ronda */}
+        {/* CTA — Iniciar Ronda com Efeito Liquid Metal */}
         <div className="mt-4">
-          <Botao
-            variante="primario"
+          <LiquidMetalButton
             tamanho="md"
             larguraTotal
             onClick={() => router.push(`/inspetor/checklist/ronda-${local.id}`)}
@@ -394,9 +394,8 @@ export default function PaginaLocal() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             }
-          >
-            Iniciar ronda
-          </Botao>
+            label="Iniciar ronda"
+          />
         </div>
       </div>
 

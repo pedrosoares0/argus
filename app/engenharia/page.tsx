@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { BarraBusca } from '@/components/ui/BarraBusca'
 import { PillTag } from '@/components/ui/PillTag'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 import type { StatusNaoConformidade, CriticidadeItem } from '@/lib/supabase/types'
 
 const CRITICIDADE_ORDEM: Record<CriticidadeItem, number> = {
@@ -33,14 +34,18 @@ const STATUS_LABELS: Record<StatusNaoConformidade, string> = {
 
 export default function FilaNCs() {
   const router = useRouter()
-  const [ncs, setNcs] = useState<any[]>([])
+  const cacheKey = 'engenharia_ncs_lista'
+  const [ncs, setNcs] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
   const [termoBusca, setTermoBusca] = useState('')
   const [abaAtiva, setAbaAtiva] = useState<'pendentes' | 'minhas' | 'sem_responsavel' | 'aguardando' | 'todas'>('pendentes')
   const [usuario, setUsuario] = useState({ id: '', nome: '' })
-  const [carregando, setCarregando] = useState(true)
+  const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
 
   useEffect(() => {
     async function carregarDados() {
+      if (!dadosCache.get(cacheKey)) {
+        setCarregando(true)
+      }
       try {
         const supabase = criarClienteSupabase() as any
         
@@ -73,36 +78,28 @@ export default function FilaNCs() {
           
           let hospitalId = currentUser.hospital_id
           if (!hospitalId) {
-            const { data: profile } = await supabase
-              .from('usuarios')
-              .select('hospital_id')
-              .eq('id', currentUser.id)
-              .single()
-            if (profile) {
-              hospitalId = profile.hospital_id
-            }
-          }
-          
-          if (!hospitalId) {
             hospitalId = 'e632822a-0000-0000-0000-000000000001'
           }
 
-          // Buscar usuários para resolver o nome do responsável
-          const { data: usuariosData } = await supabase
-            .from('usuarios')
-            .select('id, nome')
-            .eq('hospital_id', hospitalId)
+          // Executar busca de usuários e NCs em PARALELO (Promise.all)
+          const [usuariosRes, ncsRes] = await Promise.all([
+            supabase
+              .from('usuarios')
+              .select('id, nome')
+              .eq('hospital_id', hospitalId),
+            supabase
+              .from('nao_conformidades')
+              .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*)')
+              .eq('hospital_id', hospitalId)
+          ])
+
+          const usuariosData = usuariosRes.data
+          const ncsData = ncsRes.data
           
           const usuariosMapa = new Map()
           if (usuariosData) {
             usuariosData.forEach((u: any) => usuariosMapa.set(u.id, u.nome))
           }
-
-          // Buscar as NCs do banco real
-          const { data: ncsData } = await supabase
-            .from('nao_conformidades')
-            .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*)')
-            .eq('hospital_id', hospitalId)
 
           if (ncsData) {
             const formatadas = ncsData.map((nc: any) => {
@@ -138,6 +135,7 @@ export default function FilaNCs() {
               }
             })
             setNcs(formatadas)
+            dadosCache.set(cacheKey, formatadas)
           }
         }
       } catch (err) {
@@ -147,7 +145,7 @@ export default function FilaNCs() {
       }
     }
     carregarDados()
-  }, [])
+  }, [cacheKey])
 
   // Função para calcular tempo decorrido
   function calcularTempoDesdeAbertura(dataCriacao: string) {

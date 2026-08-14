@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 import { BarraBusca } from '@/components/ui/BarraBusca'
 import { QRCodeAtivo } from '@/components/ui/QRCodeAtivo'
 import type { StatusAtivo } from '@/lib/supabase/types'
@@ -20,14 +21,17 @@ const STATUS_ATIVO_MAPA: Record<StatusAtivo, { label: string; dot: string; cor: 
 type FiltroStatus = 'todos' | StatusAtivo
 
 export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
-  const [ativos, setAtivos] = useState<any[]>([])
+  const cacheKey = `coordenador_ativos_${hospitalId}`
+  const [ativos, setAtivos] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
   const [termoBusca, setTermoBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos')
-  const [carregando, setCarregando] = useState(true)
+  const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
 
   useEffect(() => {
     async function carregarAtivos() {
-      setCarregando(true)
+      if (!dadosCache.get(cacheKey)) {
+        setCarregando(true)
+      }
       try {
         const supabase = criarClienteSupabase() as any
 
@@ -37,7 +41,10 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
           .eq('hospital_id', hospitalId)
           .order('nome', { ascending: true })
 
-        if (ativosData) setAtivos(ativosData)
+        if (ativosData) {
+          setAtivos(ativosData)
+          dadosCache.set(cacheKey, ativosData)
+        }
       } catch (err) {
         console.error('Erro ao carregar ativos:', err)
       } finally {
@@ -46,7 +53,7 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
     }
 
     carregarAtivos()
-  }, [hospitalId])
+  }, [hospitalId, cacheKey])
 
   // Contadores por status
   const contadores = {

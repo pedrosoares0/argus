@@ -354,7 +354,7 @@ export const DEFAULT_USER = {
 
 export const COORDENADOR_USER = {
   id: 'e632822a-0000-0000-0000-000000000003',
-  nome: 'Coord. Paulo Martins',
+  nome: 'Coord. Paulo Morais',
   email: 'coordenador@gmail.com',
   perfil: 'coordenador',
 }
