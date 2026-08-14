@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Botao } from './Botao'
+import { LiquidMetalButton } from './liquid-metal-button'
 
 interface QRCodeAtivoProps {
   ativoId: string
@@ -324,14 +325,12 @@ export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio 
               >
                 Voltar
               </Botao>
-              <Botao
+              <LiquidMetalButton
                 type="button"
-                variante="primario"
                 larguraTotal
                 onClick={handleImprimir}
-              >
-                Imprimir Etiqueta
-              </Botao>
+                label="Imprimir Etiqueta"
+              />
             </div>
 
           </div>

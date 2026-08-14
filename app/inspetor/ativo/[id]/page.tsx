@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { QRCodeAtivo } from '@/components/ui/QRCodeAtivo'
-import { Botao } from '@/components/ui/Botao'
+import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { PillTag } from '@/components/ui/PillTag'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import type { StatusAtivo } from '@/lib/supabase/types'
@@ -81,7 +81,9 @@ export default function PaginaAtivo() {
   }
 
   const statusCfg = STATUS_ATIVO[ativo.status as StatusAtivo] || STATUS_ATIVO.operacional
-  const isCarrinho = ativo.nome?.toLowerCase().includes('carrinho') || ativo.categorias_ativos?.nome?.toLowerCase().includes('carrinho')
+  const isAnestesia = ativo.nome?.toLowerCase().includes('anestesia') || ativo.categorias_ativos?.nome?.toLowerCase().includes('anestesia')
+  const isCarrinho = ativo.nome?.toLowerCase().includes('carrinho') || ativo.categorias_ativos?.nome?.toLowerCase().includes('carrinho') || isAnestesia
+  const iconeAtivo = isAnestesia ? '/icon-anestesia.webp' : '/icon-carrinho.webp'
   const nomeLocal = ativo.locais?.nome || 'Sem local'
   const nomeSetor = ativo.locais?.centros_cirurgicos?.nome || 'Centro Cirúrgico'
 
@@ -106,8 +108,8 @@ export default function PaginaAtivo() {
             {isCarrinho && (
               <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/30">
                 <img
-                  src="/icon-carrinho.webp"
-                  alt="Carrinho de Parada"
+                  src={iconeAtivo}
+                  alt={ativo.nome || 'Carrinho'}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_2.5px_8px_rgba(255,255,255,0.95)] border border-white/25" />
@@ -161,8 +163,7 @@ export default function PaginaAtivo() {
       </div>
 
       {/* ── CTA: Ir para a tela de ronda ── */}
-      <Botao
-        variante="primario"
+      <LiquidMetalButton
         tamanho="md"
         larguraTotal
         onClick={() => router.push(`/inspetor/local/${ativo.local_id}`)}
@@ -171,9 +172,8 @@ export default function PaginaAtivo() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         }
-      >
-        Ver Ronda / Inspeção
-      </Botao>
+        label="Ver Ronda / Inspeção"
+      />
     </div>
   )
 }

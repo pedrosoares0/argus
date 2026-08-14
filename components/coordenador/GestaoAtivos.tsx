@@ -162,7 +162,9 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
               dot: 'bg-gray-400',
               cor: 'text-gray-500',
             }
-            const isCarrinho = ativo.nome?.toLowerCase().includes('carrinho') || ativo.categorias_ativos?.nome?.toLowerCase().includes('carrinho')
+            const isAnestesia = ativo.nome?.toLowerCase().includes('anestesia') || ativo.categorias_ativos?.nome?.toLowerCase().includes('anestesia')
+            const isCarrinho = ativo.nome?.toLowerCase().includes('carrinho') || ativo.categorias_ativos?.nome?.toLowerCase().includes('carrinho') || isAnestesia
+            const iconeAtivo = isAnestesia ? '/icon-anestesia.webp' : '/icon-carrinho.webp'
             const nomeLocal = ativo.locais?.nome || 'Sem localização'
             const nomeSetor = ativo.locais?.centros_cirurgicos?.nome || 'Centro Cirúrgico'
 
@@ -178,8 +180,8 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
                       {isCarrinho && (
                         <div className="relative w-9 h-9 rounded-[10px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100/30">
                           <img
-                            src="/icon-carrinho.webp"
-                            alt="Carrinho de Parada"
+                            src={iconeAtivo}
+                            alt={ativo.nome || 'Carrinho'}
                             className="w-full h-full object-cover"
                           />
                         </div>

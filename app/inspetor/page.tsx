@@ -123,7 +123,7 @@ export default function PaginaInicialInspetor() {
               id: ativo.id,
               localId: ativo.local_id,
               tag: ativo.categorias_ativos?.nome || 'Ativo',
-              corTag: (ativo.categorias_ativos?.nome === 'Carrinho de parada' ? 'azul' : 'roxo') as 'azul' | 'roxo',
+              corTag: (ativo.categorias_ativos?.nome?.toLowerCase().includes('carrinho') ? 'azul' : 'roxo') as 'azul' | 'roxo',
               nome: ativo.nome,
               localizacao: ativo.locais?.nome || 'Sem localização',
               ultimaInspecao: textoInspecao,
@@ -279,7 +279,9 @@ export default function PaginaInicialInspetor() {
           </div>
         ) : (
           ativosFiltrados.map((item, i) => {
-            const isCarrinho = item.tag?.toLowerCase() === 'carrinho de parada' || item.nome?.toLowerCase().includes('carrinho')
+            const isAnestesia = item.tag?.toLowerCase().includes('anestesia') || item.nome?.toLowerCase().includes('anestesia')
+            const isCarrinho = item.tag?.toLowerCase().includes('carrinho') || item.nome?.toLowerCase().includes('carrinho')
+            const iconeAtivo = isAnestesia ? '/icon-anestesia.webp' : '/icon-carrinho.webp'
             return (
               <Link
                 key={item.id}
@@ -294,8 +296,8 @@ export default function PaginaInicialInspetor() {
                     {isCarrinho && (
                       <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/30">
                         <img 
-                          src="/icon-carrinho.webp" 
-                          alt="Carrinho de Parada" 
+                          src={iconeAtivo} 
+                          alt={item.nome || 'Carrinho'} 
                           className="w-full h-full object-cover" 
                         />
                         {/* Sombra interna branca (innershadow branco) */}

@@ -115,15 +115,15 @@ export function LiquidMetalButton({
     const loadShader = async () => {
       try {
         if (shaderRef.current && typeof window !== "undefined") {
-          if (shaderMount.current?.destroy) {
-            shaderMount.current.destroy();
+          if (shaderMount.current?.dispose) {
+            shaderMount.current.dispose();
           }
 
           shaderMount.current = new ShaderMount(
             shaderRef.current,
             liquidMetalFragmentShader,
             {
-              u_repetition: 3.5,
+              u_repetition: 2.8,
               u_softness: 0.5,
               u_shiftRed: 0.25,
               u_shiftBlue: 0.9, // Azul vivo, luminoso e limpo
@@ -131,9 +131,9 @@ export function LiquidMetalButton({
               u_contour: 0.15,
               u_angle: 45,
               u_scale: 7.5,
-              u_shape: 1,
-              u_offsetX: 0.1,
-              u_offsetY: -0.1,
+              u_shape: 0, // 0 = Full Fill em todo o canvas/botão
+              u_offsetX: 0.0,
+              u_offsetY: 0.0,
             },
             undefined,
             0.6,
@@ -147,8 +147,8 @@ export function LiquidMetalButton({
     loadShader();
 
     return () => {
-      if (shaderMount.current?.destroy) {
-        shaderMount.current.destroy();
+      if (shaderMount.current?.dispose) {
+        shaderMount.current.dispose();
         shaderMount.current = null;
       }
     };

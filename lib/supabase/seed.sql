@@ -36,12 +36,24 @@ ON CONFLICT (id) DO UPDATE SET
   nome = EXCLUDED.nome,
   codigo_qr = EXCLUDED.codigo_qr;
 
--- 3. Cria a Categoria
+INSERT INTO public.locais (id, centro_cirurgico_id, tipo, nome, codigo_qr, status, liberada_manualmente, criado_em)
+VALUES ('e632822a-0000-0000-0000-000000000014', 'e632822a-0000-0000-0000-000000000003', 'sala', 'Sala 02', 'QR-SALA-02', 'pronta', false, now())
+ON CONFLICT (id) DO UPDATE SET 
+  centro_cirurgico_id = EXCLUDED.centro_cirurgico_id,
+  tipo = EXCLUDED.tipo,
+  nome = EXCLUDED.nome,
+  codigo_qr = EXCLUDED.codigo_qr;
+
+-- 3. Cria as Categorias
 INSERT INTO public.categorias_ativos (id, nome)
 VALUES ('e632822a-0000-0000-0000-000000000005', 'Carrinho de parada')
 ON CONFLICT (id) DO NOTHING;
 
--- 4. Cria os Modelos de Checklist (Completo e Por plantão)
+INSERT INTO public.categorias_ativos (id, nome)
+VALUES ('e632822a-0000-0000-0000-000000000015', 'Carrinho de anestesia')
+ON CONFLICT (id) DO NOTHING;
+
+-- 4. Cria os Modelos de Checklist (Completo e Por plantão para Parada; Padrão para Anestesia)
 INSERT INTO public.modelos_checklist (id, categoria_id, nome_variante, versao, frequencia, horarios_do_dia, vigente, criado_em)
 VALUES ('e632822a-0000-0000-0000-000000000006', 'e632822a-0000-0000-0000-000000000005', 'Completo', 1, 'diaria', '["08:00"]'::jsonb, true, now())
 ON CONFLICT (categoria_id, versao) DO UPDATE SET
@@ -58,7 +70,15 @@ ON CONFLICT (categoria_id, versao) DO UPDATE SET
   horarios_do_dia = EXCLUDED.horarios_do_dia,
   vigente = EXCLUDED.vigente;
 
--- 5. Cria o Ativo Carrinho de Parada
+INSERT INTO public.modelos_checklist (id, categoria_id, nome_variante, versao, frequencia, horarios_do_dia, vigente, criado_em)
+VALUES ('e632822a-0000-0000-0000-000000000016', 'e632822a-0000-0000-0000-000000000015', 'Padrão', 1, 'diaria', '["07:00", "19:00"]'::jsonb, true, now())
+ON CONFLICT (categoria_id, versao) DO UPDATE SET
+  nome_variante = EXCLUDED.nome_variante,
+  frequencia = EXCLUDED.frequencia,
+  horarios_do_dia = EXCLUDED.horarios_do_dia,
+  vigente = EXCLUDED.vigente;
+
+-- 5. Cria os Ativos (Carrinho de Parada e Carrinho de Anestesia)
 INSERT INTO public.ativos (id, hospital_id, categoria_id, local_id, nome, patrimonio, codigo_qr, status, criado_em)
 VALUES ('e632822a-0000-0000-0000-000000000008', 'e632822a-0000-0000-0000-000000000001', 'e632822a-0000-0000-0000-000000000005', 'e632822a-0000-0000-0000-000000000004', 'Carrinho de Parada - Itaberaba #1', 'PAT-CARRINHO-01', 'Car.Par1', 'operacional', now())
 ON CONFLICT (id) DO UPDATE SET
@@ -70,10 +90,21 @@ ON CONFLICT (id) DO UPDATE SET
   codigo_qr = EXCLUDED.codigo_qr,
   status = EXCLUDED.status;
 
--- Limpa itens antigos do checklist
-DELETE FROM public.itens_modelo_checklist WHERE modelo_id IN ('e632822a-0000-0000-0000-000000000006', 'e632822a-0000-0000-0000-000000000007');
+INSERT INTO public.ativos (id, hospital_id, categoria_id, local_id, nome, patrimonio, codigo_qr, status, criado_em)
+VALUES ('e632822a-0000-0000-0000-000000000018', 'e632822a-0000-0000-0000-000000000001', 'e632822a-0000-0000-0000-000000000015', 'e632822a-0000-0000-0000-000000000014', 'Carrinho de Anestesia', 'PAT-ANES-01', 'Car.Anes1', 'operacional', now())
+ON CONFLICT (id) DO UPDATE SET
+  hospital_id = EXCLUDED.hospital_id,
+  categoria_id = EXCLUDED.categoria_id,
+  local_id = EXCLUDED.local_id,
+  nome = EXCLUDED.nome,
+  patrimonio = EXCLUDED.patrimonio,
+  codigo_qr = EXCLUDED.codigo_qr,
+  status = EXCLUDED.status;
 
--- 6. Cadastra os Itens do Modelo "Completo" (v1)
+-- Limpa itens antigos do checklist
+DELETE FROM public.itens_modelo_checklist WHERE modelo_id IN ('e632822a-0000-0000-0000-000000000006', 'e632822a-0000-0000-0000-000000000007', 'e632822a-0000-0000-0000-000000000016');
+
+-- 6. Cadastra os Itens do Modelo "Completo" (v1 - Carrinho de Parada)
 INSERT INTO public.itens_modelo_checklist (modelo_id, ordem, descricao, criticidade, obrigatorio, evidencia_obrigatoria, tipo_evidencia) VALUES
 ('e632822a-0000-0000-0000-000000000006', 1, 'Via aérea — itens_esperados: Cânulas orofaríngeas (Guedel) nº 0-5; Máscaras faciais P/M/G; Bolsa-válvula-máscara adulto; Bolsa-válvula-máscara pediátrica; Reservatório de O₂; Tubos orotraqueais 6,0-8,5; Guia (mandril); Seringa 20mL; Lubrificante hidrossolúvel; Fita de fixação; Pinça de Magill; Máscara de O₂; Cateter nasal', 'importante', true, true, 'foto'),
 ('e632822a-0000-0000-0000-000000000006', 2, 'Laringoscópio — itens_esperados: Cabo; Lâmina reta nº 0 e 1; Lâminas curvas nº 2, 3 e 4; Pilhas/bateria reserva', 'importante', true, true, 'foto'),
@@ -85,11 +116,18 @@ INSERT INTO public.itens_modelo_checklist (modelo_id, ordem, descricao, criticid
 ('e632822a-0000-0000-0000-000000000006', 8, 'Soluções — itens_esperados: Soro Fisiológico 0,9%; Ringer Lactato; Glicose 5%', 'importante', true, true, 'foto'),
 ('e632822a-0000-0000-0000-000000000006', 9, 'Itens administrativos — itens_esperados: Lacre do carrinho íntegro; Lista de conferência atualizada; Etiqueta de validade dos medicamentos; Caneta para registros', 'importante', true, true, 'foto');
 
--- 7. Cadastra os Itens do Modelo "Por plantão" (v2)
+-- 7. Cadastra os Itens do Modelo "Por plantão" (v2 - Carrinho de Parada)
 INSERT INTO public.itens_modelo_checklist (modelo_id, ordem, descricao, criticidade, obrigatorio, evidencia_obrigatoria, tipo_evidencia) VALUES
 ('e632822a-0000-0000-0000-000000000007', 1, 'Via aérea — itens_esperados: Cânulas orofaríngeas (Guedel) nº 0-5; Máscaras faciais P/M/G; Bolsa-válvula-máscara adulto; Bolsa-válvula-máscara pediátrica; Reservatório de O₂; Tubos orotraqueais 6,0-8,5; Guia (mandril); Seringa 20mL; Lubrificante hidrossolúvel; Fita de fixação; Pinça de Magill; Máscara de O₂; Cateter nasal', 'importante', true, true, 'foto'),
 ('e632822a-0000-0000-0000-000000000007', 2, 'Desfibrilador — itens_esperados: Equipamento funcionando; Cabo de alimentação; Bateria carregada; Pás adulto; Pás pediátricas; Cabos íntegros; Eletrodos adesivos; Gel condutor; Papel da impressora', 'importante', true, true, 'foto'),
 ('e632822a-0000-0000-0000-000000000007', 3, 'Itens administrativos — itens_esperados: Lacre do carrinho íntegro; Lista de conferência atualizada; Caneta para registros', 'importante', true, true, 'foto');
+
+-- 8. Cadastra os Itens do Modelo "Padrão" divididos por Áreas (v1 - Carrinho de Anestesia)
+INSERT INTO public.itens_modelo_checklist (modelo_id, ordem, descricao, criticidade, obrigatorio, evidencia_obrigatoria, tipo_evidencia) VALUES
+('e632822a-0000-0000-0000-000000000016', 1, 'Estrutura, energia e autoteste — itens_esperados: Equipamento limpo e identificado; Cabo de alimentação íntegro; Equipamento liga normalmente; Bateria funcionando; Autoteste realizado sem falhas; Manutenção preventiva válida', 'importante', true, true, 'foto'),
+('e632822a-0000-0000-0000-000000000016', 2, 'Alarmes e sistema de gases — itens_esperados: Alarmes sonoros e visuais funcionando; Fluxômetros funcionando; Cilindro de O₂ com pressão adequada', 'importante', true, true, 'foto'),
+('e632822a-0000-0000-0000-000000000016', 3, 'Vaporizadores — itens_esperados: Vaporizadores fixados e abastecidos', 'importante', true, true, 'foto'),
+('e632822a-0000-0000-0000-000000000016', 4, 'Sistema respiratório e insumos — itens_esperados: Sistema respiratório sem vazamentos; Bolsa reservatório íntegra; Traqueias e filtros disponíveis; Cal sodada íntegra', 'importante', true, true, 'foto');
 
 COMMIT;
 

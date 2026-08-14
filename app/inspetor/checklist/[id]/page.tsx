@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
+import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import type { RespostaItem, CriticidadeItem } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
@@ -567,7 +568,7 @@ function ComponenteChecklist() {
           ) : (
             <div className="mt-2">
               <span className="inline-flex px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100/80 border border-slate-200/60 text-slate-600">
-                Modalidade: Por plantão
+                Modalidade: {modeloSelecionado?.nome_variante || 'Padrão'}
               </span>
             </div>
           )}
@@ -615,16 +616,18 @@ function ComponenteChecklist() {
             }
             if (resp.resposta === 'nao_se_aplica') {
               return (
-                <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center shrink-0">
+                <div className="w-6 h-6 rounded-full bg-slate-400 flex items-center justify-center shrink-0 shadow-sm">
                   <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
                   </svg>
                 </div>
               )
             }
-            // Pendente
+            // Pendente — bullet discreto (sem parecer botão/checkbox clicável)
             return (
-              <div className="w-6 h-6 rounded-full border-2 border-gray-200 shrink-0" />
+              <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                <span className="w-2 h-2 rounded-full bg-slate-300" />
+              </div>
             )
           }
 
@@ -864,17 +867,15 @@ function ComponenteChecklist() {
                         >
                           Cancelar
                         </Botao>
-                        <Botao
+                        <LiquidMetalButton
                           type="button"
-                          variante="primario"
                           larguraTotal
                           onClick={handleSalvarModalNc}
                           carregando={ncEnviando}
                           disabled={!ncDescricao.trim()}
                           tamanho="sm"
-                        >
-                          Confirmar
-                        </Botao>
+                          label="Confirmar"
+                        />
                       </div>
                     </div>
                   )}
@@ -916,8 +917,7 @@ function ComponenteChecklist() {
       {/* Botão de Conclusão */}
       {isReadOnly ? (
         <div className="pt-2 pb-6">
-          <Botao
-            variante="primario"
+          <LiquidMetalButton
             tamanho="md"
             larguraTotal
             onClick={() => router.push('/inspetor/inspecoes')}
@@ -926,14 +926,12 @@ function ComponenteChecklist() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
             }
-          >
-            Voltar ao Histórico
-          </Botao>
+            label="Voltar ao Histórico"
+          />
         </div>
       ) : (
         <div className="pt-2 pb-6">
-          <Botao
-            variante="primario"
+          <LiquidMetalButton
             tamanho="md"
             larguraTotal
             carregando={enviando}
@@ -944,9 +942,8 @@ function ComponenteChecklist() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             }
-          >
-            {todosRespondidos ? 'Concluir inspeção' : `Responda todas (${totalRespondidos}/${itens.length})`}
-          </Botao>
+            label={todosRespondidos ? 'Concluir inspeção' : `Responda todas (${totalRespondidos}/${itens.length})`}
+          />
         </div>
       )}
 
@@ -972,14 +969,12 @@ function ComponenteChecklist() {
 
             {/* CTA button */}
             <div className="w-full pt-1.5">
-              <Botao
-                variante="primario"
+              <LiquidMetalButton
                 tamanho="md"
                 larguraTotal
                 onClick={() => router.push('/inspetor')}
-              >
-                Entendido
-              </Botao>
+                label="Entendido"
+              />
             </div>
 
           </div>

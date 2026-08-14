@@ -60,18 +60,18 @@ export interface MockNaoConformidadeExtended extends NaoConformidade {
 }
 
 const INITIAL_LOCALS: Record<string, MockLocal> = {
-  'loc-001': { id: 'loc-001', nome: 'Centro Cirúrgico A', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Argus' },
-  'loc-002': { id: 'loc-002', nome: 'Bloco Cirúrgico B', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Argus' },
-  'loc-003': { id: 'loc-003', nome: 'Pronto Socorro', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Argus' },
-  'loc-004': { id: 'loc-004', nome: 'Unidade de Internação', centro_cirurgico: 'Centro Cirúrgico A', unidade: 'Unidade de Internação', hospital: 'Hospital Argus' },
-  'loc-uti': { id: 'loc-uti', nome: 'Leito 05 (UTI-A)', centro_cirurgico: 'Bloco A (UTI Adulto)', unidade: 'Unidade de Terapia Intensiva', hospital: 'Hospital Argus' }
+  'loc-001': { id: 'loc-001', nome: 'Sala 01', centro_cirurgico: 'Centro Cirúrgico Principal', unidade: 'Unidade de Internação', hospital: 'Hospital Público Itaberaba' },
+  'loc-002': { id: 'loc-002', nome: 'Sala 02', centro_cirurgico: 'Centro Cirúrgico Principal', unidade: 'Unidade de Internação', hospital: 'Hospital Público Itaberaba' },
+  'loc-003': { id: 'loc-003', nome: 'Pronto Socorro', centro_cirurgico: 'Centro Cirúrgico Principal', unidade: 'Unidade de Internação', hospital: 'Hospital Público Itaberaba' },
+  'loc-004': { id: 'loc-004', nome: 'Unidade de Internação', centro_cirurgico: 'Centro Cirúrgico Principal', unidade: 'Unidade de Internação', hospital: 'Hospital Público Itaberaba' },
+  'loc-uti': { id: 'loc-uti', nome: 'Leito 05 (UTI-A)', centro_cirurgico: 'Bloco A (UTI Adulto)', unidade: 'Unidade de Terapia Intensiva', hospital: 'Hospital Público Itaberaba' }
 }
 
 const INITIAL_ATIVOS: Record<string, MockAtivo> = {
   'at-001': { id: 'at-001', nome: 'Mesa Cirúrgica Hidráulica #1', categoria: 'Mesa cirúrgica', status: 'indisponivel', codigo_qr: 'QR-MESA-001' },
   'at-002': { id: 'at-002', nome: 'Monitor Multiparamétrico DX8', categoria: 'Monitor multiparamétrico', status: 'operacional_com_restricoes', codigo_qr: 'QR-MON-002' },
-  'at-003': { id: 'at-003', nome: 'Carrinho de Parada #1', categoria: 'Carrinho de parada', status: 'em_manutencao', codigo_qr: 'QR-CARRINHO-003' },
-  'at-004': { id: 'at-004', nome: 'Aparelho de Anestesia Flow-i', categoria: 'Aparelho de anestesia', status: 'operacional', codigo_qr: 'QR-ANES-004' },
+  'at-003': { id: 'at-003', nome: 'Carrinho de Parada #1', categoria: 'Carrinho de parada', status: 'em_manutencao', codigo_qr: 'Car.Par1' },
+  'at-004': { id: 'at-004', nome: 'Carrinho de Anestesia', categoria: 'Carrinho de anestesia', status: 'operacional', codigo_qr: 'Car.Anes1' },
   'at-005': { id: 'at-005', nome: 'Bomba de Infusão Alaris', categoria: 'Bomba de infusão', status: 'indisponivel', codigo_qr: 'QR-BOMBA-005' }
 }
 
