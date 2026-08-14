@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { PillUsuario } from '@/components/ui/PillUsuario'
-import { getUsuarioLogado, setUsuarioLogado, COORDENADOR_USER } from '@/lib/supabase/mockDb'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
 export default function LayoutCoordenador({
@@ -15,29 +14,64 @@ export default function LayoutCoordenador({
   const router = useRouter()
   const pathname = usePathname()
   const [menuAberto, setMenuAberto] = useState(false)
-  const [usuario, setUsuario] = useState({ nome: 'Coord. Ana Beatriz', perfil: 'coordenador' })
+  const [usuario, setUsuario] = useState<{ nome: string; perfil: string } | null>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('argus_usuario_atual')
-    if (stored) {
+    async function carregarUsuario() {
+      let usuarioNome = 'Coord. Paulo Martins'
+      let usuarioPerfil = 'coordenador'
+
+      const stored = localStorage.getItem('argus_usuario_atual')
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          if (parsed?.nome && !parsed.nome.includes('Ana Beatriz')) {
+            usuarioNome = parsed.nome
+            usuarioPerfil = parsed.perfil || 'coordenador'
+          } else if (parsed?.nome?.includes('Ana Beatriz')) {
+            parsed.nome = 'Coord. Paulo Martins'
+            localStorage.setItem('argus_usuario_atual', JSON.stringify(parsed))
+          }
+        } catch (e) {
+          console.error(e)
+        }
+      }
+
+      setUsuario({ nome: usuarioNome, perfil: usuarioPerfil })
+
       try {
-        const parsed = JSON.parse(stored)
-        setUsuario({ nome: parsed.nome, perfil: parsed.perfil })
-        return
-      } catch (e) {
-        console.error(e)
+        const supabase = criarClienteSupabase() as any
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase
+            .from('usuarios')
+            .select('id, nome, perfil')
+            .eq('id', user.id)
+            .single()
+          if (profile?.nome) {
+            setUsuario({ nome: profile.nome, perfil: profile.perfil })
+            localStorage.setItem('argus_usuario_atual', JSON.stringify(profile))
+            return
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao obter usuário autenticado:', err)
       }
     }
 
-    // Garante que o usuário logado é o coordenador
-    const user = getUsuarioLogado()
-    if (user.perfil !== 'coordenador') {
-      setUsuarioLogado(COORDENADOR_USER)
-      setUsuario({ nome: COORDENADOR_USER.nome, perfil: COORDENADOR_USER.perfil })
-    } else {
-      setUsuario({ nome: user.nome, perfil: user.perfil })
-    }
-  }, [])
+    carregarUsuario()
+  }, [router])
+
+  const nomeExibido = usuario?.nome || 'Coordenador(a)'
+  const perfilExibido = usuario?.perfil === 'coordenador' ? 'Coordenador(a)' : usuario?.perfil === 'inspetor' ? 'Inspetor(a)' : usuario?.perfil === 'engenharia_clinica' ? 'Engenharia Clínica' : 'Gestor(a)'
+  const iniciais = nomeExibido
+    .replace(/^(Coord\.|Enf\.|Eng\.|Dr\.|Dra\.)\s*/i, '')
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'CO'
 
   async function handleSair() {
     try {
@@ -58,7 +92,7 @@ export default function LayoutCoordenador({
         <Link href="/coordenador" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity font-brand">
           Argus
         </Link>
-        <PillUsuario nome={usuario.nome} perfil={usuario.perfil} onClick={() => setMenuAberto(true)} />
+        <PillUsuario nome={nomeExibido} perfil={usuario?.perfil || 'coordenador'} onClick={() => setMenuAberto(true)} />
       </header>
 
       {/* Conteúdo principal */}
@@ -93,11 +127,11 @@ export default function LayoutCoordenador({
 
             {/* Perfil Header */}
             <div className="pt-10 pb-5 px-4 flex flex-col items-center text-center border-b border-gray-100">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-white font-extrabold text-[16px] shadow-[0_4px_10px_rgba(124,58,237,0.12)] mb-2.5">
-                AB
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] flex items-center justify-center text-white font-extrabold text-[15px] shadow-[0_4px_10px_rgba(124,58,237,0.12)] mb-2.5">
+                {iniciais}
               </div>
-              <h3 className="text-[14px] font-bold text-gray-900 leading-tight">{usuario.nome}</h3>
-              <p className="text-[10px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">Coordenador(a)</p>
+              <h3 className="text-[14px] font-bold text-gray-900 leading-tight">{nomeExibido}</h3>
+              <p className="text-[10px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">{perfilExibido}</p>
             </div>
 
             {/* Menu Links */}
@@ -107,7 +141,7 @@ export default function LayoutCoordenador({
               </p>
 
               <div className="flex flex-col">
-                {/* Validar NCs */}
+                {/* Central de Comando */}
                 <Link
                   href="/coordenador"
                   onClick={() => setMenuAberto(false)}
@@ -120,10 +154,10 @@ export default function LayoutCoordenador({
                 >
                   <div className={pathname === '/coordenador' ? 'text-[#7C3AED]' : 'text-gray-400'}>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                     </svg>
                   </div>
-                  <span>Validar NCs</span>
+                  <span>Central de Comando</span>
                 </Link>
 
                 {/* QR Codes & Etiquetas */}

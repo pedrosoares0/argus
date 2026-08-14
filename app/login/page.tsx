@@ -67,8 +67,8 @@ function FormularioLogin() {
           password: senha,
           options: {
             data: {
-              hospital_id: 'e632822a-0000-0000-0000-000000000001', // Hospital Público Itaberaba
-              nome: email === 'inspetor@gmail.com' ? 'Enf. Pedro Soares' : email === 'engenharia@gmail.com' ? 'Eng. Carlos Eduardo' : 'Coord. Ana Beatriz',
+              hospital_id: 'e632822a-0000-0000-0000-000000000001',
+              nome: email === 'inspetor@gmail.com' ? 'Enf. Pedro Soares' : email === 'engenharia@gmail.com' ? 'Eng. Carlos Eduardo' : 'Coord. Paulo Martins',
               perfil: email === 'inspetor@gmail.com' ? 'inspetor' : email === 'engenharia@gmail.com' ? 'engenharia_clinica' : 'coordenador'
             }
           }

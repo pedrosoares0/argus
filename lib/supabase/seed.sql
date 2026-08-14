@@ -101,27 +101,31 @@ COMMIT;
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.usuarios (id, hospital_id, nome, perfil)
+  INSERT INTO public.usuarios (id, hospital_id, nome, email, perfil, numero_conselho)
   VALUES (
     new.id,
     coalesce((new.raw_user_meta_data->>'hospital_id')::uuid, 'e632822a-0000-0000-0000-000000000001'),
     coalesce(new.raw_user_meta_data->>'nome', case 
       when new.email = 'inspetor@gmail.com' then 'Enf. Pedro Soares'
       when new.email = 'engenharia@gmail.com' then 'Eng. Carlos Eduardo'
-      when new.email = 'coordenador@gmail.com' then 'Coord. Ana Beatriz'
+      when new.email = 'coordenador@gmail.com' then 'Coord. Paulo Martins'
       else split_part(new.email, '@', 1)
     end),
+    new.email,
     coalesce(new.raw_user_meta_data->>'perfil', case 
       when new.email = 'inspetor@gmail.com' then 'inspetor'
       when new.email = 'engenharia@gmail.com' then 'engenharia_clinica'
       when new.email = 'coordenador@gmail.com' then 'coordenador'
       else 'inspetor'
-    end)
+    end),
+    new.raw_user_meta_data->>'numero_conselho'
   )
   ON CONFLICT (id) DO UPDATE SET
     hospital_id = EXCLUDED.hospital_id,
     nome = EXCLUDED.nome,
-    perfil = EXCLUDED.perfil;
+    email = EXCLUDED.email,
+    perfil = EXCLUDED.perfil,
+    numero_conselho = EXCLUDED.numero_conselho;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

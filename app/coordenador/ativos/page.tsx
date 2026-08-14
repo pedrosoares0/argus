@@ -28,20 +28,39 @@ export default function GestaoQRCodesCoordenador() {
       try {
         const supabase = criarClienteSupabase() as any
         
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        let hospitalId = 'e632822a-0000-0000-0000-000000000001'
-
-        if (user) {
-          const { data: perfilData, error: perfilError } = await supabase
-            .from('usuarios')
-            .select('hospital_id')
-            .eq('id', user.id)
-            .single()
-
-          if (!perfilError && perfilData?.hospital_id) {
-            hospitalId = perfilData.hospital_id
+        let hospitalId = ''
+        const stored = localStorage.getItem('argus_usuario_atual')
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored)
+            if (parsed?.hospital_id) hospitalId = parsed.hospital_id
+          } catch (e) {
+            console.error(e)
           }
+        }
+
+        if (!hospitalId) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: perfilData } = await supabase
+              .from('usuarios')
+              .select('hospital_id')
+              .eq('id', user.id)
+              .single()
+
+            if (perfilData?.hospital_id) {
+              hospitalId = perfilData.hospital_id
+            }
+          }
+        }
+
+        if (!hospitalId) {
+          const { data: primeiroHospital } = await supabase
+            .from('hospitais')
+            .select('id')
+            .limit(1)
+            .single()
+          if (primeiroHospital) hospitalId = primeiroHospital.id
         }
 
         const { data: ativosData, error: ativosError } = await supabase
