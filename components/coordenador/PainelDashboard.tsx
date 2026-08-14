@@ -216,9 +216,13 @@ function ColunaPodio({
     )
   }
 
-  const primeiroNome = inspetor.nome.replace(/^(Enf\.|Coord\.|Eng\.|Dr\.|Dra\.)\s*/i, '').split(' ')[0]
-  const nomeLimpo = inspetor.nome.replace(/^(Enf\.|Coord\.|Eng\.|Dr\.|Dra\.)\s*/i, '')
-  const iniciais = nomeLimpo
+  const nomeCompleto = inspetor.nome && inspetor.nome.trim() ? inspetor.nome : 'Inspetor'
+  const primeiroNome = nomeCompleto
+    .replace(/^(Enf\.|Coord\.|Eng\.|Dr\.|Dra\.)\s*/i, '')
+    .split(' ')[0] || nomeCompleto
+
+  const nomeLimpo = nomeCompleto.replace(/^(Enf\.|Coord\.|Eng\.|Dr\.|Dra\.)\s*/i, '')
+  const iniciais = nomeLimpo && nomeLimpo !== 'Inspetor'
     ? nomeLimpo
       .split(' ')
       .filter(Boolean)
@@ -309,18 +313,6 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
         const dataInicioAnterior = new Date(dataInicio.getTime() - diasPeriodo * 24 * 60 * 60 * 1000)
         const dataInicioAnteriorISO = dataInicioAnterior.toISOString()
 
-        // Buscar usuários
-        const { data: usuarios } = await supabase
-          .from('usuarios')
-          .select('id, nome, perfil, avatar_url')
-          .eq('hospital_id', hospitalId)
-        const mapaUsuarios = new Map<string, { nome: string; perfil: string; avatarUrl?: string }>()
-        if (usuarios) {
-          usuarios.forEach((u: any) =>
-            mapaUsuarios.set(u.id, { nome: u.nome, perfil: u.perfil, avatarUrl: u.avatar_url })
-          )
-        }
-
         // 1. Rondas (execucoes_checklist com finalizado_em ou iniciado_em)
         const { data: todasExecucoes } = await supabase
           .from('execucoes_checklist')
@@ -332,6 +324,47 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           if (!dataRonda) return false
           return new Date(dataRonda).getTime() >= dataInicio.getTime()
         })
+
+        // 2. Buscar usuários do banco (sem restrição que possa dropar inspetores em produção)
+        const mapaUsuarios = new Map<string, { nome: string; perfil: string; avatarUrl?: string }>()
+        
+        let { data: todosUsuarios } = await supabase
+          .from('usuarios')
+          .select('id, nome, email, perfil, avatar_url')
+
+        if (todosUsuarios && todosUsuarios.length > 0) {
+          todosUsuarios.forEach((u: any) => {
+            const nomeFormatado = u.nome || (u.email ? u.email.split('@')[0] : 'Inspetor')
+            mapaUsuarios.set(u.id, {
+              nome: nomeFormatado,
+              perfil: u.perfil || 'inspetor',
+              avatarUrl: u.avatar_url,
+            })
+          })
+        }
+
+        // Se houver algum usuario_id na execução não encontrado no mapa, buscar explicitamente por ID
+        const userIdsNaExecucao: string[] = Array.from(
+          new Set<string>((todasExecucoes || []).map((e: any) => e.usuario_id as string).filter(Boolean))
+        )
+        const userIdsFaltantes = userIdsNaExecucao.filter((id: string) => !mapaUsuarios.has(id))
+        if (userIdsFaltantes.length > 0) {
+          const { data: usuariosFaltantes } = await supabase
+            .from('usuarios')
+            .select('id, nome, email, perfil, avatar_url')
+            .in('id', userIdsFaltantes)
+
+          if (usuariosFaltantes && usuariosFaltantes.length > 0) {
+            usuariosFaltantes.forEach((u: any) => {
+              const nomeFormatado = u.nome || (u.email ? u.email.split('@')[0] : 'Inspetor')
+              mapaUsuarios.set(u.id, {
+                nome: nomeFormatado,
+                perfil: u.perfil || 'inspetor',
+                avatarUrl: u.avatar_url,
+              })
+            })
+          }
+        }
 
         // 2. NCs abertas no período
         const { data: ncsAbertasPeriodoData, count: ncsAbertasCount } = await supabase

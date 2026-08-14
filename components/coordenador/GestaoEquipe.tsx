@@ -34,11 +34,23 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
         const supabase = criarClienteSupabase() as any
 
         // Buscar usuários
-        const { data: usuarios } = await supabase
+        let queryUsuarios = supabase
           .from('usuarios')
           .select('id, nome, email, perfil')
-          .eq('hospital_id', hospitalId)
           .in('perfil', ['inspetor', 'engenharia_clinica'])
+
+        if (hospitalId) {
+          queryUsuarios = queryUsuarios.eq('hospital_id', hospitalId)
+        }
+
+        let { data: usuarios } = await queryUsuarios
+        if (!usuarios || usuarios.length === 0) {
+          const { data: todosUsuarios } = await supabase
+            .from('usuarios')
+            .select('id, nome, email, perfil')
+            .in('perfil', ['inspetor', 'engenharia_clinica'])
+          usuarios = todosUsuarios
+        }
 
         if (!usuarios) {
           setCarregando(false)
