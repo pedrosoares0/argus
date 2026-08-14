@@ -215,30 +215,35 @@ export default function CommandMenu({
 				</kbd>
 			</button>
 
-			{/* 2. Floating Dropdown Menu com Backdrop Blur suave */}
+			{/* 2. Floating Dropdown Menu com Backdrop Blur suave e header livre */}
 			{isOpen && (
 				<>
-					{/* Backdrop com desfoque de fundo suave */}
+					{/* Backdrop de clique em tela cheia */}
 					<div
-						className="fixed inset-0 z-[90] bg-slate-900/20 backdrop-blur-sm transition-all duration-200"
+						className="fixed inset-0 z-[40]"
 						onClick={() => setIsOpen(false)}
 					/>
 
-					{/* Dropdown Compacto & Sofisticado */}
+					{/* Desfoque suave apenas do conteúdo abaixo do header */}
+					<div
+						className="pointer-events-none fixed inset-x-0 bottom-0 top-[56px] z-[40] bg-slate-900/6 backdrop-blur-[1.5px] transition-all duration-200"
+					/>
+
+					{/* Dropdown Compacto & Estreito */}
 					<div
 						id={id}
 						role="dialog"
 						aria-modal="true"
 						style={{ animation: 'cm-dropdown-in 0.18s cubic-bezier(0.16, 1, 0.3, 1)' }}
-						className="absolute right-0 top-full mt-2 z-[100] w-[240px] sm:w-[260px] rounded-2xl bg-white p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.14)] border border-slate-100 text-slate-800"
+						className="absolute right-0 top-full mt-1.5 z-[100] w-[205px] sm:w-[220px] rounded-2xl bg-white p-1 shadow-[0_12px_36px_rgba(0,0,0,0.12)] border border-slate-100 text-slate-800"
 					>
 						{/* Cabeçalho Compacto com Avatar do Perfil */}
-						<div className="flex items-center gap-2 p-2 bg-slate-50/90 rounded-xl mb-1 border border-slate-100/80">
+						<div className="flex items-center gap-1.5 p-1.5 bg-slate-50/90 rounded-xl mb-0.5 border border-slate-100/80">
 							{avatarFinal}
 							<div className="flex flex-col leading-tight min-w-0 flex-1">
-								<span className="font-bold text-[12.5px] text-slate-900 truncate">{title}</span>
+								<span className="font-bold text-[11.5px] text-slate-900 truncate">{title}</span>
 								{status.length > 0 && (
-									<div className="relative h-3.5 overflow-hidden text-[10.5px] font-medium text-slate-500">
+									<div className="relative h-3 overflow-hidden text-[9.5px] font-medium text-slate-500">
 										<span
 											key={statusIndex}
 											style={{ animation: 'cm-fly-in 0.3s ease-out backwards' }}
@@ -252,7 +257,7 @@ export default function CommandMenu({
 							<button
 								type="button"
 								onClick={() => setIsOpen(false)}
-								className="w-5 h-5 rounded-full bg-slate-200/70 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center text-[10px] transition-colors cursor-pointer"
+								className="w-4.5 h-4.5 rounded-full bg-slate-200/60 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center text-[9px] transition-colors cursor-pointer shrink-0"
 								aria-label="Fechar"
 							>
 								✕
@@ -269,7 +274,7 @@ export default function CommandMenu({
 										width: highlight.width,
 										height: highlight.height,
 									}}
-									className={`pointer-events-none absolute top-0 left-0 rounded-xl bg-slate-900/6 ${
+									className={`pointer-events-none absolute top-0 left-0 rounded-lg bg-slate-900/5 ${
 										highlightMoves
 											? 'transition-[transform,width,height,opacity] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]'
 											: 'transition-opacity duration-150'
@@ -280,7 +285,7 @@ export default function CommandMenu({
 							{allSections.map((section) => (
 								<div key={section.label} className="contents">
 									<div className="px-2 pt-1 pb-0.5">
-										<span className="text-[9.5px] font-extrabold tracking-wider text-slate-400 uppercase">
+										<span className="text-[9px] font-extrabold tracking-wider text-slate-400 uppercase">
 											{section.label}
 										</span>
 									</div>
@@ -301,7 +306,7 @@ export default function CommandMenu({
 														item.onSelect();
 														setIsOpen(false);
 													}}
-													className={`relative z-10 flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${
+													className={`relative z-10 flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-[11.5px] font-semibold transition-colors ${
 														item.centered ? 'justify-center text-center' : 'text-left'
 													} ${
 														item.destructive ? 'text-red-600 hover:text-red-700' : 'text-slate-700'
@@ -309,7 +314,7 @@ export default function CommandMenu({
 														item.active ? 'bg-slate-100 font-bold text-slate-950' : ''
 													}`}
 												>
-													{item.icon && <span className="shrink-0">{item.icon}</span>}
+													{item.icon && <span className="shrink-0 w-3.5 h-3.5 flex items-center justify-center">{item.icon}</span>}
 													<span className="truncate">{item.name}</span>
 												</button>
 											);

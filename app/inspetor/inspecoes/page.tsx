@@ -156,7 +156,7 @@ export default function PaginaHistoricoInspecoes() {
 
         {/* Resumo Rápido */}
         <div className="text-right shrink-0">
-          <p className="text-sm sm:text-base font-extrabold text-gray-900 leading-none">{inspecoes.length}</p>
+          <p className="text-sm sm:text-base font-black font-nunito text-gray-900 leading-none">{inspecoes.length}</p>
           <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Inspeções</p>
         </div>
       </div>

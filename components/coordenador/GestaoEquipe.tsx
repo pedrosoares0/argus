@@ -240,11 +240,11 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
       <div className="flex gap-2">
         <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-[var(--shadow-card)]">
           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Total</span>
-          <p className="text-xl font-extrabold text-gray-900 mt-1">{listaAtual.length}</p>
+          <p className="text-xl font-black font-nunito text-gray-900 mt-1">{listaAtual.length}</p>
         </div>
         <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-[var(--shadow-card)]">
           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Ativos (24h)</span>
-          <p className="text-xl font-extrabold text-emerald-600 mt-1">
+          <p className="text-xl font-black font-nunito text-emerald-600 mt-1">
             {listaAtual.filter((m) => {
               if (!m.ultimaAcao) return false
               return (new Date().getTime() - new Date(m.ultimaAcao).getTime()) < 86400000
@@ -255,7 +255,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
             {subAba === 'inspetores' ? 'Rondas' : 'NCs Ativas'}
           </span>
-          <p className="text-xl font-extrabold text-[#7C3AED] mt-1">
+          <p className="text-xl font-black font-nunito text-[#7C3AED] mt-1">
             {subAba === 'inspetores'
               ? listaAtual.reduce((acc, m) => acc + m.rondasRealizadas, 0)
               : listaAtual.reduce((acc, m) => acc + m.ncsResponsavel, 0)}

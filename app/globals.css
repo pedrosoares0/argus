@@ -7,11 +7,9 @@
    Sombras ultra-suaves, cards minimalistas, badges limpos
    ================================================================ */
 
-.font-nunito {
-  font-family: "Nunito", sans-serif;
+.font-nunito, .font-round, .font-metric {
+  font-family: "Nunito", -apple-system, BlinkMacSystemFont, sans-serif;
   font-optical-sizing: auto;
-  font-weight: 600;
-  font-style: normal;
 }
 
 .font-brand, .font-space-grotesk {

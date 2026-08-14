@@ -117,8 +117,8 @@ export default function LayoutCoordenador({
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-[#F4F6FA] max-w-md mx-auto relative">
-      {/* Header Fixo no Topo */}
-      <header className="bg-white px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-100/80">
+      {/* Header no tom do background cinza */}
+      <header className="relative z-50 bg-[#F4F6FA] px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/50">
         <Link href="/coordenador" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity font-brand">
           Argus
         </Link>

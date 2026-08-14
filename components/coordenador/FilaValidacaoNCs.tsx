@@ -194,7 +194,7 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
               </svg>
             </div>
           </div>
-          <p className="text-xl font-extrabold text-gray-900 mt-1">{totalAbertas}</p>
+          <p className="text-xl font-black font-nunito text-gray-900 mt-1">{totalAbertas}</p>
         </div>
         <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between">
@@ -205,7 +205,7 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
               </svg>
             </div>
           </div>
-          <p className="text-xl font-extrabold text-gray-900 mt-1">{totalAguardando}</p>
+          <p className="text-xl font-black font-nunito text-gray-900 mt-1">{totalAguardando}</p>
         </div>
         <div className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 shadow-[var(--shadow-card)]">
           <div className="flex items-center justify-between">
@@ -216,7 +216,7 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
               </svg>
             </div>
           </div>
-          <p className="text-xl font-extrabold text-gray-900 mt-1">{totalEncerradas}</p>
+          <p className="text-xl font-black font-nunito text-gray-900 mt-1">{totalEncerradas}</p>
         </div>
       </div>
 

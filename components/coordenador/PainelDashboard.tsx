@@ -169,7 +169,7 @@ function AnelCircular3D({
 
       {/* Porcentagem Centralizada */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[14px] font-extrabold text-slate-800 tracking-tight leading-none">
+        <span className="text-[14px] font-black font-nunito text-slate-800 tracking-tight leading-none">
           {porcentagem !== null ? `${porcentagem}%` : '—'}
         </span>
       </div>
@@ -241,20 +241,20 @@ function ColunaPodio({
         </p>
 
         {/* Quantidade de Rondas em Cinza (Sem fundo) */}
-        <span className="text-[10px] font-bold text-gray-400">
+        <span className="text-[10px] font-bold font-nunito text-gray-400">
           {inspetor.totalRondas} ronda{inspetor.totalRondas !== 1 ? 's' : ''}
         </span>
 
         {/* Indicadores Conformes (✓ verde) e NCs (✕ vermelho) sem badge no fundo */}
-        <div className="flex items-center justify-center gap-2 pt-0.5">
+        <div className="flex items-center justify-center gap-2 pt-0.5 font-nunito">
           {/* Check Verde: Conformes */}
-          <span className="inline-flex items-center gap-0.5 text-[10px] font-black text-emerald-600">
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-black font-nunito text-emerald-600">
             <span className="text-[11px]">✓</span>
             <span>{inspetor.totalConformes}</span>
           </span>
 
           {/* X Vermelho: NCs */}
-          <span className="inline-flex items-center gap-0.5 text-[10px] font-black text-red-500">
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-black font-nunito text-red-500">
             <span className="text-[11px]">✕</span>
             <span>{inspetor.totalNaoConformes}</span>
           </span>
@@ -268,7 +268,7 @@ function ColunaPodio({
 
         {/* Face Frontal com Apenas o Número Limpo */}
         <div className="flex-1 flex items-center justify-center pb-1">
-          <span className="text-2xl font-black font-brand leading-none text-slate-600">
+          <span className="text-2xl font-black font-nunito leading-none text-slate-600">
             {posicao}
           </span>
         </div>
@@ -280,7 +280,7 @@ function ColunaPodio({
 export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
   const router = useRouter()
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('7d')
-  const cacheKey = `coordenador_dashboard_${hospitalId}_${periodo}`
+  const cacheKey = `coordenador_dashboard_v3_${hospitalId}_${periodo}`
   const [dados, setDados] = useState<DadosDashboard | null>(() => dadosCache.get<DadosDashboard>(cacheKey))
   const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
 
@@ -330,7 +330,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
         ] = await Promise.all([
           supabase
             .from('execucoes_checklist')
-            .select('id, finalizado_em, iniciado_em, usuario_id, status, ativo_id, ativos(nome, local_id, locais(nome, centros_cirurgicos(nome))), usuarios(id, nome, email, perfil, avatar_url)')
+            .select('id, finalizado_em, iniciado_em, usuario_id, status, ativo_id, ativos(nome, local_id, locais(nome, centros_cirurgicos(nome)))')
             .eq('status', 'concluida'),
           supabase
             .from('usuarios')
@@ -716,11 +716,11 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
 
           {/* Badges de Resumo */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-600 font-bold text-[10.5px] px-2.5 py-1 rounded-full border border-slate-200/60">
+            <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-600 font-bold font-nunito text-[10.5px] px-2.5 py-1 rounded-full border border-slate-200/60">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
               {dados.rondasNoPeriodo} rondas
             </span>
-            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 font-bold text-[10.5px] px-2.5 py-1 rounded-full border border-rose-100/80">
+            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 font-bold font-nunito text-[10.5px] px-2.5 py-1 rounded-full border border-rose-100/80">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
               {dados.ncsAbertasNoPeriodo} NCs
             </span>
@@ -742,7 +742,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
             <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
               Rondas 100% OK
             </h4>
-            <span className="text-[10px] font-bold text-emerald-600 mt-0.5">
+            <span className="text-[10px] font-black font-nunito text-emerald-600 mt-0.5">
               {dados.rondasSemNcNoPeriodo} de {dados.rondasNoPeriodo}
             </span>
           </div>
@@ -760,7 +760,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
             <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
               Itens Aprovados
             </h4>
-            <span className="text-[10px] font-bold text-indigo-600 mt-0.5">
+            <span className="text-[10px] font-black font-nunito text-indigo-600 mt-0.5">
               {dados.totalItensConformes} de {dados.totalItens}
             </span>
           </div>
@@ -778,7 +778,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
             <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
               Não-Críticas
             </h4>
-            <span className="text-[10px] font-bold text-amber-600 mt-0.5">
+            <span className="text-[10px] font-black font-nunito text-amber-600 mt-0.5">
               {Math.max(dados.ncsAbertasNoPeriodo - dados.ncsPorCriticidade.critico, 0)} de {dados.ncsAbertasNoPeriodo}
             </span>
           </div>
@@ -823,7 +823,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-6 h-6 rounded-lg bg-gradient-to-b from-white to-gray-50 border border-gray-200/90 flex items-center justify-center text-[10px] font-black text-gray-700 shrink-0 shadow-[0_1.5px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)]">
+                      <span className="w-6 h-6 rounded-lg bg-gradient-to-b from-white to-gray-50 border border-gray-200/90 flex items-center justify-center text-[10px] font-black font-nunito text-gray-700 shrink-0 shadow-[0_1.5px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)]">
                         {idx + 1}º
                       </span>
                       <div className="min-w-0">
@@ -835,7 +835,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
                         </p>
                       </div>
                     </div>
-                    <span className="text-[11px] font-black text-red-600 bg-gradient-to-b from-red-50 to-red-100/70 border border-red-200/70 shadow-[0_1px_3px_rgba(220,38,38,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] px-2.5 py-1 rounded-full shrink-0">
+                    <span className="text-[11px] font-black font-nunito text-red-600 bg-gradient-to-b from-red-50 to-red-100/70 border border-red-200/70 shadow-[0_1px_3px_rgba(220,38,38,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] px-2.5 py-1 rounded-full shrink-0">
                       {ativo.quantidadeNcs} NC{ativo.quantidadeNcs !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -871,11 +871,11 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
         <div className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-[var(--shadow-card)]">
           <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Tempo Médio</span>
           <p className="text-[9px] text-gray-400 font-medium -mt-0.5">de resolução</p>
-          <p className="text-[20px] font-extrabold text-gray-900 mt-2 leading-none">
+          <p className="text-[20px] font-black font-nunito text-gray-900 mt-2 leading-none">
             {dados.tempoMedioResolucaoMs !== null ? formatarDuracao(dados.tempoMedioResolucaoMs) : '—'}
           </p>
           {tendenciaResolucao && (
-            <div className={`mt-1.5 inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${tendenciaResolucao === 'melhorou' ? 'bg-emerald-50 text-emerald-600' :
+            <div className={`mt-1.5 inline-flex items-center gap-0.5 text-[9px] font-bold font-nunito px-1.5 py-0.5 rounded-full ${tendenciaResolucao === 'melhorou' ? 'bg-emerald-50 text-emerald-600' :
               tendenciaResolucao === 'piorou' ? 'bg-red-50 text-red-500' :
                 'bg-gray-50 text-gray-400'
               }`}>
@@ -893,17 +893,17 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
               <span className="text-[10px] text-gray-600 font-medium flex-1">Crítico</span>
-              <span className="text-[11px] font-extrabold text-gray-900">{dados.ncsPorCriticidade.critico}</span>
+              <span className="text-[11.5px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.critico}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
               <span className="text-[10px] text-gray-600 font-medium flex-1">Importante</span>
-              <span className="text-[11px] font-extrabold text-gray-900">{dados.ncsPorCriticidade.importante}</span>
+              <span className="text-[11.5px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.importante}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
               <span className="text-[10px] text-gray-600 font-medium flex-1">Informativo</span>
-              <span className="text-[11px] font-extrabold text-gray-900">{dados.ncsPorCriticidade.informativo}</span>
+              <span className="text-[11.5px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.informativo}</span>
             </div>
           </div>
         </div>
@@ -922,7 +922,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
               Rondas de inspeção concluídas por dia
             </p>
           </div>
-          <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 shrink-0">
+          <span className="text-[10px] font-bold font-nunito text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 shrink-0">
             {dados.rondasNoPeriodo} concluída{dados.rondasNoPeriodo !== 1 ? 's' : ''}
           </span>
         </div>
@@ -943,7 +943,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
                 >
                   {/* Número de rondas */}
                   <span
-                    className={`text-[9px] font-black leading-none transition-colors ${temRonda ? 'text-gray-800 font-extrabold' : 'text-transparent group-hover:text-gray-300'
+                    className={`text-[9.5px] font-black font-nunito leading-none transition-colors ${temRonda ? 'text-gray-800 font-black' : 'text-transparent group-hover:text-gray-300'
                       }`}
                   >
                     {dia.quantidade}
@@ -1073,8 +1073,8 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold text-gray-600">{hora}</p>
-                    <p className="text-[9px] text-gray-400">{dia}</p>
+                    <p className="text-[10px] font-bold font-nunito text-gray-600">{hora}</p>
+                    <p className="text-[9px] font-bold font-nunito text-gray-400">{dia}</p>
                   </div>
                 </div>
               )
