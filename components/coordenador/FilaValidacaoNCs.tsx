@@ -30,21 +30,38 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
       try {
         const supabase = criarClienteSupabase() as any
 
+        // Helper para formatar nome
+        const formatarNome = (u: any): string => {
+          if (!u) return 'Inspetor'
+          const nomeCandidato = u.nome || u.full_name || u.name
+          if (nomeCandidato && typeof nomeCandidato === 'string' && nomeCandidato.trim() && nomeCandidato.trim() !== 'Inspetor') {
+            return nomeCandidato.trim()
+          }
+          if (u.email && typeof u.email === 'string') {
+            const parte = u.email.split('@')[0]
+            const partes = parte.split(/[\._\-]/).filter(Boolean)
+            if (partes.length > 0) {
+              return partes.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+            }
+            return parte
+          }
+          return 'Inspetor'
+        }
+
         // Buscar usuários para resolver o nome do responsável e inspetor
-        const { data: usuariosData } = await supabase
+        let { data: usuariosData } = await supabase
           .from('usuarios')
-          .select('id, nome, perfil')
-          .eq('hospital_id', hospitalId)
-        
+          .select('id, nome, email, perfil')
+
         const usuariosMapa = new Map()
         if (usuariosData) {
-          usuariosData.forEach((u: any) => usuariosMapa.set(u.id, u.nome))
+          usuariosData.forEach((u: any) => usuariosMapa.set(u.id, formatarNome(u)))
         }
 
         // Buscar as NCs com ativo, local e item_execucao com execucao_checklist
         const { data: ncsData } = await supabase
           .from('nao_conformidades')
-          .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*, execucoes_checklist(usuario_id))')
+          .select('*, ativos(*, categorias_ativos(*), locais(*, centros_cirurgicos(*, unidades(*)))), itens_execucao_checklist(*, execucoes_checklist(usuario_id, usuarios(id, nome, email)))')
           .eq('hospital_id', hospitalId)
 
         if (ncsData) {
@@ -53,8 +70,9 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
             const centroCirurgico = localAtivo.centros_cirurgicos || {}
             const unidade = centroCirurgico.unidades || {}
             const itemExec = nc.itens_execucao_checklist || {}
-            const inspetorId = itemExec.execucoes_checklist?.usuario_id
-            const inspetorNome = usuariosMapa.get(inspetorId) || 'Inspetor'
+            const execChecklist = itemExec.execucoes_checklist || {}
+            const inspetorId = execChecklist?.usuario_id
+            const inspetorNome = usuariosMapa.get(inspetorId) || (execChecklist.usuarios ? formatarNome(execChecklist.usuarios) : 'Inspetor')
             const responsavelNome = usuariosMapa.get(nc.responsavel_id) || null
 
             return {

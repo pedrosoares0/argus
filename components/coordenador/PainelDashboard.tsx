@@ -314,10 +314,52 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
         const dataInicioAnteriorISO = dataInicioAnterior.toISOString()
 
         // 1. Rondas (execucoes_checklist com finalizado_em ou iniciado_em)
-        const { data: todasExecucoes } = await supabase
+        let todasExecucoes: any[] = []
+        const mapaUsuarios = new Map<string, { nome: string; perfil: string; avatarUrl?: string }>()
+
+        // Helper robusto para formatar nome
+        const formatarNome = (u: any): string => {
+          if (!u) return 'Inspetor'
+          const nomeCandidato = u.nome || u.full_name || u.name
+          if (nomeCandidato && typeof nomeCandidato === 'string' && nomeCandidato.trim() && nomeCandidato.trim() !== 'Inspetor') {
+            return nomeCandidato.trim()
+          }
+          if (u.email && typeof u.email === 'string') {
+            const parte = u.email.split('@')[0]
+            const partes = parte.split(/[\._\-]/).filter(Boolean)
+            if (partes.length > 0) {
+              return partes.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+            }
+            return parte
+          }
+          return 'Inspetor'
+        }
+
+        // Tentar primeiro com join de usuarios
+        const { data: execsComJoin, error: errJoin } = await supabase
           .from('execucoes_checklist')
-          .select('id, finalizado_em, iniciado_em, usuario_id, status, ativo_id, ativos(nome, local_id, locais(nome, centros_cirurgicos(nome)))')
+          .select('id, finalizado_em, iniciado_em, usuario_id, status, ativo_id, ativos(nome, local_id, locais(nome, centros_cirurgicos(nome))), usuarios(id, nome, email, perfil, avatar_url)')
           .eq('status', 'concluida')
+
+        if (!errJoin && execsComJoin) {
+          todasExecucoes = execsComJoin
+          todasExecucoes.forEach((r: any) => {
+            if (r.usuarios && r.usuario_id) {
+              mapaUsuarios.set(r.usuario_id, {
+                nome: formatarNome(r.usuarios),
+                perfil: r.usuarios.perfil || 'inspetor',
+                avatarUrl: r.usuarios.avatar_url,
+              })
+            }
+          })
+        } else {
+          // Fallback sem join caso a FK não esteja mapeada no PostgREST
+          const { data: execsSimples } = await supabase
+            .from('execucoes_checklist')
+            .select('id, finalizado_em, iniciado_em, usuario_id, status, ativo_id, ativos(nome, local_id, locais(nome, centros_cirurgicos(nome)))')
+            .eq('status', 'concluida')
+          todasExecucoes = execsSimples || []
+        }
 
         const rondasData = (todasExecucoes || []).filter((r: any) => {
           const dataRonda = r.finalizado_em || r.iniciado_em
@@ -325,25 +367,22 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           return new Date(dataRonda).getTime() >= dataInicio.getTime()
         })
 
-        // 2. Buscar usuários do banco (sem restrição que possa dropar inspetores em produção)
-        const mapaUsuarios = new Map<string, { nome: string; perfil: string; avatarUrl?: string }>()
-        
-        let { data: todosUsuarios } = await supabase
+        // 2. Buscar usuários do banco (trazendo todos os perfis)
+        const { data: todosUsuarios } = await supabase
           .from('usuarios')
           .select('id, nome, email, perfil, avatar_url')
 
         if (todosUsuarios && todosUsuarios.length > 0) {
           todosUsuarios.forEach((u: any) => {
-            const nomeFormatado = u.nome || (u.email ? u.email.split('@')[0] : 'Inspetor')
             mapaUsuarios.set(u.id, {
-              nome: nomeFormatado,
+              nome: formatarNome(u),
               perfil: u.perfil || 'inspetor',
               avatarUrl: u.avatar_url,
             })
           })
         }
 
-        // Se houver algum usuario_id na execução não encontrado no mapa, buscar explicitamente por ID
+        // Se ainda houver algum usuario_id na execução não encontrado no mapa, buscar explicitamente
         const userIdsNaExecucao: string[] = Array.from(
           new Set<string>((todasExecucoes || []).map((e: any) => e.usuario_id as string).filter(Boolean))
         )
@@ -356,9 +395,8 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
 
           if (usuariosFaltantes && usuariosFaltantes.length > 0) {
             usuariosFaltantes.forEach((u: any) => {
-              const nomeFormatado = u.nome || (u.email ? u.email.split('@')[0] : 'Inspetor')
               mapaUsuarios.set(u.id, {
-                nome: nomeFormatado,
+                nome: formatarNome(u),
                 perfil: u.perfil || 'inspetor',
                 avatarUrl: u.avatar_url,
               })

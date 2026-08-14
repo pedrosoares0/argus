@@ -33,6 +33,24 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
       try {
         const supabase = criarClienteSupabase() as any
 
+        // Helper robusto para formatar nome
+        const formatarNome = (u: any): string => {
+          if (!u) return 'Inspetor'
+          const nomeCandidato = u.nome || u.full_name || u.name
+          if (nomeCandidato && typeof nomeCandidato === 'string' && nomeCandidato.trim() && nomeCandidato.trim() !== 'Inspetor') {
+            return nomeCandidato.trim()
+          }
+          if (u.email && typeof u.email === 'string') {
+            const parte = u.email.split('@')[0]
+            const partes = parte.split(/[\._\-]/).filter(Boolean)
+            if (partes.length > 0) {
+              return partes.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+            }
+            return parte
+          }
+          return 'Inspetor'
+        }
+
         // Buscar usuários
         let queryUsuarios = supabase
           .from('usuarios')
@@ -86,7 +104,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
 
           return {
             id: u.id,
-            nome: u.nome,
+            nome: formatarNome(u),
             email: u.email,
             perfil: u.perfil,
             rondasRealizadas: rondasUsuario.length,
@@ -108,12 +126,12 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
 
           return {
             id: u.id,
-            nome: u.nome,
+            nome: formatarNome(u),
             email: u.email,
             perfil: u.perfil,
             rondasRealizadas: 0,
             ultimaRonda: null,
-            ncsResponsavel: ncsAbertas,
+            ncsResponsavel: ncsAbertas + ncsEncerradas,
             ncsResolvidas: ncsEncerradas,
             ultimaAcao,
           }
