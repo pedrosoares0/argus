@@ -7,7 +7,9 @@ import { Botao } from '@/components/ui/Botao'
 import { PillTag } from '@/components/ui/PillTag'
 import { QRCodeAtivo } from '@/components/ui/QRCodeAtivo'
 import { criarClienteSupabase } from '@/lib/supabase/client'
-import type { StatusNaoConformidade, StatusAtivo } from '@/lib/supabase/types'
+import { SETORES_LABELS, TIPOS_NC_LABELS, SETORES_CORES } from '@/lib/roteamentoNC'
+import { verificarTecnicoAtivo } from '@/lib/supabase/mockDb'
+import type { StatusNaoConformidade, StatusAtivo, SetorTecnico, TipoNaoConformidade } from '@/lib/supabase/types'
 
 const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' | 'vermelho' | 'cinza'> = {
   aberta: 'vermelho',
@@ -50,6 +52,11 @@ export default function DetalheNCEngenharia() {
   const [mostrarFormManutencao, setMostrarFormManutencao] = useState(false)
   const [descricaoReparo, setDescricaoReparo] = useState('')
   const [erroForm, setErroForm] = useState('')
+
+  // Controle de resolução direta (Coordenador)
+  const [mostrarFormResolucao, setMostrarFormResolucao] = useState(false)
+  const [descricaoResolucao, setDescricaoResolucao] = useState('')
+  const [erroFormResolucao, setErroFormResolucao] = useState('')
 
   async function carregarDados() {
     try {
@@ -161,6 +168,8 @@ export default function DetalheNCEngenharia() {
         criado_por_nome: 'Inspetor',
         responsavel_nome: responsavelNome,
         responsavel_id: ncData.responsavel_id,
+        tipo: ncData.tipo || 'equipamento',
+        setor_responsavel: ncData.setor_responsavel || null,
         registro_manutencao: maintData && maintData.length > 0 ? maintData[0] : null,
         historico: historicoData || [],
       })
@@ -352,6 +361,71 @@ export default function DetalheNCEngenharia() {
     }
   }
 
+  // Ação: Coordenador resolve NC diretamente
+  async function handleResolverDiretamente(e: React.FormEvent) {
+    e.preventDefault()
+    if (!nc) return
+    if (!descricaoResolucao.trim()) {
+      setErroFormResolucao('Por favor, descreva a resolução aplicada.')
+      return
+    }
+
+    try {
+      const supabase = criarClienteSupabase() as any
+
+      // 1. Inserir registro de manutenção/resolução
+      await supabase
+        .from('registros_manutencao')
+        .insert({
+          nao_conformidade_id: nc.id,
+          usuario_id: usuario.id,
+          descricao: descricaoResolucao,
+          status: 'finalizada',
+          finalizada_em: new Date().toISOString(),
+        })
+
+      // 2. Encerrar a NC diretamente
+      const { error: ncError } = await supabase
+        .from('nao_conformidades')
+        .update({ 
+          status: 'encerrada', 
+          responsavel_id: usuario.id 
+        })
+        .eq('id', nc.id)
+
+      if (ncError) throw ncError
+
+      // 3. Restaurar ativo para operacional
+      if (nc.ativo?.id) {
+        await supabase
+          .from('ativos')
+          .update({ status: 'operacional' })
+          .eq('id', nc.ativo.id)
+      }
+
+      // 4. Histórico
+      await supabase
+        .from('historico_status_nao_conformidade')
+        .insert({
+          nao_conformidade_id: nc.id,
+          status_anterior: nc.status,
+          status_novo: 'encerrada',
+          usuario_id: usuario.id,
+          justificativa: `[Resolução direta — Coordenador] ${descricaoResolucao}`,
+        })
+
+      setAvisoSucesso('NC resolvida e encerrada diretamente.')
+      setMostrarFormResolucao(false)
+      setDescricaoResolucao('')
+      setErroFormResolucao('')
+      setTimeout(() => setAvisoSucesso(null), 4000)
+      atualizarNC()
+    } catch (err: any) {
+      console.error(err)
+      setErroFormResolucao(`Erro ao resolver NC: ${err.message}`)
+    }
+  }
+
   if (erro) {
     return (
       <div className="px-5 pt-10 text-center space-y-4">
@@ -380,6 +454,12 @@ export default function DetalheNCEngenharia() {
 
   // Regra de Negócio: verificar se tem outro responsável
   const temOutroResponsavel = nc.responsavel_id !== null && nc.responsavel_id !== usuario.id
+
+  // Regra: Coordenador pode resolver diretamente quando não há técnico ativo no setor
+  const ehCoordenador = usuario.perfil === 'coordenador'
+  const setorNC = nc.setor_responsavel as SetorTecnico | null
+  const temTecnicoNoSetor = verificarTecnicoAtivo(setorNC)
+  const podeResolverDiretamente = ehCoordenador && !temTecnicoNoSetor && nc.status !== 'encerrada' && nc.status !== 'aguardando_validacao'
 
   return (
     <div className="min-h-screen bg-[#F4F6FA] pb-36">
@@ -766,6 +846,66 @@ export default function DetalheNCEngenharia() {
                   </svg>
                   <span>Não conformidade encerrada</span>
                 </div>
+              )}
+
+              {/* ── Botão Resolução Direta (Coordenador) ── */}
+              {podeResolverDiretamente && !mostrarFormResolucao && !mostrarFormManutencao && (
+                <button
+                  type="button"
+                  onClick={() => setMostrarFormResolucao(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-full text-xs font-bold text-white bg-gradient-to-b from-[#7C3AED] to-[#6D28D9] border-[3px] border-white/90 shadow-[0_10px_24px_-4px_rgba(124,58,237,0.35)] hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17l-5.384-3.19A2.625 2.625 0 014.5 9.605V6.75a2.625 2.625 0 012.136-2.577l5.384-1.538a2.625 2.625 0 011.46 0l5.384 1.538A2.625 2.625 0 0121 6.75v2.855a2.625 2.625 0 01-1.536 2.375l-5.384 3.19a2.625 2.625 0 01-2.66 0z" />
+                  </svg>
+                  Resolver Diretamente
+                </button>
+              )}
+
+              {/* ── Formulário de Resolução Direta ── */}
+              {mostrarFormResolucao && (
+                <form onSubmit={handleResolverDiretamente} className="space-y-3 animate-[fadeIn_0.2s_ease-out]">
+                  <div className="bg-violet-50 border border-violet-200 rounded-2xl p-3 text-violet-700 text-[11px] font-bold flex items-center gap-2">
+                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    Sem técnico ativo no setor {setorNC ? SETORES_LABELS[setorNC] : ''} — resolução direta pelo Coordenador
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">
+                      Descreva a resolução aplicada
+                    </label>
+                    <textarea
+                      rows={3}
+                      autoFocus
+                      placeholder="Ex: Cabo substituído por reserva do almoxarifado. Equipamento testado e liberado."
+                      value={descricaoResolucao}
+                      onChange={(e) => { setDescricaoResolucao(e.target.value); setErroFormResolucao('') }}
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#7C3AED] focus:ring-2 focus:ring-[#7C3AED]/10 resize-none transition-all"
+                    />
+                    {erroFormResolucao && (
+                      <p className="text-[10px] font-bold text-red-500">{erroFormResolucao}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setMostrarFormResolucao(false); setDescricaoResolucao(''); setErroFormResolucao('') }}
+                      className="flex-1 py-2.5 rounded-full text-xs font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!descricaoResolucao.trim()}
+                      className="flex-1 py-2.5 rounded-full text-xs font-bold text-white bg-gradient-to-b from-[#7C3AED] to-[#6D28D9] shadow-[0_6px_16px_-4px_rgba(124,58,237,0.35)] hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Confirmar e Encerrar
+                    </button>
+                  </div>
+                </form>
               )}
 
               {/* Botão Secundário se não estiver no form ou encerrado */}

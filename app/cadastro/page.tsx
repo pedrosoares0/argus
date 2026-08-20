@@ -7,21 +7,22 @@ import { Botao } from '@/components/ui/Botao'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { Avatar } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { TODOS_SETORES, SETORES_LABELS } from '@/lib/roteamentoNC'
 
 const ROLES = [
   { 
     valor: 'inspetor', 
     label: 'Inspetor', 
-    desc: 'Enfermagem',
+    desc: 'Enfermagem / Campo',
     avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg',
     fallback: 'IN' 
   },
   { 
-    valor: 'engenharia_clinica', 
-    label: 'Engenharia', 
-    desc: 'Engenharia Clínica',
-    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/red.jpg',
-    fallback: 'EN' 
+    valor: 'tecnico', 
+    label: 'Técnico', 
+    desc: 'Setor especializado',
+    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/orange.jpg',
+    fallback: 'TC' 
   },
 ]
 
@@ -35,6 +36,7 @@ export default function PaginaCadastro() {
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [perfilSelecionado, setPerfilSelecionado] = useState('inspetor')
+  const [setorSelecionado, setSetorSelecionado] = useState('')
   const [hospitalId, setHospitalId] = useState('e632822a-0000-0000-0000-000000000001') // Default hospital ID
   
   const [hospitais, setHospitais] = useState<any[]>([
@@ -96,6 +98,7 @@ export default function PaginaCadastro() {
             nome: nomeCompleto,
             perfil: perfilSelecionado,
             numero_conselho: numeroConselho,
+            setor: perfilSelecionado === 'tecnico' ? (setorSelecionado || 'engenharia_clinica') : null,
           }
         }
       })
@@ -117,7 +120,8 @@ export default function PaginaCadastro() {
             email: email,
             perfil: perfilSelecionado,
             hospital_id: hospitalId,
-            numero_conselho: numeroConselho
+            numero_conselho: numeroConselho,
+            setor: perfilSelecionado === 'tecnico' ? (setorSelecionado || 'engenharia_clinica') : null,
           })
         } catch (dbErr) {
           console.error('Erro ao upsertar na tabela usuarios:', dbErr)
@@ -135,6 +139,7 @@ export default function PaginaCadastro() {
           inspetor: '/inspetor',
           engenharia_clinica: '/engenharia',
           coordenador: '/coordenador',
+          tecnico: '/engenharia',
         }
 
         setTimeout(() => {
@@ -289,6 +294,35 @@ export default function PaginaCadastro() {
                     </button>
                   )
                 })}
+              </div>
+            </div>
+
+            {/* Seletor de Setor (aparece só quando Perfil = Técnico) */}
+            <div
+              className="overflow-hidden transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              style={{
+                maxHeight: perfilSelecionado === 'tecnico' ? '120px' : '0px',
+                opacity: perfilSelecionado === 'tecnico' ? 1 : 0,
+                marginTop: perfilSelecionado === 'tecnico' ? '0px' : '-8px',
+              }}
+            >
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
+                  Setor Técnico
+                </label>
+                <select
+                  value={setorSelecionado}
+                  onChange={(e) => setSetorSelecionado(e.target.value)}
+                  required={perfilSelecionado === 'tecnico'}
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 outline-none focus:border-[#246BFD] transition-all cursor-pointer"
+                >
+                  <option value="" disabled>Selecione o setor...</option>
+                  {TODOS_SETORES.map(s => (
+                    <option key={s} value={s}>
+                      {SETORES_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

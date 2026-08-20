@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
+import { SETORES_LABELS, SETORES_CORES } from '@/lib/roteamentoNC'
 import { Avatar, AvatarPerfil } from '@/components/ui/Avatar'
+import type { SetorTecnico } from '@/lib/supabase/types'
 
 interface GestaoEquipeProps {
   hospitalId: string
@@ -14,6 +16,7 @@ interface MembroEquipe {
   nome: string
   email: string
   perfil: string
+  setor: SetorTecnico | null
   // Métricas
   rondasRealizadas: number
   ultimaRonda: string | null
@@ -23,12 +26,12 @@ interface MembroEquipe {
 }
 
 export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
-  const [subAba, setSubAba] = useState<'inspetores' | 'engenheiros'>('inspetores')
+  const [subAba, setSubAba] = useState<'inspetores' | 'tecnicos'>('inspetores')
   const cacheKey = `coordenador_equipe_${hospitalId}`
-  const dadosIniciais = dadosCache.get<{ inspetores: MembroEquipe[]; engenheiros: MembroEquipe[] }>(cacheKey)
+  const dadosIniciais = dadosCache.get<{ inspetores: MembroEquipe[]; tecnicos: MembroEquipe[] }>(cacheKey)
 
   const [inspetores, setInspetores] = useState<MembroEquipe[]>(() => dadosIniciais?.inspetores || [])
-  const [engenheiros, setEngenheiros] = useState<MembroEquipe[]>(() => dadosIniciais?.engenheiros || [])
+  const [tecnicos, setTecnicos] = useState<MembroEquipe[]>(() => dadosIniciais?.tecnicos || [])
   const [carregando, setCarregando] = useState(() => !dadosIniciais)
 
   useEffect(() => {
@@ -61,7 +64,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
         let queryUsuarios = supabase
           .from('usuarios')
           .select('id, nome, email, perfil')
-          .in('perfil', ['inspetor', 'engenharia_clinica'])
+          .in('perfil', ['inspetor', 'engenharia_clinica', 'tecnico'])
 
         if (hospitalId) {
           queryUsuarios = queryUsuarios.eq('hospital_id', hospitalId)
@@ -84,7 +87,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
           const { data: todosUsuarios } = await supabase
             .from('usuarios')
             .select('id, nome, email, perfil')
-            .in('perfil', ['inspetor', 'engenharia_clinica'])
+            .in('perfil', ['inspetor', 'engenharia_clinica', 'tecnico'])
           usuarios = todosUsuarios
         }
 
@@ -94,7 +97,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
         }
 
         const inspetoresRaw = usuarios.filter((u: any) => u.perfil === 'inspetor')
-        const engenheirosRaw = usuarios.filter((u: any) => u.perfil === 'engenharia_clinica')
+        const tecnicosRaw = usuarios.filter((u: any) => u.perfil === 'engenharia_clinica' || u.perfil === 'tecnico')
         const execucoes = execucoesRes.data || []
         const ncs = ncsRes.data || []
 
@@ -123,8 +126,8 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
           }
         })
 
-        // Mapear dados dos engenheiros
-        const engenheirosMapeados: MembroEquipe[] = engenheirosRaw.map((u: any) => {
+        // Mapear dados dos técnicos
+        const tecnicosMapeados: MembroEquipe[] = tecnicosRaw.map((u: any) => {
           const ncsDoUsuario = (ncs || []).filter((nc: any) => nc.responsavel_id === u.id)
           const resolvidos = ncsDoUsuario.filter((nc: any) => nc.status === 'encerrada')
           const ordenadas = ncsDoUsuario.sort((a: any, b: any) => {
@@ -133,12 +136,14 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
             return dataB - dataA
           })
           const ultimaAcao = ordenadas.length > 0 ? ordenadas[0].criado_em : null
+          const setorUsuario = u.setor || (u.perfil === 'engenharia_clinica' ? 'engenharia_clinica' : null)
 
           return {
             id: u.id,
             nome: formatarNome(u),
             email: u.email,
             perfil: u.perfil,
+            setor: setorUsuario,
             rondasRealizadas: 0,
             ultimaRonda: null,
             ncsResponsavel: ncsDoUsuario.length,
@@ -148,8 +153,8 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
         })
 
         setInspetores(inspetoresMapeados)
-        setEngenheiros(engenheirosMapeados)
-        dadosCache.set(cacheKey, { inspetores: inspetoresMapeados, engenheiros: engenheirosMapeados })
+        setTecnicos(tecnicosMapeados)
+        dadosCache.set(cacheKey, { inspetores: inspetoresMapeados, tecnicos: tecnicosMapeados })
       } catch (err) {
         console.error('Erro ao carregar equipe:', err)
       } finally {
@@ -184,7 +189,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
     return { label: 'Inativo', cor: 'text-gray-400', bg: 'bg-gray-300' }
   }
 
-  const listaAtual = subAba === 'inspetores' ? inspetores : engenheiros
+  const listaAtual = subAba === 'inspetores' ? inspetores : tecnicos
 
   if (carregando) {
     return (
@@ -224,15 +229,15 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
           Inspetores ({inspetores.length})
         </button>
         <button
-          onClick={() => setSubAba('engenheiros')}
+          onClick={() => setSubAba('tecnicos')}
           className={[
             'flex-1 text-center py-2 px-3 text-[11px] font-bold tracking-tight rounded-full transition-all duration-200 cursor-pointer active:scale-95',
-            subAba === 'engenheiros'
+            subAba === 'tecnicos'
               ? 'bg-white text-slate-800 shadow-[0_2px_6px_rgba(0,0,0,0.06)]'
               : 'text-gray-500 hover:text-slate-800',
           ].join(' ')}
         >
-          Engenheiros ({engenheiros.length})
+          Técnicos ({tecnicos.length})
         </button>
       </div>
 
@@ -301,9 +306,9 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
                   key={membro.id}
                   className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-[var(--shadow-card)] transition-all"
                 >
-                  {/* Header do card com Avatar oficial por perfil */}
+                  {/* Header do card com Avatar oficial por perfil e setor */}
                   <div className="flex items-center gap-3">
-                    <AvatarPerfil perfil={membro.perfil} nome={membro.nome} tamanho="md" />
+                    <AvatarPerfil perfil={membro.perfil} nome={membro.nome} setor={membro.setor} tamanho="md" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="text-[13px] font-bold text-gray-900 truncate">{membro.nome}</h3>
@@ -312,7 +317,18 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
                           <span className={`text-[9px] font-bold ${status.cor}`}>{status.label}</span>
                         </div>
                       </div>
-                      <p className="text-[10px] text-gray-400 font-medium truncate">{membro.email}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-[10px] text-gray-400 font-medium truncate">{membro.email}</p>
+                        {membro.setor && (
+                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full border ${
+                            SETORES_CORES[membro.setor]
+                              ? `${SETORES_CORES[membro.setor].bg} ${SETORES_CORES[membro.setor].text} ${SETORES_CORES[membro.setor].border}`
+                              : 'bg-gray-50 text-gray-500 border-gray-200'
+                          }`}>
+                            {SETORES_LABELS[membro.setor]}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -365,12 +381,12 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
           </div>
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-gray-900">
-              {subAba === 'inspetores' ? 'Nenhum inspetor cadastrado' : 'Nenhum engenheiro cadastrado'}
+              {subAba === 'inspetores' ? 'Nenhum inspetor cadastrado' : 'Nenhum técnico cadastrado'}
             </h3>
             <p className="text-[11px] text-gray-400 max-w-xs mx-auto leading-relaxed">
               {subAba === 'inspetores'
                 ? 'Inspetores serão exibidos aqui após o cadastro pelo administrador.'
-                : 'Engenheiros clínicos serão exibidos aqui após o cadastro pelo administrador.'}
+                : 'Técnicos serão exibidos aqui após o cadastro pelo administrador.'}
             </p>
           </div>
         </div>

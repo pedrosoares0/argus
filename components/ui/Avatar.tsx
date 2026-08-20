@@ -2,11 +2,21 @@
 
 import React, { createContext, useContext, useState } from 'react'
 
-export function getAvatarUrlPorPerfil(perfil?: string, nome?: string): string {
+export function getAvatarUrlPorPerfil(perfil?: string, nome?: string, setor?: string | null): string {
   const p = (perfil || '').toLowerCase()
   const n = (nome || '').toLowerCase()
+  const s = (setor || '').toLowerCase()
   
-  if (p === 'engenharia_clinica' || p === 'engenharia' || n.startsWith('eng.')) {
+  if (s === 'manutencao' || n.includes('manutenção') || n.includes('manutencao')) {
+    return 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/orange.jpg'
+  }
+  if (s === 'farmacia' || n.includes('farmácia') || n.includes('farmacia')) {
+    return 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/green.jpg'
+  }
+  if (s === 'almoxarifado' || n.includes('almoxarifado')) {
+    return 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/sky.jpg'
+  }
+  if (p === 'engenharia_clinica' || p === 'engenharia' || s === 'engenharia_clinica' || n.startsWith('eng.')) {
     return 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/red.jpg'
   }
   if (p === 'coordenador' || p === 'gestor' || p === 'administrador' || n.startsWith('coord.')) {
@@ -15,11 +25,21 @@ export function getAvatarUrlPorPerfil(perfil?: string, nome?: string): string {
   return 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/blue.jpg'
 }
 
-export function getAvatarGradientPorPerfil(perfil?: string, nome?: string): string {
+export function getAvatarGradientPorPerfil(perfil?: string, nome?: string, setor?: string | null): string {
   const p = (perfil || '').toLowerCase()
   const n = (nome || '').toLowerCase()
+  const s = (setor || '').toLowerCase()
   
-  if (p === 'engenharia_clinica' || p === 'engenharia' || n.startsWith('eng.')) {
+  if (s === 'manutencao') {
+    return 'bg-gradient-to-tr from-amber-400 via-orange-400 to-amber-500'
+  }
+  if (s === 'farmacia') {
+    return 'bg-gradient-to-tr from-emerald-400 via-teal-400 to-green-500'
+  }
+  if (s === 'almoxarifado') {
+    return 'bg-gradient-to-tr from-sky-400 via-cyan-400 to-blue-400'
+  }
+  if (p === 'engenharia_clinica' || p === 'engenharia' || s === 'engenharia_clinica' || n.startsWith('eng.')) {
     return 'bg-gradient-to-tr from-orange-400 via-red-400 to-rose-500'
   }
   if (p === 'coordenador' || p === 'gestor' || p === 'administrador' || n.startsWith('coord.')) {
@@ -31,6 +51,7 @@ export function getAvatarGradientPorPerfil(perfil?: string, nome?: string): stri
 interface AvatarPerfilProps {
   perfil?: string
   nome?: string
+  setor?: string | null
   tamanho?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
@@ -38,11 +59,12 @@ interface AvatarPerfilProps {
 export function AvatarPerfil({
   perfil,
   nome,
+  setor,
   tamanho = 'md',
   className = '',
 }: AvatarPerfilProps) {
-  const src = getAvatarUrlPorPerfil(perfil, nome)
-  const fallbackGradient = getAvatarGradientPorPerfil(perfil, nome)
+  const src = getAvatarUrlPorPerfil(perfil, nome, setor)
+  const fallbackGradient = getAvatarGradientPorPerfil(perfil, nome, setor)
 
   const sizeClasses = {
     xs: 'w-6 h-6',

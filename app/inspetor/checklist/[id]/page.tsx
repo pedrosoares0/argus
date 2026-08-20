@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
-import type { RespostaItem, CriticidadeItem } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { TODOS_SETORES, SETORES_LABELS, SETORES_ICONES } from '@/lib/roteamentoNC'
+import type { RespostaItem, CriticidadeItem, SetorTecnico } from '@/lib/supabase/types'
 
 function ComponenteChecklist() {
   const router = useRouter()
@@ -26,6 +27,7 @@ function ComponenteChecklist() {
   const [modalNcItem, setModalNcItem] = useState<any | null>(null)
   const [ncDescricao, setNcDescricao] = useState('')
   const [ncCriticidade, setNcCriticidade] = useState<CriticidadeItem>('critico')
+  const [ncSetor, setNcSetor] = useState<SetorTecnico>('engenharia_clinica')
   const [ncFotoPreview, setNcFotoPreview] = useState<string | null>(null)
   const [ncFotoFile, setNcFotoFile] = useState<File | null>(null)
   const [ncEnviando, setNcEnviando] = useState(false)
@@ -254,6 +256,7 @@ function ComponenteChecklist() {
       setModalNcItem(item)
       setNcDescricao('')
       setNcCriticidade('critico')
+      setNcSetor('engenharia_clinica')
       setNcFotoPreview(null)
       setNcFotoFile(null)
 
@@ -329,7 +332,8 @@ function ComponenteChecklist() {
           resposta: 'nao_conforme',
           evidencia_url: uploadedUrl || null,
           evidencia_texto: ncDescricao,
-          criticidade: ncCriticidade
+          criticidade: ncCriticidade,
+          setor_responsavel: ncSetor
         }
       }))
 
@@ -381,11 +385,13 @@ function ComponenteChecklist() {
         let evidenciaUrl = null
         let evidenciaTexto = null
         let crit = item.criticidade
+        let setorResp: SetorTecnico = 'engenharia_clinica'
 
         if (resposta === 'nao_conforme') {
           evidenciaUrl = respInfo.evidencia_url || null
           evidenciaTexto = respInfo.evidencia_texto || null
           crit = respInfo.criticidade || item.criticidade
+          setorResp = respInfo.setor_responsavel || 'engenharia_clinica'
         }
 
         return {
@@ -428,6 +434,8 @@ function ComponenteChecklist() {
 
               if (!triggerNc || triggerNc.length === 0) {
                 console.log('Trigger de autocriação ausente no banco. Criando NC manualmente...')
+                const setorFinal = item.setor_responsavel || 'engenharia_clinica'
+
                 await supabase
                   .from('nao_conformidades')
                   .insert({
@@ -435,6 +443,8 @@ function ComponenteChecklist() {
                     item_execucao_id: item.id,
                     ativo_id: ativo.id,
                     criticidade: item.criticidade,
+                    setor_responsavel: setorFinal,
+                    tipo: 'equipamento',
                     status: 'aberta',
                     numero_unico: `NC-${new Date().getFullYear()}-${item.id.substring(0, 4).toUpperCase()}`
                   })
@@ -756,6 +766,34 @@ function ComponenteChecklist() {
                         <h4 className="text-xs font-bold text-[#FF3B30] uppercase tracking-wider">
                           Detalhes da Não Conformidade
                         </h4>
+                      </div>
+
+                      {/* Setor Responsável */}
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                          Setor Responsável
+                        </label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {TODOS_SETORES.map((s) => {
+                            const sel = ncSetor === s
+                            return (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => setNcSetor(s)}
+                                className={[
+                                  'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer select-none',
+                                  sel
+                                    ? 'bg-[#246BFD]/10 border-[#246BFD]/40 text-[#246BFD]'
+                                    : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                                ].join(' ')}
+                              >
+                                <span>{SETORES_ICONES[s]}</span>
+                                <span>{SETORES_LABELS[s]}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
 
                       {/* Descrição */}

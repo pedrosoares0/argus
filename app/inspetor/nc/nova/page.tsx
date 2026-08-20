@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { CriticidadeItem } from '@/lib/supabase/types'
+import type { CriticidadeItem, SetorTecnico } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { TODOS_SETORES, SETORES_LABELS, SETORES_ICONES } from '@/lib/roteamentoNC'
 
 const CRITICIDADES: { valor: CriticidadeItem; label: string; desc: string; cor: string; corAtivo: string }[] = [
   { valor: 'critico', label: 'Crítico', desc: 'Pode indisponibilizar o ativo', cor: 'border-gray-200 bg-white text-gray-600', corAtivo: 'border-red-300 bg-red-50 text-red-700' },
@@ -21,6 +22,7 @@ function FormularioNC() {
 
   const [descricao, setDescricao] = useState('')
   const [criticidade, setCriticidade] = useState<CriticidadeItem>('critico')
+  const [setorResponsavel, setSetorResponsavel] = useState<SetorTecnico>('engenharia_clinica')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
@@ -73,6 +75,7 @@ function FormularioNC() {
         sessionStorage.setItem(`argus_nc_${secaoId}`, JSON.stringify({
           descricao,
           criticidade,
+          setor_responsavel: setorResponsavel,
           fotoPreview: uploadedUrl || null
         }))
       }
@@ -106,6 +109,34 @@ function FormularioNC() {
         <p className="text-xs text-gray-500 mt-0.5">
           Seção: <span className="font-semibold text-gray-700">{secaoNome}</span>
         </p>
+      </div>
+
+      {/* ── Setor Responsável (chips visuais) ── */}
+      <div className="space-y-1.5">
+        <label className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-wider uppercase">
+          Setor Responsável
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {TODOS_SETORES.map((setor) => {
+            const selecionado = setorResponsavel === setor
+            return (
+              <button
+                key={setor}
+                type="button"
+                onClick={() => setSetorResponsavel(setor)}
+                className={[
+                  'inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer active:scale-95 select-none',
+                  selecionado
+                    ? 'bg-[#246BFD]/10 border-[#246BFD]/30 text-[#246BFD] shadow-[0_2px_8px_rgba(36,107,253,0.1)]'
+                    : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700',
+                ].join(' ')}
+              >
+                <span className="text-sm leading-none">{SETORES_ICONES[setor]}</span>
+                {SETORES_LABELS[setor]}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* ── Descrição ── */}

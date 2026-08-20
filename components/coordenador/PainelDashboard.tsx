@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Avatar, AvatarPerfil } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
+import { TODOS_SETORES, SETORES_LABELS, SETORES_CORES } from '@/lib/roteamentoNC'
+import { verificarTecnicoAtivo } from '@/lib/supabase/mockDb'
+import type { SetorTecnico } from '@/lib/supabase/types'
 
 type PeriodoFiltro = '7d' | '15d' | '30d'
 
@@ -1082,6 +1085,55 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           </div>
         </div>
       )}
+
+      {/* Cobertura de Setores Técnicos */}
+      <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-[var(--shadow-card)] space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-[14px] font-extrabold text-slate-900 tracking-tight">Cobertura por Setor Técnico</h3>
+            <p className="text-[10.5px] text-slate-400 font-medium">Status de atendimento e roteamento de NCs</p>
+          </div>
+          <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200/60 px-2.5 py-1 rounded-full">
+            {TODOS_SETORES.length} Setores
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {TODOS_SETORES.map((setor) => {
+            const temTecnico = verificarTecnicoAtivo(setor as SetorTecnico)
+            const style = SETORES_CORES[setor as SetorTecnico]
+
+            return (
+              <div
+                key={setor}
+                className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${temTecnico ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-orange-400'}`} />
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-bold text-slate-800 truncate">
+                      {SETORES_LABELS[setor as SetorTecnico]}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-medium truncate">
+                      {temTecnico ? 'Técnico ativo' : 'Assumido pela Coordenação'}
+                    </p>
+                  </div>
+                </div>
+
+                <span
+                  className={`text-[9.5px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${
+                    temTecnico
+                      ? `${style.bg} ${style.text} ${style.border}`
+                      : 'bg-orange-50 text-orange-600 border-orange-200/80'
+                  }`}
+                >
+                  {temTecnico ? 'Fluxo Direto' : 'Resolução Coord.'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

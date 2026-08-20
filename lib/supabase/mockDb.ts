@@ -1,6 +1,6 @@
 'use client'
 
-import type { NaoConformidade, StatusNaoConformidade, CriticidadeItem, StatusAtivo } from './types'
+import type { NaoConformidade, StatusNaoConformidade, CriticidadeItem, StatusAtivo, SetorTecnico, TipoNaoConformidade } from './types'
 
 export interface HistoricoStatusNaoConformidade {
   id: string
@@ -88,6 +88,8 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
     status: 'aberta',
     responsavel_id: null,
     responsavel_nome: null,
+    tipo: 'equipamento',
+    setor_responsavel: 'engenharia_clinica',
     prazo: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
     evidencia_url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=600',
     created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
@@ -127,6 +129,8 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
     status: 'em_analise',
     responsavel_id: 'usr-eng-1',
     responsavel_nome: 'Eng. Carlos Eduardo',
+    tipo: 'equipamento',
+    setor_responsavel: 'engenharia_clinica',
     prazo: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
     evidencia_url: null,
     created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
@@ -175,6 +179,8 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
     status: 'em_correcao',
     responsavel_id: 'usr-eng-1',
     responsavel_nome: 'Eng. Carlos Eduardo',
+    tipo: 'equipamento',
+    setor_responsavel: 'engenharia_clinica',
     prazo: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
     evidencia_url: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&q=80&w=600',
     created_at: new Date(Date.now() - 10 * 3600 * 1000).toISOString(),
@@ -240,6 +246,8 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
     status: 'aguardando_validacao',
     responsavel_id: 'usr-eng-1',
     responsavel_nome: 'Eng. Carlos Eduardo',
+    tipo: 'infraestrutura',
+    setor_responsavel: 'manutencao',
     prazo: new Date(Date.now() + 48 * 3600 * 1000).toISOString(),
     evidencia_url: null,
     created_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
@@ -314,6 +322,8 @@ const INITIAL_NC_EXTENDED: MockNaoConformidadeExtended[] = [
     status: 'aberta',
     responsavel_id: null,
     responsavel_nome: null,
+    tipo: 'equipamento',
+    setor_responsavel: 'engenharia_clinica',
     prazo: new Date(Date.now() + 18 * 3600 * 1000).toISOString(),
     evidencia_url: null,
     created_at: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
@@ -349,7 +359,8 @@ const USER_KEY = 'argus_usuario_atual'
 export const DEFAULT_USER = {
   id: 'usr-eng-1',
   nome: 'Eng. Carlos Eduardo',
-  perfil: 'engenharia_clinica' as const
+  perfil: 'engenharia_clinica' as const,
+  setor: 'engenharia_clinica' as SetorTecnico,
 }
 
 export const COORDENADOR_USER = {
@@ -357,6 +368,7 @@ export const COORDENADOR_USER = {
   nome: 'Coord. Paulo Morais',
   email: 'coordenador@gmail.com',
   perfil: 'coordenador',
+  setor: null as SetorTecnico | null,
 }
 
 // Inicializa no cliente
@@ -600,6 +612,74 @@ export function reabrirNC(
     usuario_nome: usuarioNome,
     created_at: new Date().toISOString(),
     justificativa: justificativa || undefined
+  })
+
+  saveStore(store)
+  return nc
+}
+
+/**
+ * Verifica se há pelo menos um técnico ativo no setor dado.
+ * Na versão mock, retorna false para todos os setores exceto engenharia_clinica
+ * (para testar o fluxo de resolução direta pelo Coordenador).
+ */
+export function verificarTecnicoAtivo(setor: SetorTecnico | null, _hospitalId?: string): boolean {
+  if (!setor) return false
+  // Em mock: apenas engenharia_clinica tem técnico ativo
+  // Quando integrar com Supabase, fará query real na tabela usuarios
+  return setor === 'engenharia_clinica'
+}
+
+/**
+ * Permite ao Coordenador resolver a NC diretamente (sem técnico):
+ * Avança de qualquer status ativo direto para 'encerrada',
+ * registrando a resolução no histórico.
+ */
+export function resolverNCDiretamente(
+  ncId: string,
+  usuarioId: string,
+  usuarioNome: string,
+  descricaoResolucao: string
+): MockNaoConformidadeExtended | null {
+  const store = getStore()
+  const idx = store.findIndex((nc) => nc.id === ncId)
+  if (idx === -1) return null
+
+  const nc = store[idx]
+  const statusAnterior = nc.status
+
+  // Registra resolução como manutenção (para manter consistência de dados)
+  nc.registro_manutencao = {
+    id: `reg-${nc.id}-${Date.now()}`,
+    nao_conformidade_id: ncId,
+    ativo_id: nc.ativo_id || 'at-unknown',
+    descricao: descricaoResolucao,
+    status: 'finalizada',
+    finalizada_em: new Date().toISOString(),
+    created_at: new Date().toISOString()
+  }
+
+  // Avança para encerrada diretamente
+  nc.status = 'encerrada'
+  nc.responsavel_id = usuarioId
+  nc.responsavel_nome = usuarioNome
+  nc.updated_at = new Date().toISOString()
+
+  // Restaura ativo para operacional
+  if (nc.ativo) {
+    nc.ativo.status = 'operacional'
+  }
+
+  // Histórico — marca como resolução direta do coordenador
+  nc.historico.push({
+    id: `hist-${nc.id}-${Date.now()}`,
+    nao_conformidade_id: ncId,
+    status_anterior: statusAnterior,
+    status_novo: 'encerrada',
+    usuario_id: usuarioId,
+    usuario_nome: usuarioNome,
+    created_at: new Date().toISOString(),
+    justificativa: `[Resolução direta — Coordenador] ${descricaoResolucao}`
   })
 
   saveStore(store)

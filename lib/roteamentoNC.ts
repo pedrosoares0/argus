@@ -1,0 +1,82 @@
+/**
+ * Módulo de roteamento de NC → setor técnico responsável.
+ *
+ * Mapeia cada tipo de não conformidade ao setor que deve tratá-la.
+ * Módulo puro — sem dependência de UI ou banco.
+ */
+
+import type { TipoNaoConformidade, SetorTecnico } from '@/lib/supabase/types'
+
+// ── Mapa de Roteamento ──────────────────────────────────────────────
+
+export const MAPA_ROTEAMENTO: Record<TipoNaoConformidade, SetorTecnico | null> = {
+  equipamento: 'engenharia_clinica',
+  infraestrutura: 'manutencao',
+  medicamento: 'farmacia',
+  material_insumo: 'almoxarifado',
+  outro: null,
+}
+
+/**
+ * Dado o tipo da NC, retorna o setor responsável.
+ * Retorna null se não há roteamento automático (tipo 'outro').
+ */
+export function obterSetorResponsavel(tipo: TipoNaoConformidade): SetorTecnico | null {
+  return MAPA_ROTEAMENTO[tipo] ?? null
+}
+
+// ── Labels ──────────────────────────────────────────────────────────
+
+export const TIPOS_NC_LABELS: Record<TipoNaoConformidade, string> = {
+  equipamento: 'Equipamento',
+  infraestrutura: 'Infraestrutura',
+  medicamento: 'Medicamento',
+  material_insumo: 'Material / Insumo',
+  outro: 'Outro',
+}
+
+export const TIPOS_NC_ICONES: Record<TipoNaoConformidade, string> = {
+  equipamento: '⚙️',
+  infraestrutura: '🏗️',
+  medicamento: '💊',
+  material_insumo: '📦',
+  outro: '📋',
+}
+
+export const SETORES_LABELS: Record<SetorTecnico, string> = {
+  engenharia_clinica: 'Engenharia Clínica',
+  manutencao: 'Manutenção',
+  farmacia: 'Farmácia',
+  almoxarifado: 'Almoxarifado',
+}
+
+export const SETORES_ICONES: Record<SetorTecnico, string> = {
+  engenharia_clinica: '⚙️',
+  manutencao: '🏗️',
+  farmacia: '💊',
+  almoxarifado: '📦',
+}
+
+export const SETORES_CORES: Record<SetorTecnico, { bg: string; text: string; border: string }> = {
+  engenharia_clinica: { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200' },
+  manutencao: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200' },
+  farmacia: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200' },
+  almoxarifado: { bg: 'bg-sky-50', text: 'text-sky-600', border: 'border-sky-200' },
+}
+
+// ── Todos os tipos e setores (para iteração em selects/chips) ───────
+
+export const TODOS_TIPOS_NC: TipoNaoConformidade[] = [
+  'equipamento',
+  'infraestrutura',
+  'medicamento',
+  'material_insumo',
+  'outro',
+]
+
+export const TODOS_SETORES: SetorTecnico[] = [
+  'engenharia_clinica',
+  'manutencao',
+  'farmacia',
+  'almoxarifado',
+]

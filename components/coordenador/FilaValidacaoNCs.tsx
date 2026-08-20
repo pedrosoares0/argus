@@ -7,7 +7,9 @@ import { PillTag } from '@/components/ui/PillTag'
 import { AvatarPerfil } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
-import type { StatusNaoConformidade, CriticidadeItem } from '@/lib/supabase/types'
+import { SETORES_LABELS, TIPOS_NC_LABELS, SETORES_CORES } from '@/lib/roteamentoNC'
+import { verificarTecnicoAtivo } from '@/lib/supabase/mockDb'
+import type { StatusNaoConformidade, CriticidadeItem, SetorTecnico, TipoNaoConformidade } from '@/lib/supabase/types'
 
 const CRITICIDADE_ORDEM: Record<CriticidadeItem, number> = {
   critico: 0,
@@ -105,6 +107,8 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
               },
               responsavel_nome: responsavelNome,
               inspetor_nome: inspetorNome,
+              tipo: nc.tipo || 'equipamento',
+              setor_responsavel: nc.setor_responsavel || null,
             }
           })
           setNcs(formatadas)
@@ -346,6 +350,27 @@ export function FilaValidacaoNCs({ hospitalId, usuarioId }: FilaValidacaoNCsProp
                   <p className="text-[12px] text-gray-500 leading-relaxed line-clamp-2">
                     {nc.descricao}
                   </p>
+
+                  {/* Pill de Tipo/Setor + indicador sem técnico */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {nc.setor_responsavel && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        SETORES_CORES[nc.setor_responsavel as SetorTecnico]
+                          ? `${SETORES_CORES[nc.setor_responsavel as SetorTecnico].bg} ${SETORES_CORES[nc.setor_responsavel as SetorTecnico].text} ${SETORES_CORES[nc.setor_responsavel as SetorTecnico].border}`
+                          : 'bg-gray-50 text-gray-500 border-gray-200'
+                      }`}>
+                        {SETORES_LABELS[nc.setor_responsavel as SetorTecnico] || nc.setor_responsavel}
+                      </span>
+                    )}
+                    {nc.setor_responsavel && !verificarTecnicoAtivo(nc.setor_responsavel as SetorTecnico) && nc.status !== 'encerrada' && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200 inline-flex items-center gap-1">
+                        <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                        Sem técnico
+                      </span>
+                    )}
+                  </div>
 
                   {/* Prazo */}
                   {tempoRestante && nc.status !== 'encerrada' && (

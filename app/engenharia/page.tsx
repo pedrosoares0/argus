@@ -6,7 +6,8 @@ import { BarraBusca } from '@/components/ui/BarraBusca'
 import { PillTag } from '@/components/ui/PillTag'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
-import type { StatusNaoConformidade, CriticidadeItem } from '@/lib/supabase/types'
+import { SETORES_LABELS, TIPOS_NC_LABELS, SETORES_CORES } from '@/lib/roteamentoNC'
+import type { StatusNaoConformidade, CriticidadeItem, SetorTecnico, TipoNaoConformidade } from '@/lib/supabase/types'
 
 const CRITICIDADE_ORDEM: Record<CriticidadeItem, number> = {
   critico: 0,
@@ -38,7 +39,7 @@ export default function FilaNCs() {
   const [ncs, setNcs] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
   const [termoBusca, setTermoBusca] = useState('')
   const [abaAtiva, setAbaAtiva] = useState<'pendentes' | 'minhas' | 'sem_responsavel' | 'aguardando' | 'todas'>('pendentes')
-  const [usuario, setUsuario] = useState({ id: '', nome: '' })
+  const [usuario, setUsuario] = useState({ id: '', nome: '', setor: null as SetorTecnico | null })
   const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
 
   useEffect(() => {
@@ -74,7 +75,8 @@ export default function FilaNCs() {
         }
 
         if (currentUser) {
-          setUsuario({ id: currentUser.id, nome: currentUser.nome })
+          const setorUsuario = currentUser.setor || (currentUser.perfil === 'engenharia_clinica' ? 'engenharia_clinica' : null)
+          setUsuario({ id: currentUser.id, nome: currentUser.nome, setor: setorUsuario as SetorTecnico | null })
           
           let hospitalId = currentUser.hospital_id
           if (!hospitalId) {
@@ -132,6 +134,8 @@ export default function FilaNCs() {
                 },
                 responsavel_nome: usuariosMapa.get(nc.responsavel_id) || null,
                 responsavel_id: nc.responsavel_id,
+                tipo: nc.tipo || 'equipamento',
+                setor_responsavel: nc.setor_responsavel || null,
               }
             })
             setNcs(formatadas)
@@ -221,7 +225,7 @@ export default function FilaNCs() {
           Painel de Atendimento
         </h1>
         <p className="text-[13px] text-gray-500 mt-0.5">
-          Fila de Não Conformidades da Engenharia Clínica
+          Fila de Não Conformidades{usuario.setor ? ` — ${SETORES_LABELS[usuario.setor]}` : ' da Engenharia Clínica'}
         </p>
       </div>
 
@@ -323,6 +327,19 @@ export default function FilaNCs() {
                   <p className="text-[12px] text-gray-500 leading-relaxed line-clamp-2">
                     {nc.descricao}
                   </p>
+
+                  {/* Pill de Tipo/Setor */}
+                  {nc.tipo && nc.tipo !== 'equipamento' && (
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        nc.setor_responsavel && SETORES_CORES[nc.setor_responsavel as SetorTecnico]
+                          ? `${SETORES_CORES[nc.setor_responsavel as SetorTecnico].bg} ${SETORES_CORES[nc.setor_responsavel as SetorTecnico].text} ${SETORES_CORES[nc.setor_responsavel as SetorTecnico].border}`
+                          : 'bg-gray-50 text-gray-500 border-gray-200'
+                      }`}>
+                        {TIPOS_NC_LABELS[nc.tipo as TipoNaoConformidade] || nc.tipo}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Rodapé do Card (Responsável + Status) */}
                   <div className="h-px bg-gray-100 pt-1" />

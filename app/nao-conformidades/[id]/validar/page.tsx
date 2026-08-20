@@ -7,7 +7,8 @@ import { Botao } from '@/components/ui/Botao'
 import { PillTag } from '@/components/ui/PillTag'
 import { QRCodeAtivo } from '@/components/ui/QRCodeAtivo'
 import { criarClienteSupabase } from '@/lib/supabase/client'
-import type { StatusNaoConformidade, StatusAtivo } from '@/lib/supabase/types'
+import { SETORES_LABELS, TIPOS_NC_LABELS, SETORES_CORES } from '@/lib/roteamentoNC'
+import type { StatusNaoConformidade, StatusAtivo, SetorTecnico, TipoNaoConformidade } from '@/lib/supabase/types'
 
 const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' | 'vermelho' | 'cinza'> = {
   aberta: 'vermelho',
@@ -157,6 +158,8 @@ export default function ValidarNC() {
         criado_por_nome: 'Inspetor',
         responsavel_nome: responsavelNome,
         responsavel_id: ncData.responsavel_id,
+        tipo: ncData.tipo || 'equipamento',
+        setor_responsavel: ncData.setor_responsavel || null,
         registro_manutencao: maintData && maintData.length > 0 ? maintData[0] : null,
         historico: historicoData || [],
       })
@@ -406,9 +409,20 @@ export default function ValidarNC() {
         <div className="bg-white rounded-[24px] p-5 shadow-[var(--shadow-card)] border border-gray-100/80 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">Relato da Ocorrência</span>
-            <PillTag cor={corCriticidade}>
-              {nc.criticidade === 'critico' ? 'Urgente / Crítico' : nc.criticidade === 'importante' ? 'Importante' : 'Informativo'}
-            </PillTag>
+            <div className="flex items-center gap-1.5">
+              {nc.setor_responsavel && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  SETORES_CORES[nc.setor_responsavel as SetorTecnico]
+                    ? `${SETORES_CORES[nc.setor_responsavel as SetorTecnico].bg} ${SETORES_CORES[nc.setor_responsavel as SetorTecnico].text} ${SETORES_CORES[nc.setor_responsavel as SetorTecnico].border}`
+                    : 'bg-gray-50 text-gray-500 border-gray-200'
+                }`}>
+                  {SETORES_LABELS[nc.setor_responsavel as SetorTecnico] || nc.setor_responsavel}
+                </span>
+              )}
+              <PillTag cor={corCriticidade}>
+                {nc.criticidade === 'critico' ? 'Urgente / Crítico' : nc.criticidade === 'importante' ? 'Importante' : 'Informativo'}
+              </PillTag>
+            </div>
           </div>
 
           <div>

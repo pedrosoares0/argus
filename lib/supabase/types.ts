@@ -16,6 +16,20 @@ export type PerfilUsuario =
   | 'gestor'
   | 'engenharia_clinica'
   | 'inspetor'
+  | 'tecnico'
+
+export type SetorTecnico =
+  | 'engenharia_clinica'
+  | 'manutencao'
+  | 'farmacia'
+  | 'almoxarifado'
+
+export type TipoNaoConformidade =
+  | 'equipamento'
+  | 'infraestrutura'
+  | 'medicamento'
+  | 'material_insumo'
+  | 'outro'
 
 export type StatusAtivo =
   | 'operacional'
@@ -127,6 +141,7 @@ export interface Usuario {
   nome: string
   email: string
   perfil: PerfilUsuario
+  setor: SetorTecnico | null
   ativo: boolean
   created_at: string
   updated_at: string
@@ -202,6 +217,8 @@ export interface NaoConformidade {
   criticidade: CriticidadeItem
   status: StatusNaoConformidade
   responsavel_id: string | null
+  tipo: TipoNaoConformidade
+  setor_responsavel: SetorTecnico | null
   prazo: string | null
   evidencia_url: string | null
   created_at: string

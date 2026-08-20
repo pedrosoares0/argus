@@ -130,6 +130,7 @@ function FormularioLogin() {
         inspetor: '/inspetor',
         coordenador: '/coordenador',
         engenharia_clinica: '/engenharia',
+        tecnico: '/engenharia',
         gestor: '/gestor',
         administrador: '/admin',
       }
