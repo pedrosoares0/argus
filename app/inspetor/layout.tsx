@@ -19,6 +19,7 @@ export default function LayoutInspetor({
     // Pré-carregar rotas principais em background para navegação instantânea
     router.prefetch('/inspetor')
     router.prefetch('/inspetor/inspecoes')
+    router.prefetch('/inspetor/scanner')
   }, [router])
 
   useEffect(() => {
@@ -102,11 +103,12 @@ export default function LayoutInspetor({
       ),
     },
     {
-      href: '/inspetor/pendencias',
-      label: 'Pendências',
+      href: '/inspetor/scanner',
+      label: 'Escanear',
       icone: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
         </svg>
       ),
     },
@@ -209,11 +211,6 @@ export default function LayoutInspetor({
                   key={item.href}
                   href={item.href}
                   prefetch={true}
-                  onClick={(e) => {
-                    if (item.href === '/inspetor/pendencias') {
-                      e.preventDefault()
-                    }
-                  }}
                   className={[
                     'flex-1 flex flex-col items-center justify-center py-1.5 px-3 rounded-full cursor-pointer',
                     'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.92]',

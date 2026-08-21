@@ -223,6 +223,11 @@ export default function PaginaLocal() {
           ncs: ncsData,
           historico: historicoGeral,
         })
+
+        // Pré-carregar em background as rotas do checklist de cada equipamento da sala
+        ativosFormatados.forEach((a) => {
+          router.prefetch(`/inspetor/checklist/${a.id}`)
+        })
       } catch (err: any) {
         console.error(err)
         setErro(`Erro de conexão: ${err.message || err}`)

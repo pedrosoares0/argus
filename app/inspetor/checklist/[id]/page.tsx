@@ -6,6 +6,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 import { TODOS_SETORES, SETORES_LABELS, SETORES_ICONES } from '@/lib/roteamentoNC'
 import type { RespostaItem, CriticidadeItem, SetorTecnico } from '@/lib/supabase/types'
 
@@ -17,12 +18,15 @@ function ComponenteChecklist() {
   const execId = searchParams?.get('execId')
   const isReadOnly = !!execId
 
-  const [ativo, setAtivo] = useState<any>(null)
-  const [modelos, setModelos] = useState<any[]>([])
-  const [modeloSelecionado, setModeloSelecionado] = useState<any>(null)
-  const [itens, setItens] = useState<any[]>([])
-  const [respostas, setRespostas] = useState<Record<string, any>>({})
-  const [expandida, setExpandida] = useState<string | null>(null)
+  const cacheKey = execId ? `inspetor_checklist_exec_${execId}` : `inspetor_checklist_ativo_${assetId}`
+  const cached = dadosCache.get<any>(cacheKey)
+
+  const [ativo, setAtivo] = useState<any>(() => cached?.ativo || null)
+  const [modelos, setModelos] = useState<any[]>(() => cached?.modelos || [])
+  const [modeloSelecionado, setModeloSelecionado] = useState<any>(() => cached?.modeloSelecionado || null)
+  const [itens, setItens] = useState<any[]>(() => cached?.itens || [])
+  const [respostas, setRespostas] = useState<Record<string, any>>(() => cached?.respostas || {})
+  const [expandida, setExpandida] = useState<string | null>(() => cached?.expandida || null)
 
   const [modalNcItem, setModalNcItem] = useState<any | null>(null)
   const [ncDescricao, setNcDescricao] = useState('')
@@ -32,10 +36,20 @@ function ComponenteChecklist() {
   const [ncFotoFile, setNcFotoFile] = useState<File | null>(null)
   const [ncEnviando, setNcEnviando] = useState(false)
 
-  const [carregando, setCarregando] = useState(true)
+  const [carregando, setCarregando] = useState(() => !cached)
   const [enviando, setEnviando] = useState(false)
   const [iniciadoEm] = useState(() => new Date().toISOString())
-  const [usuario, setUsuario] = useState<any>(null)
+  const [usuario, setUsuario] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('argus_usuario_atual')
+        if (stored) return JSON.parse(stored)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    return null
+  })
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState(false)
 
@@ -44,42 +58,99 @@ function ComponenteChecklist() {
       try {
         const supabase = criarClienteSupabase() as any
 
-        // 1. Obter usuário logado
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError) {
-          console.error(userError)
-          setErro(`Erro ao obter usuário: ${userError.message}`)
+        // 1. Obter usuário (se não estiver em cache local)
+        let currentUser = usuario
+        if (!currentUser) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            const { data: profile } = await supabase
+              .from('usuarios')
+              .select('*')
+              .eq('id', user.id)
+              .single()
+            if (profile) {
+              currentUser = profile
+              setUsuario(profile)
+            }
+          }
+        }
+
+        // 2. Se for modo histórico (somente leitura com execId)
+        if (execId) {
+          const [execRes, itemsExecRes] = await Promise.all([
+            supabase
+              .from('execucoes_checklist')
+              .select('*, modelos_checklist(*), ativos(*, locais(*))')
+              .eq('id', execId)
+              .single(),
+            supabase
+              .from('itens_execucao_checklist')
+              .select('*')
+              .eq('execucao_id', execId)
+          ])
+
+          if (execRes.error) {
+            setErro(`Erro ao carregar execução: ${execRes.error.message}`)
+            return
+          }
+
+          const execData = execRes.data
+          const itemsExecData = itemsExecRes.data || []
+
+          if (execData) {
+            if (execData.ativos) setAtivo(execData.ativos)
+            setModeloSelecionado(execData.modelos_checklist)
+
+            const sortedItems = [...itemsExecData].sort((a: any, b: any) => {
+              const ordA = a.item_congelado?.ordem || 0
+              const ordB = b.item_congelado?.ordem || 0
+              return ordA - ordB
+            })
+
+            const formatados = sortedItems.map((item: any) => ({
+              id: item.id,
+              nome: item.item_congelado?.descricao || 'Seção',
+              materiaisReferencia: [],
+              criticidade: item.criticidade,
+              rawDescricao: item.item_congelado?.descricao || 'Seção',
+              ordem: item.item_congelado?.ordem || 1
+            }))
+
+            const respMap = Object.fromEntries(sortedItems.map(i => [i.id, {
+              resposta: i.resposta,
+              evidencia_url: i.evidencia_url,
+              evidencia_texto: i.evidencia_texto,
+              criticidade: i.criticidade
+            }]))
+
+            setItens(formatados)
+            setRespostas(respMap)
+            setExpandida(formatados[0]?.id || null)
+
+            dadosCache.set(cacheKey, {
+              ativo: execData.ativos,
+              modeloSelecionado: execData.modelos_checklist,
+              itens: formatados,
+              respostas: respMap,
+              expandida: formatados[0]?.id || null,
+            })
+          }
           return
         }
 
-        if (user) {
-          const { data: profile, error: profileError } = await supabase
-            .from('usuarios')
-            .select('*')
-            .eq('id', user.id)
-            .single()
-
-          if (profileError) {
-            console.error(profileError)
-            setErro(`Erro ao obter perfil: ${profileError.message} (Código ${profileError.code})`)
-            return
-          }
-          setUsuario(profile)
-        }
-
-        // 2. Carregar ativo (se for prefixado com ronda-, busca o primeiro ativo da sala correspondente)
+        // 3. Modo Inspeção Normal: Carregar ativo e modelos em paralelo
         const cleanAssetId = decodeURIComponent(assetId).trim().replace(/['"]/g, '')
         let targetAssetId = cleanAssetId
 
         if (cleanAssetId.includes('ronda-')) {
           const roomId = cleanAssetId.split('ronda-')[1].trim()
-          const { data: roomAtivos, error: roomAtivosError } = await supabase
+          const { data: roomAtivos } = await supabase
             .from('ativos')
             .select('id')
             .eq('local_id', roomId)
             .limit(1)
 
-          if (roomAtivosError || !roomAtivos || roomAtivos.length === 0) {
+          if (!roomAtivos || roomAtivos.length === 0) {
             setErro('Não foi encontrado nenhum ativo cadastrado nesta sala para iniciar a ronda.')
             return
           }
@@ -92,95 +163,66 @@ function ComponenteChecklist() {
           .eq('id', targetAssetId)
           .single()
 
-        if (ativoError) {
+        if (ativoError || !ativoData) {
           console.error(ativoError)
-          setErro(`Erro ao carregar ativo: ${ativoError.message} (Código ${ativoError.code})`)
+          setErro('Ativo não encontrado.')
           return
         }
 
-        if (!ativoData) {
-          setErro('Nenhum dada encontrado para este ativo.')
-          return
-        }
         setAtivo(ativoData)
 
-        // Se for modo somente leitura (histórico), carregar diretamente a execução e itens
-        if (execId) {
-          const { data: execData, error: execError } = await supabase
-            .from('execucoes_checklist')
-            .select('*, modelos_checklist(*)')
-            .eq('id', execId)
-            .single()
-
-          if (execError) {
-            console.error(execError)
-            setErro(`Erro ao carregar execução: ${execError.message}`)
-            return
-          }
-
-          if (execData) {
-            setModeloSelecionado(execData.modelos_checklist)
-
-            const { data: itemsExecData, error: itemsExecError } = await supabase
-              .from('itens_execucao_checklist')
-              .select('*')
-              .eq('execucao_id', execId)
-
-            if (itemsExecError) {
-              console.error(itemsExecError)
-              setErro(`Erro ao carregar itens da execução: ${itemsExecError.message}`)
-              return
-            }
-
-            if (itemsExecData) {
-              const sortedItems = [...itemsExecData].sort((a: any, b: any) => {
-                const ordA = a.item_congelado?.ordem || 0
-                const ordB = b.item_congelado?.ordem || 0
-                return ordA - ordB
-              })
-
-              const formatados = sortedItems.map((item: any) => ({
-                id: item.id,
-                nome: item.item_congelado?.descricao || 'Seção',
-                materiaisReferencia: [],
-                criticidade: item.criticidade,
-                rawDescricao: item.item_congelado?.descricao || 'Seção',
-                ordem: item.item_congelado?.ordem || 1
-              }))
-
-              setItens(formatados)
-              setRespostas(Object.fromEntries(sortedItems.map(i => [i.id, {
-                resposta: i.resposta,
-                evidencia_url: i.evidencia_url,
-                evidencia_texto: i.evidencia_texto,
-                criticidade: i.criticidade
-              }])))
-              setExpandida(formatados[0]?.id || null)
-            }
-          }
-          return
-        }
-
-        // 3. Carregar modelos vigentes para esta categoria
+        // 4. Carregar modelos vigentes para a categoria do ativo
         const { data: modelosData, error: modelosError } = await supabase
           .from('modelos_checklist')
           .select('*')
           .eq('categoria_id', ativoData.categoria_id)
           .eq('vigente', true)
 
-        if (modelosError) {
-          console.error(modelosError)
-          setErro(`Erro ao carregar modelos: ${modelosError.message} (Código ${modelosError.code})`)
+        if (modelosError || !modelosData || modelosData.length === 0) {
+          setErro('Nenhum modelo de checklist vigente cadastrado para a categoria deste ativo.')
           return
         }
 
-        if (modelosData && modelosData.length > 0) {
-          setModelos(modelosData)
-          // Default to 'Por plantão' model if it exists, otherwise the first one
-          const padrao = modelosData.find((m: any) => m.nome_variante === 'Por plantão') || modelosData[0]
-          setModeloSelecionado(padrao)
-        } else {
-          setErro('Nenhum modelo de checklist vigente cadastrado para a categoria deste ativo.')
+        setModelos(modelosData)
+        const padrao = modelosData.find((m: any) => m.nome_variante === 'Por plantão') || modelosData[0]
+        setModeloSelecionado(padrao)
+
+        // 5. Carregar itens do modelo padrão imediatamente
+        const { data: itemsData } = await supabase
+          .from('itens_modelo_checklist')
+          .select('*')
+          .eq('modelo_id', padrao.id)
+          .order('ordem', { ascending: true })
+
+        if (itemsData && itemsData.length > 0) {
+          const formatados = itemsData.map((item: any) => {
+            const partes = item.descricao.split(' — itens_esperados: ')
+            const secaoNome = partes[0]
+            const materiaisTexto = partes[1] || ''
+            const materiaisReferencia = materiaisTexto ? materiaisTexto.split('; ') : []
+            return {
+              id: item.id,
+              nome: secaoNome,
+              materiaisReferencia,
+              criticidade: item.criticidade,
+              rawDescricao: item.descricao,
+              ordem: item.ordem
+            }
+          })
+
+          const initialResps = Object.fromEntries(formatados.map((i: any) => [i.id, { resposta: null }]))
+          setItens(formatados)
+          setRespostas((prev) => Object.keys(prev).length > 0 ? prev : initialResps)
+          setExpandida((prev) => prev || formatados[0]?.id || null)
+
+          dadosCache.set(cacheKey, {
+            ativo: ativoData,
+            modelos: modelosData,
+            modeloSelecionado: padrao,
+            itens: formatados,
+            respostas: initialResps,
+            expandida: formatados[0]?.id || null,
+          })
         }
       } catch (err: any) {
         console.error(err)
@@ -189,27 +231,26 @@ function ComponenteChecklist() {
         setCarregando(false)
       }
     }
+
     if (assetId) {
       carregarDados()
     }
-  }, [assetId, execId])
+  }, [assetId, execId, cacheKey])
 
+  // Troca dinâmica de modelo (se o usuário alterar entre variantes)
   useEffect(() => {
-    async function carregarItens() {
-      if (isReadOnly) return
-      if (!modeloSelecionado) return
+    async function trocarItensModelo() {
+      if (isReadOnly || !modeloSelecionado?.id) return
+      // Se já temos itens para este modelo selecionado, não recarregar
+      if (cached?.modeloSelecionado?.id === modeloSelecionado.id && cached?.itens?.length > 0) return
+
       try {
         const supabase = criarClienteSupabase()
-        const { data: itemsData, error } = await supabase
+        const { data: itemsData } = await supabase
           .from('itens_modelo_checklist')
           .select('*')
           .eq('modelo_id', modeloSelecionado.id)
           .order('ordem', { ascending: true })
-
-        if (error) {
-          console.error(error)
-          return
-        }
 
         if (itemsData) {
           const formatados = itemsData.map((item: any) => {
@@ -234,8 +275,8 @@ function ComponenteChecklist() {
         console.error(err)
       }
     }
-    carregarItens()
-  }, [modeloSelecionado, isReadOnly])
+    trocarItensModelo()
+  }, [modeloSelecionado?.id, isReadOnly])
 
   useEffect(() => {
     if (sucesso) {
@@ -522,6 +563,9 @@ function ComponenteChecklist() {
             .eq('id', ativo.local_id)
         ])
       }
+
+      // Invalidar cache para atualizar salas, lista de ativos e histórico imediatamente
+      dadosCache.invalidate('inspetor_')
 
       setSucesso(true)
     } catch (err) {

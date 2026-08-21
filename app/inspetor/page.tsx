@@ -148,6 +148,11 @@ export default function PaginaInicialInspetor() {
 
           setSalas(formatados)
           dadosCache.set(cacheKey, formatados)
+
+          // Pré-carregar as rotas de cada sala
+          formatados.forEach((s: any) => {
+            router.prefetch(`/inspetor/local/${s.id}`)
+          })
         } else {
           setSalas([])
         }
@@ -158,7 +163,7 @@ export default function PaginaInicialInspetor() {
       }
     }
     carregarSalas()
-  }, [cacheKey])
+  }, [cacheKey, router])
 
   const salasFiltradas = salas.filter(sala =>
     sala.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||

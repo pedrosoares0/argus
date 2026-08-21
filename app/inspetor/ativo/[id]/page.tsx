@@ -7,6 +7,7 @@ import { QRCodeAtivo } from '@/components/ui/QRCodeAtivo'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { PillTag } from '@/components/ui/PillTag'
 import { criarClienteSupabase } from '@/lib/supabase/client'
+import { dadosCache } from '@/lib/cache/dadosCache'
 import type { StatusAtivo } from '@/lib/supabase/types'
 
 const STATUS_ATIVO: Record<StatusAtivo, { label: string; dot: string; cor: 'verde' | 'laranja' | 'vermelho' | 'azul' }> = {
@@ -21,8 +22,11 @@ export default function PaginaAtivo() {
   const router = useRouter()
   const ativoId = params.id as string
 
-  const [ativo, setAtivo] = useState<any>(null)
-  const [carregando, setCarregando] = useState(true)
+  const cacheKey = `inspetor_ativo_${ativoId}`
+  const cached = dadosCache.get<any>(cacheKey)
+
+  const [ativo, setAtivo] = useState<any>(() => cached || null)
+  const [carregando, setCarregando] = useState(() => !cached)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
@@ -38,19 +42,20 @@ export default function PaginaAtivo() {
 
         if (error) {
           console.error(error)
-          setErro(`Erro ao carregar ativo: ${error.message}`)
+          if (!cached) setErro(`Erro ao carregar ativo: ${error.message}`)
           return
         }
 
         if (!data) {
-          setErro('Ativo não encontrado.')
+          if (!cached) setErro('Ativo não encontrado.')
           return
         }
 
         setAtivo(data)
+        dadosCache.set(cacheKey, data)
       } catch (err: any) {
         console.error(err)
-        setErro(`Erro de conexão: ${err.message || err}`)
+        if (!cached) setErro(`Erro de conexão: ${err.message || err}`)
       } finally {
         setCarregando(false)
       }
@@ -59,7 +64,7 @@ export default function PaginaAtivo() {
     if (ativoId) {
       carregarAtivo()
     }
-  }, [ativoId])
+  }, [ativoId, cacheKey])
 
   if (erro) {
     return (
