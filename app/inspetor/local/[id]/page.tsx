@@ -3,30 +3,23 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
-import { Botao } from '@/components/ui/Botao'
-import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { PillTag } from '@/components/ui/PillTag'
-import type { StatusAtivo } from '@/lib/supabase/types'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
 
-/**
- * Tela de detalhes do Local / Sala — Apple-style, hierarquia clara.
- */
-
-const STATUS_ATIVO: Record<StatusAtivo, { label: string; dot: string }> = {
-  operacional: { label: 'Operacional', dot: 'bg-emerald-500' },
-  operacional_com_restricoes: { label: 'Com restrição', dot: 'bg-amber-500' },
-  indisponivel: { label: 'Indisponível', dot: 'bg-red-500' },
-  em_manutencao: { label: 'Em manutenção', dot: 'bg-sky-500' },
+interface AtivoSalaFormatado {
+  id: string
+  nome: string
+  categoriaNome: string
+  codigoQr: string
+  patrimonio: string | null
+  compartilhado: boolean
+  statusAtivo: string
+  inspecionadoHoje: boolean
+  ultimaInspecaoTexto: string
+  resultadoUltima: 'conforme' | 'critico' | 'importante' | 'pendente'
+  ultimaExecId?: string
 }
-
-const STATUS_LOCAL = {
-  pronta: { label: 'Pronta', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  pronta_com_ressalvas: { label: 'Com ressalvas', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
-  nao_pronta: { label: 'Não pronta', bg: 'bg-red-50 text-red-700 border-red-200' },
-  liberada_manualmente: { label: 'Liberada', bg: 'bg-sky-50 text-sky-700 border-sky-200' },
-} as const
 
 export default function PaginaLocal() {
   const router = useRouter()
@@ -36,80 +29,43 @@ export default function PaginaLocal() {
   const cacheKey = `inspetor_local_${localId}`
   const cacheData = dadosCache.get<any>(cacheKey)
 
-  // Recupera ativo correspondente do cache da lista para renderização instantânea
-  const cachedAtivosLista = dadosCache.get<any[]>('inspetor_ativos_lista') || []
-  const ativoDaLista = cachedAtivosLista.find((a: any) => a.localId === localId)
-
-  const [local, setLocal] = useState<any>(() => {
-    if (cacheData?.local) return cacheData.local
-    if (ativoDaLista) {
-      return {
-        id: localId,
-        nome: ativoDaLista.localizacao || 'Sala',
-        setor: 'Centro Cirúrgico',
-        status: 'pronta' as const,
-      }
-    }
-    return null
-  })
-
-  const [ativos, setAtivos] = useState<any[]>(() => {
-    if (cacheData?.ativos) return cacheData.ativos
-    if (ativoDaLista) {
-      return [{
-        id: ativoDaLista.id,
-        nome: ativoDaLista.nome,
-        status: 'operacional' as StatusAtivo,
-        ultimaInspecao: ativoDaLista.ultimaInspecao,
-      }]
-    }
-    return []
-  })
-
+  const [local, setLocal] = useState<any>(() => cacheData?.local || null)
+  const [ativos, setAtivos] = useState<AtivoSalaFormatado[]>(() => cacheData?.ativos || [])
   const [ncs, setNcs] = useState<any[]>(() => cacheData?.ncs || [])
   const [historico, setHistorico] = useState<any[]>(() => cacheData?.historico || [])
-  const [ultimoChecklistItens, setUltimoChecklistItens] = useState<any[]>(() => cacheData?.ultimoChecklistItens || [])
-  const [dataFiltro, setDataFiltro] = useState('')
   const [historicoAberto, setHistoricoAberto] = useState(false)
   const [ncAbertaExpandida, setNcAbertaExpandida] = useState(true)
-  const [carregando, setCarregando] = useState(() => !cacheData?.ultimoChecklistItens)
+  const [carregando, setCarregando] = useState(() => !cacheData)
   const [erro, setErro] = useState<string | null>(null)
   const [fotoExpandida, setFotoExpandida] = useState<string | null>(null)
 
-  // Pré-carregar rota da ronda para que o clique em "Iniciar ronda" seja instantâneo
   useEffect(() => {
-    if (localId) {
-      router.prefetch(`/inspetor/checklist/ronda-${localId}`)
-    }
-  }, [localId, router])
-
-  useEffect(() => {
-    async function carregarDados() {
+    async function carregarDadosSala() {
       try {
         const supabase = criarClienteSupabase() as any
 
-        // 1. Buscar local e ativos em PARALELO com Promise.all
-        const [localRes, ativosRes] = await Promise.all([
+        // 1. Buscar local e ativos vinculados via sala_ativos
+        const [localRes, salaAtivosRes] = await Promise.all([
           supabase
             .from('locais')
             .select('*, centros_cirurgicos(*)')
             .eq('id', localId)
             .single(),
           supabase
-            .from('ativos')
-            .select('*')
+            .from('sala_ativos')
+            .select('compartilhado, ativos(*, categorias_ativos(*))')
             .eq('local_id', localId)
         ])
 
         if (localRes.error) {
           console.error(localRes.error)
-          setErro(`Erro ao carregar local: ${localRes.error.message} (Código ${localRes.error.code})`)
+          setErro(`Erro ao carregar sala: ${localRes.error.message}`)
           return
         }
 
         const localData = localRes.data
         if (!localData) {
-          setErro('Nenhum dado encontrado para esta sala.')
+          setErro('Sala não encontrada.')
           return
         }
 
@@ -117,12 +73,17 @@ export default function PaginaLocal() {
           id: localData.id,
           nome: localData.nome,
           setor: localData.centros_cirurgicos?.nome || 'Centro Cirúrgico',
-          status: localData.status as keyof typeof STATUS_LOCAL,
+          status: localData.status,
         }
         setLocal(localFormatado)
 
-        const ativosData = ativosRes.data || []
-        if (ativosData.length === 0) {
+        // Extrair ativos vinculados
+        const salaAtivosData = salaAtivosRes.data || []
+        const ativosBrutos = salaAtivosData
+          .filter((sa: any) => sa.ativos)
+          .map((sa: any) => ({ ...sa.ativos, compartilhado: sa.compartilhado }))
+
+        if (ativosBrutos.length === 0) {
           setAtivos([])
           setHistorico([])
           setNcs([])
@@ -130,9 +91,9 @@ export default function PaginaLocal() {
           return
         }
 
-        const ativosIds = ativosData.map((a: any) => a.id)
+        const ativosIds = ativosBrutos.map((a: any) => a.id)
 
-        // 2. Buscar execuções concluídas e Não Conformidades em PARALELO
+        // 2. Buscar execuções e Não Conformidades de todos os ativos da sala
         const [execsRes, ncsRes] = await Promise.all([
           supabase
             .from('execucoes_checklist')
@@ -140,7 +101,7 @@ export default function PaginaLocal() {
             .in('ativo_id', ativosIds)
             .eq('status', 'concluida')
             .order('finalizado_em', { ascending: false })
-            .limit(10),
+            .limit(30),
           supabase
             .from('nao_conformidades')
             .select('*, itens_execucao_checklist(*, execucoes_checklist(*, usuarios(nome)))')
@@ -153,123 +114,115 @@ export default function PaginaLocal() {
         const ncsData = ncsRes.data || []
         setNcs(ncsData)
 
-        // 3. Buscar itens executados das execuções recentes
+        // 3. Buscar criticidade das execuções
+        const execsIds = execsData.map((e: any) => e.id)
         let itemsData: any[] = []
-        if (execsData.length > 0) {
-          const execsIds = execsData.slice(0, 5).map((e: any) => e.id)
+        if (execsIds.length > 0) {
           const { data: itensRes } = await supabase
             .from('itens_execucao_checklist')
-            .select('execucao_id, resposta, criticidade, item_congelado')
-            .in('execucao_id', execsIds)
+            .select('execucao_id, resposta, criticidade')
+            .in('execucao_id', execsIds.slice(0, 30))
 
           if (itensRes) itemsData = itensRes
         }
 
-        const execsNcMapa = new Map()
+        const execsNcMapa = new Map<string, string>()
         itemsData.forEach((it: any) => {
           if (it.resposta === 'nao_conforme') {
-            const currentHighest = execsNcMapa.get(it.execucao_id)
-            if (!currentHighest ||
-              (it.criticidade === 'critico') ||
-              (it.criticidade === 'importante' && currentHighest !== 'critico')) {
+            const current = execsNcMapa.get(it.execucao_id)
+            if (!current || it.criticidade === 'critico' || (it.criticidade === 'importante' && current !== 'critico')) {
               execsNcMapa.set(it.execucao_id, it.criticidade)
             }
           }
         })
 
-        // Preencher o checklist da última execução
-        let secoesLista: any[] = []
-        if (execsData.length > 0) {
-          const ultimaExecId = execsData[0].id
-          const ultimoItems = itemsData.filter((it: any) => it.execucao_id === ultimaExecId)
-          const secoesMapa = new Map<string, { resposta: string; criticidade: string }>()
+        // Calcular hoje (00:00:00) para verificar o que foi inspecionado HOJE
+        const inicioHoje = new Date()
+        inicioHoje.setHours(0, 0, 0, 0)
 
-          ultimoItems.forEach((it: any) => {
-            const desc = it.item_congelado?.descricao || ''
-            const secao = desc.split(' — ')[0] || 'Outros'
+        const ativosFormatados: AtivoSalaFormatado[] = ativosBrutos.map((a: any) => {
+          const execsDoAtivo = execsData.filter((e: any) => e.ativo_id === a.id)
+          const ultimaExec = execsDoAtivo[0]
 
-            const atual = secoesMapa.get(secao)
-            if (it.resposta === 'nao_conforme') {
-              if (!atual || atual.resposta === 'conforme' ||
-                (it.criticidade === 'critico') ||
-                (it.criticidade === 'importante' && atual.criticidade !== 'critico')) {
-                secoesMapa.set(secao, { resposta: 'nao_conforme', criticidade: it.criticidade })
-              }
-            } else if (!atual) {
-              secoesMapa.set(secao, { resposta: 'conforme', criticidade: 'informativo' })
-            }
-          })
+          let inspecionadoHoje = false
+          let textoInspecao = 'Pendente de inspeção hoje'
+          let resultado: 'conforme' | 'critico' | 'importante' | 'pendente' = 'pendente'
 
-          secoesLista = Array.from(secoesMapa.entries()).map(([secao, val]) => ({
-            secao,
-            resposta: val.resposta,
-            criticidade: val.criticidade
-          }))
-        }
-        setUltimoChecklistItens(secoesLista)
-
-        // Mapear ativos formatados
-        const ativosFormatados = ativosData.map((a: any) => {
-          const ultimaExec = execsData.find((e: any) => e.ativo_id === a.id)
-          let textoInspecao = 'Sem inspeções hoje'
           if (ultimaExec) {
-            const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
-            const formatador = new Intl.DateTimeFormat('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit'
-            })
-            const nomeInspetor = ultimaExec.usuarios?.nome || 'Inspetor'
-            textoInspecao = `Insp. por ${nomeInspetor} em ${formatador.format(dataInspecao)}`
+            const dataExec = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
+            const horaMin = dataExec.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            const diaMes = dataExec.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            const nomeInsp = ultimaExec.usuarios?.nome?.split(' ')[0] || 'Inspetor'
+
+            if (dataExec >= inicioHoje) {
+              inspecionadoHoje = true
+              const critNc = execsNcMapa.get(ultimaExec.id)
+              if (critNc === 'critico') resultado = 'critico'
+              else if (critNc === 'importante') resultado = 'importante'
+              else resultado = 'conforme'
+
+              textoInspecao = `Insp. por ${nomeInsp} hoje às ${horaMin}`
+            } else {
+              textoInspecao = `Última em ${diaMes} às ${horaMin} (${nomeInsp})`
+            }
           }
 
           return {
             id: a.id,
             nome: a.nome,
-            status: a.status as StatusAtivo,
-            ultimaInspecao: textoInspecao,
+            categoriaNome: a.categorias_ativos?.nome || 'Equipamento',
+            codigoQr: a.codigo_qr,
+            patrimonio: a.patrimonio,
+            compartilhado: !!a.compartilhado,
+            statusAtivo: a.status,
+            inspecionadoHoje,
+            ultimaInspecaoTexto: textoInspecao,
+            resultadoUltima: resultado,
+            ultimaExecId: ultimaExec?.id,
           }
         })
+
+        // Ordenar: primeiro Carrinho de Anestesia, Carrinho de Parada, depois por nome
+        ativosFormatados.sort((a, b) => {
+          if (a.nome.toLowerCase().includes('anestesia')) return -1
+          if (b.nome.toLowerCase().includes('anestesia')) return 1
+          if (a.nome.toLowerCase().includes('parada')) return -1
+          if (b.nome.toLowerCase().includes('parada')) return 1
+          return a.nome.localeCompare(b.nome)
+        })
+
         setAtivos(ativosFormatados)
 
-        // Histórico formatado do ativo principal
-        const primaryAsset = ativosData[0]
-        let historicoFormatado: any[] = []
-        if (primaryAsset) {
-          const execsAtivo = execsData.filter((e: any) => e.ativo_id === primaryAsset.id)
-          historicoFormatado = execsAtivo.map((exec: any) => {
-            const criticidadeNc = execsNcMapa.get(exec.id)
-            const dataInspecao = new Date(exec.finalizado_em || exec.iniciado_em)
-            const formatador = new Intl.DateTimeFormat('pt-BR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })
-
-            return {
-              id: exec.id,
-              variante: exec.modelos_checklist?.nome_variante || 'Checklist',
-              usuario: exec.usuarios?.nome || 'Inspetor',
-              dataHora: formatador.format(dataInspecao),
-              dataOriginal: dataInspecao,
-              resultado: criticidadeNc || 'conforme'
-            }
+        // Formatar histórico geral da sala
+        const historicoGeral = execsData.map((exec: any) => {
+          const ativoAssociado = ativosBrutos.find((a: any) => a.id === exec.ativo_id)
+          const criticidadeNc = execsNcMapa.get(exec.id)
+          const dataInspecao = new Date(exec.finalizado_em || exec.iniciado_em)
+          const formatador = new Intl.DateTimeFormat('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
           })
-          setHistorico(historicoFormatado)
-        }
 
-        // Salvar no cache para acesso instantâneo em próximas visitas
+          return {
+            id: exec.id,
+            ativoId: exec.ativo_id,
+            ativoNome: ativoAssociado?.nome || 'Equipamento',
+            variante: exec.modelos_checklist?.nome_variante || 'Checklist',
+            usuario: exec.usuarios?.nome || 'Inspetor',
+            dataHora: formatador.format(dataInspecao),
+            resultado: criticidadeNc || 'conforme'
+          }
+        })
+        setHistorico(historicoGeral)
+
         dadosCache.set(cacheKey, {
           local: localFormatado,
           ativos: ativosFormatados,
           ncs: ncsData,
-          historico: historicoFormatado,
-          ultimoChecklistItens: secoesLista
+          historico: historicoGeral,
         })
-
       } catch (err: any) {
         console.error(err)
         setErro(`Erro de conexão: ${err.message || err}`)
@@ -279,7 +232,7 @@ export default function PaginaLocal() {
     }
 
     if (localId) {
-      carregarDados()
+      carregarDadosSala()
     }
   }, [localId, cacheKey])
 
@@ -288,97 +241,66 @@ export default function PaginaLocal() {
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#F4F6FA] p-6 space-y-4">
         <p className="text-sm font-semibold text-red-500 text-center">{erro}</p>
         <Link href="/inspetor" className="text-xs font-bold text-[#246BFD] underline">
-          Voltar para Início
+          Voltar para Salas
         </Link>
       </div>
     )
   }
 
-  if (carregando && !local) {
-    return (
-      <div className="px-4 sm:px-5 pt-3 pb-10 space-y-4 sm:space-y-6">
-        <div className="h-5 w-16 bg-gray-200/70 rounded-md animate-pulse" />
-        <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/80 space-y-4 animate-pulse">
-          <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 rounded-[18px] bg-gray-100 shrink-0" />
-            <div className="flex-1 space-y-2">
-              <div className="h-5 w-3/4 bg-gray-200 rounded-md" />
-              <div className="h-3.5 w-1/3 bg-gray-100 rounded" />
-            </div>
-            <div className="w-16 h-6 rounded-full bg-gray-100" />
-          </div>
-          <div className="h-px bg-gray-100 my-3" />
-          <div className="space-y-2">
-            <div className="h-3 w-1/3 bg-gray-200 rounded" />
-            <div className="space-y-2 bg-[#F4F6FA]/50 rounded-[20px] p-3.5 border border-gray-100/80">
-              <div className="h-8 bg-white rounded-xl" />
-              <div className="h-8 bg-white rounded-xl" />
-              <div className="h-8 bg-white rounded-xl" />
-            </div>
-          </div>
-          <div className="h-12 bg-gray-200/70 rounded-full" />
-        </div>
-      </div>
-    )
-  }
+  // Cálculos de prontidão da sala
+  const totalAtivos = ativos.length
+  const totalInspecionadosHoje = ativos.filter(a => a.inspecionadoHoje).length
+  const progressoPercent = totalAtivos > 0 ? Math.round((totalInspecionadosHoje / totalAtivos) * 100) : 0
+  const temNcCritica = ncs.some(nc => nc.criticidade === 'critico')
+  const temNcImportante = ncs.some(nc => nc.criticidade === 'importante')
 
-  const ultimaNcAberta = ncs[0]
-  const ultimaInspecao = historico[0]
+  let statusSalaLabel = 'Pendente hoje'
+  let statusSalaCor: 'verde' | 'laranja' | 'vermelho' | 'azul' | 'cinza' = 'azul'
 
-  const temNcRealmenteAtiva = !!(
-    ultimaNcAberta &&
-    (!ultimaInspecao || new Date(ultimaNcAberta.criado_em).getTime() >= ultimaInspecao.dataOriginal.getTime())
-  )
-
-  let statusLabel = 'Pronto'
-  let statusCor: 'verde' | 'laranja' | 'vermelho' | 'azul' | 'cinza' = 'verde'
-
-  if (carregando && (!cacheData || !cacheData.ultimoChecklistItens)) {
-    if (ativoDaLista && ativoDaLista.statusUltima && ativoDaLista.statusUltima !== 'sem_inspecao') {
-      if (ativoDaLista.statusUltima === 'critico') {
-        statusLabel = 'Crítico'
-        statusCor = 'vermelho'
-      } else if (ativoDaLista.statusUltima === 'importante') {
-        statusLabel = 'Importante'
-        statusCor = 'laranja'
-      } else if (ativoDaLista.statusUltima === 'conforme') {
-        statusLabel = 'Pronto'
-        statusCor = 'verde'
-      }
-    } else {
-      statusLabel = 'Carregando...'
-      statusCor = 'cinza'
-    }
-  } else if (temNcRealmenteAtiva) {
-    statusLabel = ultimaNcAberta.criticidade === 'critico' ? 'Crítico' : 'Importante'
-    statusCor = ultimaNcAberta.criticidade === 'critico' ? 'vermelho' : 'laranja'
-  } else if (historico.length === 0 && ncs.length === 0) {
-    statusLabel = 'Sem inspeção'
-    statusCor = 'azul'
+  if (temNcCritica) {
+    statusSalaLabel = 'Crítico'
+    statusSalaCor = 'vermelho'
+  } else if (temNcImportante) {
+    statusSalaLabel = 'Com restrição'
+    statusSalaCor = 'laranja'
+  } else if (totalInspecionadosHoje === totalAtivos && totalAtivos > 0) {
+    statusSalaLabel = 'Pronta (9/9)'
+    statusSalaCor = 'verde'
+  } else if (totalInspecionadosHoje > 0) {
+    statusSalaLabel = `Em andamento (${totalInspecionadosHoje}/${totalAtivos})`
+    statusSalaCor = 'laranja'
   } else {
-    statusLabel = 'Pronto'
-    statusCor = 'verde'
+    statusSalaLabel = `Pendente (0/${totalAtivos || 9})`
+    statusSalaCor = 'azul'
   }
 
-  const ativoPrincipal = ativos[0]
-  const tituloExibido = ativoPrincipal ? ativoPrincipal.nome : local.nome
-  const subtituloExibido = local.setor || 'Centro Cirúrgico'
-  const isAnestesia = tituloExibido.toLowerCase().includes('anestesia')
-  const isCarrinho = tituloExibido.toLowerCase().includes('carrinho') || isAnestesia
-  const iconeAtivo = isAnestesia ? '/icon-anestesia.webp' : '/icon-carrinho.webp'
+  // Helper para ícones visuais dos equipamentos
+  const obterIconeEquipamento = (nome: string) => {
+    const n = (nome || '').toLowerCase()
+    if (n.includes('anestesia')) return '/icon-anestesia.webp'
+    if (n.includes('parada') || n.includes('carrinho')) return '/icon-carrinho.webp'
+    if (n.includes('bisturi')) return '/icon-bisturi.webp'
+    if (n.includes('aspirador')) return '/icon-aspiradorCirurgico.webp'
+    if (n.includes('bomba') || n.includes('infus')) return encodeURI('/icon-bombaInfusão.webp')
+    if (n.includes('foco')) return '/icon-focoCirurgico.webp'
+    if (n.includes('gases') || n.includes('gas')) return '/icon-gasesMedicinais.webp'
+    if (n.includes('mesa')) return '/icon-mesaCirurgica.webp'
+    if (n.includes('monitor')) return '/icon-monitorMulti.webp'
+    return null
+  }
 
-  const historicoFiltrado = historico.filter((ins) => {
-    if (!dataFiltro) return true
-    const ano = ins.dataOriginal.getFullYear()
-    const mes = String(ins.dataOriginal.getMonth() + 1).padStart(2, '0')
-    const dia = String(ins.dataOriginal.getDate()).padStart(2, '0')
-    const formattedInsDate = `${ano}-${mes}-${dia}`
-    return formattedInsDate === dataFiltro
-  })
+  // Helper para ícones das salas
+  const obterIconeSala = (nome: string) => {
+    const n = (nome || '').toLowerCase()
+    if (n.includes('1') || n.includes('01')) return '/icon-sala1.webp'
+    if (n.includes('3') || n.includes('03')) return '/icon-sala3.webp'
+    if (n.includes('4') || n.includes('04')) return '/icon-sala4.webp'
+    return null
+  }
 
   return (
-    <div className="px-4 sm:px-5 pt-3 pb-10 space-y-4 sm:space-y-6">
-      {/* Voltar */}
+    <div className="px-4 sm:px-5 pt-3 pb-12 space-y-4 sm:space-y-5">
+      {/* Botão Voltar */}
       <Link
         href="/inspetor"
         className="inline-flex items-center gap-1.5 text-[13px] font-bold text-gray-600 hover:text-black transition-colors -ml-1"
@@ -386,469 +308,272 @@ export default function PaginaLocal() {
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        Voltar
+        Salas Cirúrgicas
       </Link>
-      {/* ── Card Principal: Ativo / Sala ── */}
-      <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/80">
-        {/* Nome + Badge de Prontidão */}
-        <div className="flex items-center justify-between gap-3 mb-1 min-w-0">
-          <div className="flex items-center gap-3.5 min-w-0">
-            {isCarrinho && (
-              <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/30">
+
+      {/* ── Card Principal: Resumo da Sala ── */}
+      <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/80 space-y-3.5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {obterIconeSala(local?.nome) ? (
+              <div className="relative w-12 h-12 rounded-[16px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100/40 shadow-xs">
                 <img
-                  src={iconeAtivo}
-                  alt={tituloExibido || 'Carrinho'}
+                  src={obterIconeSala(local?.nome)!}
+                  alt={local?.nome || 'Sala'}
                   className="w-full h-full object-cover"
                 />
-                {/* Sombra interna branca (innershadow branco) */}
-                <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_2.5px_8px_rgba(255,255,255,0.95)] border border-white/25" />
+                <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_1.5px_4px_rgba(255,255,255,0.9)]" />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-[#246BFD]/12 to-[#246BFD]/4 flex items-center justify-center shrink-0 border border-[#246BFD]/15">
+                <svg className="w-6 h-6 text-[#246BFD]" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21" />
+                </svg>
               </div>
             )}
-            <div className="min-w-0 space-y-0.5">
-              <h1 className="text-sm sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
-                {tituloExibido}
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
+                {local?.nome || 'Carregando sala...'}
               </h1>
-              <p className="text-xs text-gray-500 font-semibold">{subtituloExibido}</p>
+              <p className="text-xs text-gray-500 font-semibold">{local?.setor || 'Centro Cirúrgico'}</p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <PillTag cor={statusCor} className="scale-90 sm:scale-100 origin-right">
-              {statusLabel}
-            </PillTag>
+
+          <PillTag cor={statusSalaCor} className="scale-90 sm:scale-100 origin-right">
+            {statusSalaLabel}
+          </PillTag>
+        </div>
+
+        {/* Barra de Progresso da Ronda de Hoje */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span className="text-gray-500">Equipamentos inspecionados hoje</span>
+            <span className="text-gray-900 font-bold tabular-nums">
+              {totalInspecionadosHoje} de {totalAtivos} ({progressoPercent}%)
+            </span>
           </div>
-        </div>
-
-        {/* Separador */}
-        <div className="h-px bg-gray-100 my-3.5" />
-
-        {/* Prontidão Visual */}
-        <div className="space-y-2">
-          <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-            Itens do Checklist e Avaliação
-          </p>
-          {ultimoChecklistItens.length > 0 ? (
-            <div className="space-y-2 mt-2 bg-[#F4F6FA]/50 rounded-[20px] p-3.5 border border-gray-100/80">
-              {ultimoChecklistItens.map((item, idx) => {
-                const isNc = item.resposta === 'nao_conforme'
-                return (
-                  <div
-                    key={idx}
-                    className={[
-                      'flex items-center justify-between px-3 py-2 rounded-xl transition-all border',
-                      isNc
-                        ? item.criticidade === 'critico'
-                          ? 'bg-red-50/70 border-red-200/40 shadow-[0_1px_4px_rgba(239,68,68,0.02)]'
-                          : 'bg-amber-50/70 border-amber-200/40 shadow-[0_1px_4px_rgba(245,158,11,0.02)]'
-                        : 'bg-white border-gray-100/50 shadow-[0_1px_3px_rgba(0,0,0,0.01)]'
-                    ].join(' ')}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={[
-                        'w-1.5 h-1.5 rounded-full shrink-0',
-                        isNc
-                          ? item.criticidade === 'critico' ? 'bg-red-500' : 'bg-amber-500'
-                          : 'bg-emerald-500'
-                      ].join(' ')} />
-                      <span className={[
-                        'text-xs truncate',
-                        isNc ? 'text-slate-900 font-bold' : 'text-slate-700 font-semibold'
-                      ].join(' ')}>
-                        {item.secao}
-                      </span>
-                    </div>
-
-                    <span className={[
-                      'text-[9px] sm:text-[10px] font-bold uppercase tracking-wider',
-                      isNc
-                        ? item.criticidade === 'critico' ? 'text-red-650' : 'text-amber-650'
-                        : 'text-emerald-650'
-                    ].join(' ')}>
-                      {isNc ? 'Não Conforme' : 'Conforme'}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          ) : carregando ? (
-            <div className="space-y-2 mt-2 bg-[#F4F6FA]/50 rounded-[20px] p-3.5 border border-gray-100/80 animate-pulse">
-              <div className="flex items-center justify-between px-3 py-2.5 bg-white/80 rounded-xl border border-gray-100/50">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                  <div className="h-3 w-32 bg-slate-200 rounded-md" />
-                </div>
-                <div className="h-3 w-14 bg-slate-100 rounded-md" />
-              </div>
-              <div className="flex items-center justify-between px-3 py-2.5 bg-white/80 rounded-xl border border-gray-100/50">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                  <div className="h-3 w-40 bg-slate-200 rounded-md" />
-                </div>
-                <div className="h-3 w-14 bg-slate-100 rounded-md" />
-              </div>
-              <div className="flex items-center justify-between px-3 py-2.5 bg-white/80 rounded-xl border border-gray-100/50">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                  <div className="h-3 w-28 bg-slate-200 rounded-md" />
-                </div>
-                <div className="h-3 w-14 bg-slate-100 rounded-md" />
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6 bg-slate-50/40 border border-slate-100/50 rounded-xl text-xs text-slate-400 font-medium">
-              Sem dados de checklist recentes.
-            </div>
-          )}
-        </div>
-
-        {/* CTA — Iniciar Ronda com Efeito Liquid Metal */}
-        <div className="mt-4">
-          <LiquidMetalButton
-            tamanho="md"
-            larguraTotal
-            onClick={() => router.push(`/inspetor/checklist/ronda-${local.id}`)}
-            icone={
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-            label="Iniciar ronda"
-          />
+          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ease-out ${
+                progressoPercent === 100 ? 'bg-emerald-500' : 'bg-[#246BFD]'
+              }`}
+              style={{ width: `${progressoPercent}%` }}
+            />
+          </div>
         </div>
       </div>
 
-      {/* ── Resumo da Última Inspeção ── */}
-      {(temNcRealmenteAtiva || historico.length > 0) && (() => {
-        if (temNcRealmenteAtiva) {
-          const ultimaNc = ncs[0]
-          const dataCriacao = new Date(ultimaNc.criado_em)
-          const itemExec = ultimaNc.itens_execucao_checklist || {}
-          const exec = itemExec.execucoes_checklist || {}
-          const nomeInspetor = exec.usuarios?.nome || 'Inspetor'
-          const secaoAfetada = itemExec.item_congelado?.descricao?.split(' — ')[0] || 'Geral'
-          const descricaoEvidencia = itemExec.evidencia_texto || ultimaNc.descricao || 'Sem descrição detalhada.'
-          const fotoUrl = itemExec.evidencia_url || ultimaNc.evidencia_url
-          const temFotoReal = Boolean(fotoUrl && typeof fotoUrl === 'string' && fotoUrl.trim() !== '' && !fotoUrl.includes('unsplash.com'))
-
-          const formatadorDataCurta = new Intl.DateTimeFormat('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-          const dataFormatada = formatadorDataCurta.format(dataCriacao).replace(', ', ' às ')
-
-          const corPill =
-            ultimaNc.criticidade === 'critico' ? 'vermelho' :
-              ultimaNc.criticidade === 'importante' ? 'laranja' : 'azul'
-
-          const labelPill =
-            ultimaNc.criticidade === 'critico' ? 'Crítico' :
-              ultimaNc.criticidade === 'importante' ? 'Importante' : 'Informativo'
-
-          return (
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => setNcAbertaExpandida(!ncAbertaExpandida)}
-                className="w-full flex items-center justify-between px-1 cursor-pointer select-none py-1 group"
-              >
-                <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
-                  Última Inspeção
-                </p>
-                <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${ncAbertaExpandida ? 'rotate-180' : ''}`}
-                  fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
+      {/* ── Seção de Não Conformidades Abertas (se houver) ── */}
+      {ncs.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[11px] font-bold text-red-500 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              Pendências ativas nesta sala ({ncs.length})
+            </p>
+          </div>
+          <div className="space-y-2">
+            {ncs.map((nc) => {
+              const itemExec = nc.itens_execucao_checklist || {}
+              const desc = itemExec.evidencia_texto || nc.descricao || 'Problema não conforme relatado.'
+              const cor = nc.criticidade === 'critico' ? 'vermelho' : 'laranja'
+              return (
+                <div
+                  key={nc.id}
+                  className="bg-red-50/70 border border-red-200/60 rounded-[20px] p-3.5 space-y-2"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
-              </button>
-
-              <div className={`grid transition-all duration-300 ease-in-out ${ncAbertaExpandida ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0 pointer-events-none mt-0'}`}>
-                <div className="overflow-hidden">
-                  <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/90 space-y-4 mb-2">
-                    {/* Cabeçalho: Título + Subtítulo + Badge */}
-                    <div className="flex items-start justify-between gap-3 min-w-0">
-                      <div className="min-w-0 space-y-0.5">
-                        <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
-                          {secaoAfetada}
-                        </h3>
-                        <p className="text-xs text-gray-400 font-medium">
-                          Registrada por {nomeInspetor} em {dataFormatada}
-                        </p>
-                      </div>
-
-                      <div className="shrink-0 pt-0.5">
-                        <PillTag cor={corPill} className="scale-90 sm:scale-100 origin-right">
-                          {labelPill}
-                        </PillTag>
-                      </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{nc.numero_unico || 'Não Conformidade'}</p>
+                      <p className="text-[11px] text-red-700 font-medium mt-0.5">{desc}</p>
                     </div>
+                    <PillTag cor={cor} className="scale-75 origin-top-right">
+                      {nc.criticidade === 'critico' ? 'Crítico' : 'Importante'}
+                    </PillTag>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
-                    {/* Bloco: Problema Relatado */}
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        PROBLEMA RELATADO
-                      </p>
-                      <p className="text-sm font-bold text-gray-900 leading-snug">
-                        {descricaoEvidencia}
-                      </p>
-                    </div>
+      {/* ── Lista de Ativos da Sala para Inspeção ── */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+            Equipamentos da Sala ({totalAtivos})
+          </p>
+          <span className="text-[11px] text-slate-500 font-medium">
+            Toque para inspecionar
+          </span>
+        </div>
 
-                    {/* Imagem de Evidência com Borderglass & Cantos Arredondados */}
-                    {temFotoReal && (
-                      <div className="space-y-2 pt-0.5">
-                        <div 
-                          onClick={() => setFotoExpandida(fotoUrl)}
-                          className="relative overflow-hidden rounded-xl border border-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.06)] ring-1 ring-black/5 cursor-pointer hover:opacity-98 transition-all group"
-                        >
-                          <img
-                            src={fotoUrl}
-                            alt="Evidência da Não Conformidade"
-                            className="w-full h-auto max-h-[180px] sm:max-h-[220px] object-cover group-hover:scale-[1.01] transition-transform duration-300 rounded-xl"
-                          />
-                          {/* Overlay de Borda de Vidro Ultra-Subtil & Delicada */}
-                          <div className="absolute inset-0 rounded-xl pointer-events-none border border-white/70 shadow-[inset_0_1px_8px_rgba(255,255,255,0.4)] ring-1 ring-inset ring-white/40" />
-                        </div>
+        {carregando && ativos.length === 0 ? (
+          <div className="space-y-2.5">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="bg-white rounded-[24px] p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100/80 animate-pulse flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-[16px] bg-gray-100 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/2 bg-gray-200 rounded" />
+                  <div className="h-3 w-1/3 bg-gray-100 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : ativos.length === 0 ? (
+          <div className="bg-white rounded-[24px] p-8 text-center text-gray-400 border border-gray-100 text-xs font-semibold">
+            Nenhum equipamento vinculado a esta sala.
+          </div>
+        ) : (
+          ativos.map((ativo, i) => {
+            const iconeImg = obterIconeEquipamento(ativo.nome)
 
-                        {/* Informação de quem tirou e quando (Embaixo da imagem) */}
-                        <div className="flex items-center justify-between text-[11px] text-gray-500 font-medium px-0.5 pt-0.5">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0c-.693.044-1.336.438-1.736 1.039l-.822 1.316Z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-                            </svg>
-                            <span className="truncate">Registrada por <strong className="text-gray-700 font-semibold">{nomeInspetor}</strong></span>
-                          </div>
-                          <span className="text-gray-450 font-semibold shrink-0">{dataFormatada}</span>
-                        </div>
+            let badgeCor: 'verde' | 'vermelho' | 'laranja' | 'azul' = 'azul'
+            let badgeLabel = 'Pendente'
+
+            if (ativo.inspecionadoHoje) {
+              if (ativo.resultadoUltima === 'critico') {
+                badgeCor = 'vermelho'
+                badgeLabel = 'Crítico'
+              } else if (ativo.resultadoUltima === 'importante') {
+                badgeCor = 'laranja'
+                badgeLabel = 'Com restrição'
+              } else {
+                badgeCor = 'verde'
+                badgeLabel = 'Conforme'
+              }
+            }
+
+            return (
+              <Link
+                key={ativo.id}
+                href={`/inspetor/checklist/${ativo.id}`}
+                prefetch={true}
+                className="block bg-white rounded-[24px] p-3.5 sm:p-4 shadow-[0_2px_14px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-300 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer"
+                style={{ animationDelay: `${i * 40}ms` }}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  {/* Ícone + Informações */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {iconeImg ? (
+                      <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100/40">
+                        <img src={iconeImg} alt={ativo.nome} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_1.5px_4px_rgba(255,255,255,0.9)]" />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] bg-slate-50 flex items-center justify-center shrink-0 border border-slate-200/60 text-slate-600">
+                        <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.07a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091.455.076.93-.043 1.378" />
+                        </svg>
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        } else {
-          const ultima = historico[0]
-          return (
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => setNcAbertaExpandida(!ncAbertaExpandida)}
-                className="w-full flex items-center justify-between px-1 cursor-pointer select-none py-1 group"
-              >
-                <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
-                  Última Inspeção
-                </p>
-                <svg
-                  className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${ncAbertaExpandida ? 'rotate-180' : ''}`}
-                  fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
-              </button>
 
-              <div className={`grid transition-all duration-300 ease-in-out ${ncAbertaExpandida ? 'grid-rows-[1fr] opacity-100 mt-2' : 'grid-rows-[0fr] opacity-0 pointer-events-none mt-0'}`}>
-                <div className="overflow-hidden">
-                  <div className="bg-white rounded-[28px] p-4 sm:p-5 shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-gray-100/90 space-y-4 mb-2">
-                    {/* Cabeçalho: Título + Subtítulo + Badge */}
-                    <div className="flex items-start justify-between gap-3 min-w-0">
-                      <div className="min-w-0 space-y-0.5">
-                        <h3 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
-                          Ronda: {ultima.variante}
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-sm font-bold text-slate-900 tracking-tight leading-snug">
+                          {ativo.nome}
                         </h3>
-                        <p className="text-xs text-gray-400 font-medium">
-                          Realizada por {ultima.usuario} em {ultima.dataHora}
-                        </p>
+                        {ativo.compartilhado && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 inline-flex items-center whitespace-nowrap">
+                            Salas 1, 3 e 4
+                          </span>
+                        )}
                       </div>
 
-                      <div className="shrink-0 pt-0.5">
-                        <PillTag cor="verde" className="scale-90 sm:scale-100 origin-right">
-                          Pronto
-                        </PillTag>
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                        <span className={[
+                          'w-2 h-2 rounded-full shrink-0',
+                          badgeCor === 'verde' ? 'bg-emerald-500' :
+                          badgeCor === 'vermelho' ? 'bg-red-500' :
+                          badgeCor === 'laranja' ? 'bg-amber-500' : 'bg-slate-300'
+                        ].join(' ')} />
+                        <span className="truncate font-medium">{ativo.ultimaInspecaoTexto}</span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Bloco: Status */}
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                        STATUS
-                      </p>
-                      <p className="text-sm font-bold text-emerald-600 leading-snug">
-                        Todos os itens avaliados estão em conformidade.
-                      </p>
+                  {/* Badge de Status e Ação */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <PillTag cor={badgeCor} className="scale-85 origin-right">
+                      {badgeLabel}
+                    </PillTag>
+
+                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:text-slate-700">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                      </svg>
                     </div>
                   </div>
                 </div>
-              </div>
+              </Link>
+            )
+          })
+        )}
+      </div>
+
+      {/* ── Histórico Recente de Inspeções da Sala ── */}
+      {historico.length > 0 && (
+        <div className="space-y-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setHistoricoAberto(!historicoAberto)}
+            className="w-full flex items-center justify-between px-1 py-1 cursor-pointer select-none group"
+          >
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-bold text-gray-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
+                Histórico Recente da Sala
+              </p>
+              <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {historico.length}
+              </span>
             </div>
-          )
-        }
-      })()}
-
-      {/* ── Histórico de Inspeções (Colapsável) ── */}
-      <div className="space-y-2.5">
-        <button
-          type="button"
-          onClick={() => setHistoricoAberto(!historicoAberto)}
-          className="w-full flex items-center justify-between px-1 cursor-pointer select-none py-1 group"
-        >
-          <div className="flex items-center gap-2">
-            <p className="text-[10px] sm:text-[11px] font-bold text-gray-400 tracking-wider uppercase group-hover:text-gray-600 transition-colors">
-              Histórico de Inspeções
-            </p>
-            <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center inline-flex items-center justify-center">
-              {carregando && (!cacheData || !cacheData.historico) ? (
-                <span className="inline-block w-2.5 h-2.5 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                historicoFiltrado.length
-              )}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
             <svg
               className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${historicoAberto ? 'rotate-180' : ''}`}
               fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
             </svg>
-          </div>
-        </button>
+          </button>
 
-        {historicoAberto && (
-          <div className="animate-[fadeIn_0.2s_ease-out] space-y-2.5">
-            {carregando && (!cacheData || !cacheData.historico) ? (
-              <div className="bg-white rounded-2xl p-4 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 space-y-3 animate-pulse">
-                <div className="flex items-center justify-between py-2">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-8 h-8 rounded-full bg-slate-200" />
-                    <div className="space-y-1.5 flex-1">
-                      <div className="h-3.5 w-1/3 bg-slate-200 rounded" />
-                      <div className="h-3 w-1/4 bg-slate-100 rounded" />
-                    </div>
+          {historicoAberto && (
+            <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden animate-fadeIn">
+              {historico.slice(0, 10).map((ins) => (
+                <Link
+                  key={ins.id}
+                  href={`/inspetor/checklist/${ins.ativoId}?execId=${ins.id}`}
+                  className="flex items-center justify-between p-3 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-xs font-bold text-slate-800 truncate">{ins.ativoNome}</p>
+                    <p className="text-[11px] text-slate-400">
+                      Insp. por {ins.usuario} em {ins.dataHora}
+                    </p>
                   </div>
-                </div>
-              </div>
-            ) : historicoFiltrado.length > 0 ? (
-              <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 divide-y divide-gray-100/80 overflow-hidden">
-                {historicoFiltrado.map((ins) => {
-                  let corPill: 'verde' | 'laranja' | 'vermelho' = 'verde'
-                  let labelPill = 'Pronto'
+                  <PillTag
+                    cor={ins.resultado === 'critico' ? 'vermelho' : ins.resultado === 'importante' ? 'laranja' : 'verde'}
+                    className="scale-75 origin-right"
+                  >
+                    {ins.resultado === 'conforme' ? 'Conforme' : 'Com NC'}
+                  </PillTag>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-                  if (ins.resultado === 'critico') {
-                    corPill = 'vermelho'
-                    labelPill = 'Crítico'
-                  } else if (ins.resultado === 'importante' || ins.resultado === 'informativo') {
-                    corPill = 'laranja'
-                    labelPill = 'Importante'
-                  }
-
-                  const iconBgClass =
-                    corPill === 'vermelho' ? 'bg-gradient-to-b from-[#F45F63] to-[#EA3A3A]' :
-                      corPill === 'laranja' ? 'bg-gradient-to-b from-[#FF9E3D] to-[#F78725]' :
-                        'bg-gradient-to-b from-[#54D362] to-[#31B44A]'
-
-                  return (
-                    <Link
-                      key={ins.id}
-                      href={`/inspetor/checklist/${ativoPrincipal.id}?execId=${ins.id}`}
-                      prefetch={true}
-                      className="w-full flex items-center justify-between py-3 px-4 hover:bg-slate-50/50 transition-all text-left cursor-pointer select-none"
-                    >
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        {/* Status Badge Icon */}
-                        <div className={`w-8 h-8 rounded-full ${iconBgClass} flex items-center justify-center shrink-0 shadow-sm mt-0.5 text-white`}>
-                          {corPill === 'verde' && (
-                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none">
-                              <path
-                                fill="#0AB01E"
-                                d="M12 2a2 2 0 0 1 1.414.586l.828.828a2 2 0 0 0 1.414.586h1.172a2 2 0 0 1 2 2v1.172a2 2 0 0 0 .586 1.414l.828.828A2 2 0 0 1 21 10.828v1.172a2 2 0 0 1-.586 1.414l-.828.828a2 2 0 0 0-.586 1.414v1.172a2 2 0 0 1-2 2h-1.172a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 10.828 21h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 6 19h-1.172a2 2 0 0 1-2-2v-1.172a2 2 0 0 0-.586-1.414l-.828.828A2 2 0 0 1 3 12v-1.172a2 2 0 0 1 .586-1.414l.828-.828A2 2 0 0 0 5 7.172V6a2 2 0 0 1 2-2h1.172a2 2 0 0 0 1.414-.586l.828-.828A2 2 0 0 1 12 2z"
-                              />
-                              <path
-                                stroke="#54D362"
-                                strokeWidth="2.6"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M8.5 12.5l2.5 2.5 4.5-5"
-                              />
-                            </svg>
-                          )}
-                          {corPill === 'vermelho' && (
-                            <svg className="w-4.5 h-4.5" viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="10" fill="#EA1517" />
-                              <path
-                                stroke="#F45F63"
-                                strokeWidth="2.8"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M9 9l6 6m0-6l-6 6"
-                              />
-                            </svg>
-                          )}
-                          {corPill === 'laranja' && (
-                            <svg className="w-4.5 h-4.5 text-[#F86201]" viewBox="0 0 24 24" fill="currentColor">
-                              <path fillRule="evenodd" clipRule="evenodd" d="M10.788 3.21c.548-.96 1.876-.96 2.424 0l8.23 14.403c.532.931-.14 2.087-1.212 2.087H3.77c-1.072 0-1.744-1.156-1.212-2.087L10.788 3.21zM12 8a.75.75 0 00-.75.75v4.5a.75.75 0 001.5 0v-4.5A.75.75 0 0012 8zm0 8a1 1 0 100-2 1 1 0 000 2z" />
-                            </svg>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1 space-y-0.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-sm font-bold text-gray-900 tracking-tight leading-tight">
-                              Ronda: {ins.variante}
-                            </p>
-                          </div>
-                          <p className="text-xs text-gray-600 font-medium leading-none">
-                            Inspetor: <span className="text-gray-900 font-semibold">{ins.usuario}</span>
-                          </p>
-                          <p className="text-[11px] text-gray-400 font-medium">
-                            Realizada em {ins.dataHora}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Apenas seta do lado direito */}
-                      <div className="flex items-center shrink-0 ml-1">
-                        <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                        </svg>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl p-8 text-center text-gray-400 border border-gray-100/80 text-xs font-semibold">
-                Nenhuma inspeção encontrada {dataFiltro ? 'para este dia' : 'no histórico'}.
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Modal Lightbox para foto expandida */}
+      {/* Lightbox de Foto de Evidência */}
       {fotoExpandida && (
-        <div 
+        <div
           onClick={() => setFotoExpandida(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fadeIn cursor-zoom-out"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-zoom-out"
         >
-          <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">
-            <img
-              src={fotoExpandida}
-              alt="Evidência Ampliada"
-              className="max-w-full max-h-[85vh] rounded-[24px] object-contain shadow-2xl border border-white/10"
-            />
-            <button
-              type="button"
-              onClick={() => setFotoExpandida(null)}
-              className="absolute -top-12 right-0 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full backdrop-blur-sm transition-all"
-            >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+          <img
+            src={fotoExpandida}
+            alt="Evidência"
+            className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl"
+          />
         </div>
       )}
     </div>

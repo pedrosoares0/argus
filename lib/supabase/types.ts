@@ -134,6 +134,14 @@ export interface Ativo {
   updated_at: string
 }
 
+export interface SalaAtivo {
+  id: string
+  local_id: string
+  ativo_id: string
+  compartilhado: boolean
+  criado_em: string
+}
+
 export interface Usuario {
   id: string
   hospital_id: string
@@ -236,6 +244,7 @@ export interface Database {
       locais: { Row: Local; Insert: Partial<Local>; Update: Partial<Local> }
       categorias_ativos: { Row: CategoriaAtivo; Insert: Partial<CategoriaAtivo>; Update: Partial<CategoriaAtivo> }
       ativos: { Row: Ativo; Insert: Partial<Ativo>; Update: Partial<Ativo> }
+      sala_ativos: { Row: SalaAtivo; Insert: Partial<SalaAtivo>; Update: Partial<SalaAtivo> }
       usuarios: { Row: Usuario; Insert: Partial<Usuario>; Update: Partial<Usuario> }
       modelos_checklist: { Row: ModeloChecklist; Insert: Partial<ModeloChecklist>; Update: Partial<ModeloChecklist> }
       itens_modelo_checklist: { Row: ItemModeloChecklist; Insert: Partial<ItemModeloChecklist>; Update: Partial<ItemModeloChecklist> }

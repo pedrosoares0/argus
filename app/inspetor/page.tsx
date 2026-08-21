@@ -10,18 +10,14 @@ import { PillTag } from '@/components/ui/PillTag'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
 
-/**
- * Tela inicial do Inspetor — idêntica à 2ª imagem de referência.
- * Design refinado, sem ícone blob, bg #F4F6FA, badges pastéis e lista completa com responsável/horário.
- */
 export default function PaginaInicialInspetor() {
   const router = useRouter()
   const [termoBusca, setTermoBusca] = useState('')
   const [mostrarModalCodigo, setMostrarModalCodigo] = useState(false)
   const [codigoInput, setCodigoInput] = useState('')
 
-  const cacheKey = 'inspetor_ativos_lista'
-  const [ativos, setAtivos] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
+  const cacheKey = 'inspetor_salas_lista'
+  const [salas, setSalas] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
   const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
 
   useEffect(() => {
@@ -29,125 +25,144 @@ export default function PaginaInicialInspetor() {
   }, [router])
 
   useEffect(() => {
-    async function carregarAtivos() {
+    async function carregarSalas() {
       if (!dadosCache.get(cacheKey)) {
         setCarregando(true)
       }
       try {
         const supabase = criarClienteSupabase() as any
 
-        // Helper para formatar nome
-        const formatarNome = (u: any): string => {
-          if (!u) return 'Inspetor'
-          const nomeCandidato = u.nome || u.full_name || u.name
-          if (nomeCandidato && typeof nomeCandidato === 'string' && nomeCandidato.trim() && nomeCandidato.trim() !== 'Inspetor') {
-            return nomeCandidato.trim()
-          }
-          if (u.email && typeof u.email === 'string') {
-            const parte = u.email.split('@')[0]
-            const partes = parte.split(/[\._\-]/).filter(Boolean)
-            if (partes.length > 0) {
-              return partes.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
-            }
-            return parte
-          }
-          return 'Inspetor'
-        }
-
-        // Buscar ativos, execuções e usuários em PARALELO com Promise.all
-        const [ativosRes, execsRes, usuariosRes] = await Promise.all([
+        // 1. Buscar salas, vínculos sala_ativos, execuções e não conformidades em paralelo
+        const [locaisRes, salaAtivosRes, execsRes, ncsRes] = await Promise.all([
           supabase
-            .from('ativos')
-            .select('*, locais(*), categorias_ativos(*)'),
+            .from('locais')
+            .select('*, centros_cirurgicos(*)')
+            .eq('tipo', 'sala')
+            .in('nome', ['Sala 01', 'Sala 03', 'Sala 04'])
+            .order('nome', { ascending: true }),
+          supabase
+            .from('sala_ativos')
+            .select('local_id, ativo_id, compartilhado'),
           supabase
             .from('execucoes_checklist')
-            .select('id, ativo_id, usuario_id, status, iniciado_em, finalizado_em')
+            .select('id, ativo_id, usuario_id, status, finalizado_em, iniciado_em, usuarios(nome)')
             .eq('status', 'concluida')
-            .order('finalizado_em', { ascending: false }),
+            .order('finalizado_em', { ascending: false })
+            .limit(100),
           supabase
-            .from('usuarios')
-            .select('id, nome, email'),
+            .from('nao_conformidades')
+            .select('id, ativo_id, criticidade, status')
+            .neq('status', 'encerrada')
         ])
 
-        const data = ativosRes.data
+        const locaisData = locaisRes.data || []
+        const salaAtivosData = salaAtivosRes.data || []
         const execsData = execsRes.data || []
-        const usersData = usuariosRes.data || []
+        const ncsData = ncsRes.data || []
 
-        if (data && data.length > 0) {
-          const usuariosMapa = new Map()
-          usersData.forEach((u: any) => usuariosMapa.set(u.id, formatarNome(u)))
+        if (locaisData.length > 0) {
+          // Início de hoje (00:00) para calcular status real do dia
+          const inicioHoje = new Date()
+          inicioHoje.setHours(0, 0, 0, 0)
 
-          const execsIds = execsData.map((e: any) => e.id)
-          let itemsData: any[] = []
-
-          if (execsIds.length > 0) {
-            const { data: itensRes } = await supabase
-              .from('itens_execucao_checklist')
-              .select('execucao_id, resposta, criticidade')
-              .in('execucao_id', execsIds.slice(0, 100))
-
-            if (itensRes) itemsData = itensRes
-          }
-
-          const execsNcMapa = new Map()
-          itemsData.forEach((it: any) => {
-            if (it.resposta === 'nao_conforme') {
-              const currentHighest = execsNcMapa.get(it.execucao_id)
-              if (
-                !currentHighest ||
-                it.criticidade === 'critico' ||
-                (it.criticidade === 'importante' && currentHighest !== 'critico')
-              ) {
-                execsNcMapa.set(it.execucao_id, it.criticidade)
-              }
-            }
+          // Mapear ativos por sala
+          const ativosPorSala = new Map<string, string[]>()
+          salaAtivosData.forEach((sa: any) => {
+            const lista = ativosPorSala.get(sa.local_id) || []
+            lista.push(sa.ativo_id)
+            ativosPorSala.set(sa.local_id, lista)
           })
 
-          const formatados = data.map((ativo: any) => {
-            const execsDoAtivo = execsData.filter((e: any) => e.ativo_id === ativo.id)
-            const ultimaExec = execsDoAtivo[0]
+          const formatados = locaisData.map((local: any) => {
+            const ativosIds = ativosPorSala.get(local.id) || []
+            const totalAtivos = ativosIds.length || 9
 
-            let textoInspecao = 'Sem inspeções registradas'
-            let statusUltima = 'sem_inspecao'
+            // Execuções dos ativos desta sala
+            const execsDestaSala = execsData.filter((e: any) => ativosIds.includes(e.ativo_id))
+            
+            // Execuções realizadas HOJE
+            const execsHoje = execsDestaSala.filter((e: any) => {
+              const d = new Date(e.finalizado_em || e.iniciado_em)
+              return d >= inicioHoje
+            })
+
+            // Quantos ativos distintos foram inspecionados hoje
+            const ativosInspecionadosHoje = new Set(execsHoje.map((e: any) => e.ativo_id)).size
+
+            // Verificar se há NC ativa nos ativos desta sala
+            const ncsDestaSala = ncsData.filter((nc: any) => ativosIds.includes(nc.ativo_id))
+            const temNcCritica = ncsDestaSala.some((nc: any) => nc.criticidade === 'critico')
+            const temNcImportante = ncsDestaSala.some((nc: any) => nc.criticidade === 'importante')
+
+            // Determinar status real da sala
+            let statusLabel = 'Pendente'
+            let statusCor: 'verde' | 'laranja' | 'vermelho' | 'azul' = 'azul'
+
+            if (temNcCritica) {
+              statusLabel = 'Crítico'
+              statusCor = 'vermelho'
+            } else if (temNcImportante) {
+              statusLabel = 'Com restrição'
+              statusCor = 'laranja'
+            } else if (ativosInspecionadosHoje === totalAtivos && totalAtivos > 0) {
+              statusLabel = `Pronta (${totalAtivos}/${totalAtivos})`
+              statusCor = 'verde'
+            } else if (ativosInspecionadosHoje > 0) {
+              statusLabel = `Em andamento (${ativosInspecionadosHoje}/${totalAtivos})`
+              statusCor = 'laranja'
+            } else {
+              statusLabel = `Pendente (0/${totalAtivos})`
+              statusCor = 'azul'
+            }
+
+            // Texto de inspeção (prioriza a inspeção de hoje, senão informa a última ou nenhuma)
+            let textoInspecao = 'Pendente de inspeção hoje'
+            const ultimaExec = execsDestaSala[0]
 
             if (ultimaExec) {
-              const dataInspecao = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
-              const diaMes = dataInspecao.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-              const horaMin = dataInspecao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-              const nomeInspetor = usuariosMapa.get(ultimaExec.usuario_id) || 'Inspetor'
-              textoInspecao = `${nomeInspetor} em ${diaMes} às ${horaMin}`
-              statusUltima = execsNcMapa.get(ultimaExec.id) || 'conforme'
+              const d = new Date(ultimaExec.finalizado_em || ultimaExec.iniciado_em)
+              const nomeInsp = ultimaExec.usuarios?.nome?.split(' ')[0] || 'Inspetor'
+              const horaMin = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+              const diaMes = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+
+              if (d >= inicioHoje) {
+                textoInspecao = `Insp. por ${nomeInsp} hoje às ${horaMin}`
+              } else {
+                textoInspecao = `Última em ${diaMes} às ${horaMin} (${nomeInsp})`
+              }
             }
 
             return {
-              id: ativo.id,
-              localId: ativo.local_id,
-              tag: ativo.categorias_ativos?.nome || 'Ativo',
-              corTag: (ativo.categorias_ativos?.nome?.toLowerCase().includes('carrinho') ? 'azul' : 'roxo') as 'azul' | 'roxo',
-              nome: ativo.nome,
-              localizacao: ativo.locais?.nome || 'Sem localização',
-              ultimaInspecao: textoInspecao,
-              statusUltima,
+              id: local.id,
+              nome: local.nome,
+              setor: local.centros_cirurgicos?.nome || 'Centro Cirúrgico',
+              status: local.status,
+              statusLabel,
+              statusCor,
+              totalAtivos,
+              ativosInspecionadosHoje,
+              textoInspecao,
+              concluidaHoje: ativosInspecionadosHoje === totalAtivos && totalAtivos > 0,
             }
           })
 
-          setAtivos(formatados)
+          setSalas(formatados)
           dadosCache.set(cacheKey, formatados)
         } else {
-          setAtivos([])
+          setSalas([])
         }
       } catch (err) {
-        console.error('Erro ao carregar ativos do inspetor:', err)
+        console.error('Erro ao carregar salas do inspetor:', err)
       } finally {
         setCarregando(false)
       }
     }
-    carregarAtivos()
+    carregarSalas()
   }, [cacheKey])
 
-  const ativosFiltrados = ativos.filter(item => 
-    item.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
-    item.localizacao.toLowerCase().includes(termoBusca.toLowerCase())
+  const salasFiltradas = salas.filter(sala =>
+    sala.nome.toLowerCase().includes(termoBusca.toLowerCase()) ||
+    sala.setor.toLowerCase().includes(termoBusca.toLowerCase())
   )
 
   async function handleSubmeterCodigo(e: React.FormEvent) {
@@ -180,7 +195,7 @@ export default function PaginaInicialInspetor() {
 
       if (ativos && ativos.length > 0) {
         setMostrarModalCodigo(false)
-        router.push(`/inspetor/local/${ativos[0].local_id}`)
+        router.push(`/inspetor/checklist/${ativos[0].id}`)
         return
       }
 
@@ -191,10 +206,17 @@ export default function PaginaInicialInspetor() {
     }
   }
 
+  const obterIconeSala = (nome: string) => {
+    const n = (nome || '').toLowerCase()
+    if (n.includes('1') || n.includes('01')) return '/icon-sala1.webp'
+    if (n.includes('3') || n.includes('03')) return '/icon-sala3.webp'
+    if (n.includes('4') || n.includes('04')) return '/icon-sala4.webp'
+    return null
+  }
+
   return (
     <div className="px-4 sm:px-5 pt-2 space-y-4 sm:space-y-5">
-
-      {/* Card Principal: Leitura do Carrinho / Scan Rápido (Glassmorphism limpo) */}
+      {/* Card Principal: Leitura / Scan Rápido */}
       <div 
         style={{
           width: '100%',
@@ -208,7 +230,6 @@ export default function PaginaInicialInspetor() {
         }}
         className="mx-auto flex flex-col justify-center items-center p-6 text-center space-y-4 select-none"
       >
-        {/* Ícone de Câmera 3D macOS com cantos arredondados */}
         <div className="w-12 h-12 rounded-[12px] overflow-hidden drop-shadow-[0_8px_16px_rgba(0,0,0,0.1)] active:scale-95 transition-transform shrink-0">
           <img 
             src="/icon-camera-macos.png" 
@@ -226,7 +247,6 @@ export default function PaginaInicialInspetor() {
           </p>
         </div>
 
-        {/* Botão de Câmera e Digitar código */}
         <div className="flex flex-col items-center gap-2 shrink-0">
           <LiquidMetalButton
             tamanho="md"
@@ -251,14 +271,14 @@ export default function PaginaInicialInspetor() {
 
       {/* Input de Busca */}
       <BarraBusca
-        placeholder="Buscar por ativos do hospital"
+        placeholder="Buscar sala cirúrgica"
         valor={termoBusca}
         aoMudar={setTermoBusca}
       />
 
-      {/* Lista de Carrinhos (Visual exato da 2ª imagem) */}
+      {/* Lista de Salas Cirúrgicas */}
       <div className="space-y-2.5 pb-4">
-        {carregando && ativos.length === 0 ? (
+        {carregando && salas.length === 0 ? (
           <div className="space-y-2.5">
             {[1, 2, 3].map((n) => (
               <div key={n} className="bg-white rounded-[28px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100/90 animate-pulse">
@@ -273,84 +293,77 @@ export default function PaginaInicialInspetor() {
               </div>
             ))}
           </div>
-        ) : ativosFiltrados.length === 0 ? (
+        ) : salasFiltradas.length === 0 ? (
           <div className="text-center py-8 text-sm text-gray-400 font-semibold">
-            Nenhum ativo encontrado.
+            Nenhuma sala encontrada.
           </div>
         ) : (
-          ativosFiltrados.map((item, i) => {
-            const isAnestesia = item.tag?.toLowerCase().includes('anestesia') || item.nome?.toLowerCase().includes('anestesia')
-            const isCarrinho = item.tag?.toLowerCase().includes('carrinho') || item.nome?.toLowerCase().includes('carrinho')
-            const iconeAtivo = isAnestesia ? '/icon-anestesia.webp' : '/icon-carrinho.webp'
-            return (
-              <Link
-                key={item.id}
-                href={`/inspetor/local/${item.localId}`}
-                prefetch={true}
-                className="block bg-white rounded-[28px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100/90 hover:border-gray-200 transition-all cursor-pointer select-none active:scale-[0.99]"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <div className="flex items-center justify-between gap-3 w-full">
-                  {/* Info Esquerda */}
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    {isCarrinho && (
-                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)] border border-gray-100/30">
-                        <img 
-                          src={iconeAtivo} 
-                          alt={item.nome || 'Carrinho'} 
-                          className="w-full h-full object-cover" 
-                        />
-                        {/* Sombra interna branca (innershadow branco) */}
-                        <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_2.5px_8px_rgba(255,255,255,0.95)] border border-white/25" />
-                      </div>
-                    )}
-                    <div className="min-w-0 space-y-0.5">
-                      {!isCarrinho && (
-                        <div className="pb-1">
-                          <PillTag cor={item.corTag}>
-                            {item.tag}
-                          </PillTag>
-                        </div>
-                      )}
-                      <h3 className="text-sm sm:text-base font-bold text-[#1E293B] tracking-tight break-words">
-                        {item.nome}
+          salasFiltradas.map((sala, i) => (
+            <Link
+              key={sala.id}
+              href={`/inspetor/local/${sala.id}`}
+              prefetch={true}
+              className="block bg-white rounded-[28px] p-3.5 sm:p-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-gray-100/90 hover:border-gray-200 hover:shadow-md transition-all cursor-pointer select-none active:scale-[0.99]"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              <div className="flex items-center justify-between gap-3 w-full">
+                {/* Ícone da Sala */}
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  {obterIconeSala(sala.nome) ? (
+                    <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100/40 shadow-xs">
+                      <img
+                        src={obterIconeSala(sala.nome)!}
+                        alt={sala.nome}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_1.5px_4px_rgba(255,255,255,0.9)]" />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[18px] bg-gradient-to-br from-[#246BFD]/10 to-[#246BFD]/5 flex items-center justify-center shrink-0 border border-[#246BFD]/10">
+                      <svg className="w-6 h-6 sm:w-7 sm:h-7 text-[#246BFD]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3H21m-3.75 3H21" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-bold text-[#1E293B] tracking-tight">
+                        {sala.nome}
                       </h3>
-                      
-                      <div className="space-y-0.5 pt-0.5">
-                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider leading-none">
-                          Última inspeção:
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          {item.statusUltima !== 'sem_inspecao' && (
-                            <span className={[
-                              'w-2 h-2 rounded-full shrink-0',
-                              item.statusUltima === 'critico' ? 'bg-red-500' :
-                              item.statusUltima === 'importante' ? 'bg-amber-500' :
-                              item.statusUltima === 'informativo' ? 'bg-blue-500' : 'bg-emerald-500'
-                            ].join(' ')} />
-                          )}
-                          <span className="text-xs sm:text-[13px] font-medium text-slate-600 leading-none">
-                            {item.ultimaInspecao}
-                          </span>
-                        </div>
-                      </div>
+                      <PillTag cor={sala.statusCor} className="scale-[0.85] origin-left">
+                        {sala.statusLabel}
+                      </PillTag>
+                    </div>
+
+                    <p className="text-xs font-semibold text-slate-500">
+                      {sala.ativosInspecionadosHoje} de {sala.totalAtivos} equipamentos verificados hoje
+                    </p>
+
+                    <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-slate-500 font-medium">
+                      <span className={[
+                        'w-2 h-2 rounded-full shrink-0',
+                        sala.concluidaHoje ? 'bg-emerald-500' :
+                        sala.statusCor === 'vermelho' ? 'bg-red-500' :
+                        sala.ativosInspecionadosHoje > 0 ? 'bg-amber-500' : 'bg-slate-300'
+                      ].join(' ')} />
+                      <span className="truncate">{sala.textoInspecao}</span>
                     </div>
                   </div>
-
-                  {/* Botão Círculo com Seta (Direita) */}
-                  <div className="w-8 h-8 rounded-full bg-[#F4F6FA] flex items-center justify-center text-gray-400 hover:text-texto transition-colors shrink-0">
-                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                  </div>
                 </div>
-              </Link>
-            )
-          })
+
+                {/* Seta */}
+                <div className="w-8 h-8 rounded-full bg-[#F4F6FA] flex items-center justify-center text-gray-400 hover:text-texto transition-colors shrink-0">
+                  <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </Link>
+          ))
         )}
       </div>
 
-      {/* Modal Mock de Digitar Código */}
+      {/* Modal de Digitar Código */}
       {mostrarModalCodigo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-xs animate-[fadeIn_0.2s_ease-out]">
           <div className="bg-white rounded-[24px] p-6 max-w-sm w-full shadow-xl border border-gray-100 space-y-4">
@@ -363,7 +376,7 @@ export default function PaginaInicialInspetor() {
               <input
                 type="text"
                 autoFocus
-                placeholder="Ex: QR-UTI-001"
+                placeholder="Ex: QR-SALA-01 ou QR-MON-S01"
                 value={codigoInput}
                 onChange={(e) => setCodigoInput(e.target.value)}
                 className="w-full bg-[#F4F6FA] border border-gray-200 rounded-full px-4 py-3 text-[16px] text-texto font-mono uppercase tracking-wider outline-none focus:border-[#246BFD]"
