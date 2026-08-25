@@ -344,6 +344,18 @@ export default function PaginaInicialInspetor() {
                       {sala.ativosInspecionadosHoje} de {sala.totalAtivos} equipamentos verificados hoje
                     </p>
 
+                    {/* Mini Progress Bar da Ronda */}
+                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${
+                          sala.concluidaHoje ? 'bg-emerald-500' :
+                          sala.statusCor === 'vermelho' ? 'bg-red-500' :
+                          sala.ativosInspecionadosHoje > 0 ? 'bg-[#246BFD]' : 'bg-transparent'
+                        }`}
+                        style={{ width: `${sala.totalAtivos > 0 ? Math.round((sala.ativosInspecionadosHoje / sala.totalAtivos) * 100) : 0}%` }}
+                      />
+                    </div>
+
                     <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-slate-500 font-medium">
                       <span className={[
                         'w-2 h-2 rounded-full shrink-0',

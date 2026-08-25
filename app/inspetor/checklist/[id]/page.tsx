@@ -278,14 +278,18 @@ function ComponenteChecklist() {
     trocarItensModelo()
   }, [modeloSelecionado?.id, isReadOnly])
 
+  // Redirecionar para a página da sala (não para a tela inicial) após sucesso
+  const localIdRetorno = ativo?.local_id
   useEffect(() => {
-    if (sucesso) {
+    if (sucesso && localIdRetorno) {
+      // Invalidar cache da sala para atualizar a progress bar e status dos ativos
+      dadosCache.invalidate(`inspetor_local_${localIdRetorno}`)
       const timer = setTimeout(() => {
-        router.push('/inspetor')
-      }, 4000)
+        router.push(`/inspetor/local/${localIdRetorno}`)
+      }, 3000)
       return () => clearTimeout(timer)
     }
-  }, [sucesso, router])
+  }, [sucesso, localIdRetorno, router])
 
   const totalRespondidos = Object.values(respostas).filter((r) => r.resposta !== null).length
   const progresso = itens.length > 0 ? Math.round((totalRespondidos / itens.length) * 100) : 0
@@ -1045,7 +1049,7 @@ function ComponenteChecklist() {
             <div className="space-y-1.5">
               <h3 className="text-lg font-bold text-slate-900 tracking-tight">Inspeção Enviada</h3>
               <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                A ronda foi registrada e os alertas foram disparados com sucesso.
+                Ronda registrada com sucesso. Voltando para a sala...
               </p>
             </div>
 
@@ -1054,8 +1058,8 @@ function ComponenteChecklist() {
               <LiquidMetalButton
                 tamanho="md"
                 larguraTotal
-                onClick={() => router.push('/inspetor')}
-                label="Entendido"
+                onClick={() => router.push(`/inspetor/local/${localIdRetorno}`)}
+                label="Voltar para a Sala"
               />
             </div>
 
