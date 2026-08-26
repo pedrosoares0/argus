@@ -54,6 +54,14 @@ function ComponenteChecklist() {
   const [sucesso, setSucesso] = useState(false)
   const [proximoAtivo, setProximoAtivo] = useState<{ id: string; nome: string } | null>(null)
 
+  const primeiroNome = (() => {
+    if (!usuario?.nome) return ''
+    const limpo = String(usuario.nome)
+      .replace(/^(Enf\.?|Enfermeiro\(a\)|Enfermeiro|Enfermeira|Téc\.?|Técnico|Técnica|Dr\.?|Dra\.?|Doutor|Doutora)\s+/i, '')
+      .trim()
+    return limpo.split(' ')[0] || ''
+  })()
+
   useEffect(() => {
     async function carregarDados() {
       try {
@@ -212,8 +220,59 @@ function ComponenteChecklist() {
           })
 
           const initialResps = Object.fromEntries(formatados.map((i: any) => [i.id, { resposta: null }]))
+          let respsFinais = initialResps
+
+          // Buscar se este ativo já foi inspecionado HOJE para pré-preencher as respostas salvas
+          try {
+            const inicioHoje = new Date()
+            inicioHoje.setHours(0, 0, 0, 0)
+
+            const { data: ultimaExecHoje } = await supabase
+              .from('execucoes_checklist')
+              .select('id, iniciado_em, finalizado_em')
+              .eq('ativo_id', targetAssetId)
+              .eq('status', 'concluida')
+              .gte('finalizado_em', inicioHoje.toISOString())
+              .order('finalizado_em', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+
+            if (ultimaExecHoje) {
+              const { data: itensExecSalvos } = await supabase
+                .from('itens_execucao_checklist')
+                .select('*, nao_conformidades(*)')
+                .eq('execucao_id', ultimaExecHoje.id)
+
+              if (itensExecSalvos && itensExecSalvos.length > 0) {
+                const respSalvasMap: Record<string, any> = {}
+                formatados.forEach((itemFormatado: any) => {
+                  const match = itensExecSalvos.find(
+                    (it: any) => 
+                      it.item_congelado?.descricao === itemFormatado.rawDescricao ||
+                      it.item_congelado?.ordem === itemFormatado.ordem
+                  )
+
+                  if (match) {
+                    respSalvasMap[itemFormatado.id] = {
+                      resposta: match.resposta,
+                      evidencia_url: match.evidencia_url || null,
+                      evidencia_texto: match.evidencia_texto || null,
+                      criticidade: match.criticidade,
+                      setor_responsavel: match.nao_conformidades?.[0]?.setor_responsavel || 'engenharia_clinica'
+                    }
+                  } else {
+                    respSalvasMap[itemFormatado.id] = { resposta: null }
+                  }
+                })
+                respsFinais = respSalvasMap
+              }
+            }
+          } catch (errExecAnterior) {
+            console.error('Erro ao verificar execução anterior de hoje:', errExecAnterior)
+          }
+
           setItens(formatados)
-          setRespostas((prev) => Object.keys(prev).length > 0 ? prev : initialResps)
+          setRespostas(respsFinais)
           setExpandida((prev) => prev || formatados[0]?.id || null)
 
           dadosCache.set(cacheKey, {
@@ -221,7 +280,7 @@ function ComponenteChecklist() {
             modelos: modelosData,
             modeloSelecionado: padrao,
             itens: formatados,
-            respostas: initialResps,
+            respostas: respsFinais,
             expandida: formatados[0]?.id || null,
           })
         }
@@ -1088,7 +1147,9 @@ function ComponenteChecklist() {
 
             {/* Typography */}
             <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Inspeção Concluída</h3>
+              <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+                {primeiroNome ? `Inspeção Concluída, ${primeiroNome}!` : 'Inspeção Concluída!'}
+              </h3>
               <p className="text-xs text-slate-500 font-semibold leading-relaxed">
                 {proximoAtivo
                   ? `Ronda salva com sucesso. Deseja continuar para o próximo equipamento da sala?`
