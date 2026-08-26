@@ -10,6 +10,13 @@ import { dadosCache } from '@/lib/cache/dadosCache'
 import { TODOS_SETORES, SETORES_LABELS, SETORES_ICONES } from '@/lib/roteamentoNC'
 import type { RespostaItem, CriticidadeItem, SetorTecnico } from '@/lib/supabase/types'
 
+const SETORES_CORES_ATIVAS: Record<string, string> = {
+  engenharia_clinica: 'bg-amber-100/90 border-amber-300 text-amber-900 shadow-xs scale-[1.02]',
+  manutencao: 'bg-slate-200/90 border-slate-300 text-slate-800 shadow-xs scale-[1.02]',
+  farmacia: 'bg-red-100/90 border-red-300 text-red-900 shadow-xs scale-[1.02]',
+  almoxarifado: 'bg-[#F2E8E1] border-[#D9C3B0] text-[#6E3516] shadow-xs scale-[1.02]'
+}
+
 function ComponenteChecklist() {
   const router = useRouter()
   const params = useParams()
@@ -931,20 +938,15 @@ function ComponenteChecklist() {
                       id={`nc-form-${secao.id}`}
                       className="bg-[#FAFBFD] border border-slate-200/90 rounded-[22px] p-4 sm:p-5 space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] animate-[fadeIn_0.2s_ease-out] mt-3"
                     >
-                      {/* Header do Form */}
-                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-[#EA3A3A] animate-pulse shrink-0" />
-                          <h4 className="text-xs font-bold text-slate-800 tracking-tight">
-                            Registro de Não Conformidade
-                          </h4>
-                        </div>
-                        <span className="text-[10px] font-bold text-[#EA3A3A] bg-red-50/80 px-2 py-0.5 rounded-full border border-red-150">
-                          Abertura de Chamado
-                        </span>
+                      {/* Header do Form — Título em linha única e maior */}
+                      <div className="flex items-center gap-2 pb-2.5 border-b border-slate-200/60">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#EA3A3A] animate-pulse shrink-0" />
+                        <h4 className="text-sm sm:text-[15px] font-bold text-slate-900 tracking-tight whitespace-nowrap">
+                          Registro de Não Conformidade
+                        </h4>
                       </div>
 
-                      {/* Setor Responsável */}
+                      {/* Setor Responsável — Categorizados por cor suave */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                           Setor Responsável
@@ -952,6 +954,7 @@ function ComponenteChecklist() {
                         <div className="flex flex-wrap gap-1.5">
                           {TODOS_SETORES.map((s) => {
                             const sel = ncSetor === s
+                            const corAtiva = SETORES_CORES_ATIVAS[s] || 'bg-slate-200 text-slate-800 border-slate-300'
                             return (
                               <button
                                 key={s}
@@ -960,7 +963,7 @@ function ComponenteChecklist() {
                                 className={[
                                   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all cursor-pointer select-none',
                                   sel
-                                    ? 'bg-[#246BFD] border-[#246BFD] text-white shadow-[0_2px_8px_rgba(36,107,253,0.3)] scale-[1.02]'
+                                    ? corAtiva
                                     : 'bg-white border-slate-200/90 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                                 ].join(' ')}
                               >
@@ -972,18 +975,18 @@ function ComponenteChecklist() {
                         </div>
                       </div>
 
-                      {/* Descrição */}
+                      {/* Descrição — Campo ampliado e placeholder limpo */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                           O que está inconforme?
                         </label>
                         <textarea
-                          rows={2.5}
+                          rows={3.5}
                           required
-                          placeholder="Descreva o problema encontrado (ex: laringoscópio sem bateria, trava do carrinho rompida)..."
+                          placeholder="Descreva o motivo da não conformidade..."
                           value={ncDescricao}
                           onChange={(e) => setNcDescricao(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#EA3A3A] focus:ring-2 focus:ring-[#EA3A3A]/10 transition-all resize-none shadow-2xs font-medium"
+                          className="w-full min-h-[85px] bg-white border border-slate-200 rounded-xl p-3.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#EA3A3A] focus:ring-2 focus:ring-[#EA3A3A]/10 transition-all resize-none shadow-2xs font-medium leading-relaxed"
                         />
                       </div>
 
