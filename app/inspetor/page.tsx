@@ -96,7 +96,7 @@ export default function PaginaInicialInspetor() {
 
             // Determinar status real da sala
             let statusLabel = 'Pendente'
-            let statusCor: 'verde' | 'laranja' | 'vermelho' | 'azul' = 'azul'
+            let statusCor: 'verde' | 'laranja' | 'vermelho' | 'azul' | 'cinza' = 'azul'
 
             if (temNcCritica) {
               statusLabel = 'Crítico'
@@ -108,8 +108,8 @@ export default function PaginaInicialInspetor() {
               statusLabel = `Pronta (${totalAtivos}/${totalAtivos})`
               statusCor = 'verde'
             } else if (ativosInspecionadosHoje > 0) {
-              statusLabel = `Em andamento (${ativosInspecionadosHoje}/${totalAtivos})`
-              statusCor = 'laranja'
+              statusLabel = `Vistoriando (${ativosInspecionadosHoje}/${totalAtivos})`
+              statusCor = 'cinza'
             } else {
               statusLabel = `Pendente (0/${totalAtivos})`
               statusCor = 'azul'
@@ -361,7 +361,7 @@ export default function PaginaInicialInspetor() {
                         'w-2 h-2 rounded-full shrink-0',
                         sala.concluidaHoje ? 'bg-emerald-500' :
                         sala.statusCor === 'vermelho' ? 'bg-red-500' :
-                        sala.ativosInspecionadosHoje > 0 ? 'bg-amber-500' : 'bg-slate-300'
+                        sala.ativosInspecionadosHoje > 0 ? 'bg-slate-500' : 'bg-slate-300'
                       ].join(' ')} />
                       <span className="truncate">{sala.textoInspecao}</span>
                     </div>

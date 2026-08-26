@@ -272,8 +272,8 @@ export default function PaginaLocal() {
     statusSalaLabel = 'Pronta (9/9)'
     statusSalaCor = 'verde'
   } else if (totalInspecionadosHoje > 0) {
-    statusSalaLabel = `Em andamento (${totalInspecionadosHoje}/${totalAtivos})`
-    statusSalaCor = 'laranja'
+    statusSalaLabel = `Vistoriando (${totalInspecionadosHoje}/${totalAtivos})`
+    statusSalaCor = 'cinza'
   } else {
     statusSalaLabel = `Pendente (0/${totalAtivos || 9})`
     statusSalaCor = 'azul'

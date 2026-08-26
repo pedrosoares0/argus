@@ -52,6 +52,7 @@ function ComponenteChecklist() {
   })
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState(false)
+  const [proximoAtivo, setProximoAtivo] = useState<{ id: string; nome: string } | null>(null)
 
   useEffect(() => {
     async function carregarDados() {
@@ -224,6 +225,57 @@ function ComponenteChecklist() {
             expandida: formatados[0]?.id || null,
           })
         }
+
+        // 6. Buscar outros ativos desta mesma sala para identificar o próximo equipamento da ronda
+        if (ativoData.local_id) {
+          try {
+            const inicioHoje = new Date()
+            inicioHoje.setHours(0, 0, 0, 0)
+
+            const [salaAtivosRes, execsHojeRes] = await Promise.all([
+              supabase
+                .from('sala_ativos')
+                .select('ativo_id, ativos(id, nome)')
+                .eq('local_id', ativoData.local_id),
+              supabase
+                .from('execucoes_checklist')
+                .select('ativo_id')
+                .eq('status', 'concluida')
+                .gte('finalizado_em', inicioHoje.toISOString())
+            ])
+
+            const salaAtivosData = (salaAtivosRes.data || [])
+              .filter((sa: any) => sa.ativos)
+              .map((sa: any) => sa.ativos)
+
+            const inspecionadosHoje = new Set((execsHojeRes.data || []).map((e: any) => e.ativo_id))
+
+            // 1º Prioridade: Próximo ativo da sala que AINDA NÃO foi inspecionado hoje (e diferente do atual)
+            const pendentes = salaAtivosData.filter(
+              (a: any) => a.id !== targetAssetId && !inspecionadosHoje.has(a.id)
+            )
+
+            if (pendentes.length > 0) {
+              setProximoAtivo(pendentes[0])
+            } else {
+              // 2º Se todos os outros já foram inspecionados, pega o próximo pela sequência da lista
+              const idxAtual = salaAtivosData.findIndex((a: any) => a.id !== targetAssetId)
+              const outros = salaAtivosData.filter((a: any) => a.id !== targetAssetId)
+              if (outros.length > 0 && idxAtual !== -1) {
+                const proximoOrdem = salaAtivosData[(idxAtual + 1) % salaAtivosData.length]
+                if (proximoOrdem && proximoOrdem.id !== targetAssetId) {
+                  setProximoAtivo(proximoOrdem)
+                } else {
+                  setProximoAtivo(null)
+                }
+              } else {
+                setProximoAtivo(null)
+              }
+            }
+          } catch (errProximo) {
+            console.error('Erro ao calcular próximo ativo da sala:', errProximo)
+          }
+        }
       } catch (err: any) {
         console.error(err)
         setErro(`Erro de conexão: ${err.message || err}`)
@@ -278,18 +330,7 @@ function ComponenteChecklist() {
     trocarItensModelo()
   }, [modeloSelecionado?.id, isReadOnly])
 
-  // Redirecionar para a página da sala (não para a tela inicial) após sucesso
   const localIdRetorno = ativo?.local_id
-  useEffect(() => {
-    if (sucesso && localIdRetorno) {
-      // Invalidar cache da sala para atualizar a progress bar e status dos ativos
-      dadosCache.invalidate(`inspetor_local_${localIdRetorno}`)
-      const timer = setTimeout(() => {
-        router.push(`/inspetor/local/${localIdRetorno}`)
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [sucesso, localIdRetorno, router])
 
   const totalRespondidos = Object.values(respostas).filter((r) => r.resposta !== null).length
   const progresso = itens.length > 0 ? Math.round((totalRespondidos / itens.length) * 100) : 0
@@ -1047,20 +1088,45 @@ function ComponenteChecklist() {
 
             {/* Typography */}
             <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Inspeção Enviada</h3>
+              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Inspeção Concluída</h3>
               <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                Ronda registrada com sucesso. Voltando para a sala...
+                {proximoAtivo
+                  ? `Ronda salva com sucesso. Deseja continuar para o próximo equipamento da sala?`
+                  : `Ronda finalizada com sucesso! Todos os equipamentos desta sala foram verificados.`}
               </p>
             </div>
 
-            {/* CTA button */}
-            <div className="w-full pt-1.5">
-              <LiquidMetalButton
+            {/* Ações (Próximo Ativo + Voltar para a Sala) */}
+            <div className="w-full pt-2 flex flex-col gap-2.5">
+              {proximoAtivo && (
+                <LiquidMetalButton
+                  tamanho="md"
+                  larguraTotal
+                  onClick={() => {
+                    dadosCache.invalidate('inspetor_')
+                    setSucesso(false)
+                    setAtivo(null)
+                    setModeloSelecionado(null)
+                    setItens([])
+                    setRespostas({})
+                    setCarregando(true)
+                    router.push(`/inspetor/checklist/${proximoAtivo.id}`)
+                  }}
+                  label={`Próxima ronda: ${proximoAtivo.nome.split(' - ')[0].replace('Carrinho de ', 'Car. ')}`}
+                />
+              )}
+
+              <Botao
+                variante={proximoAtivo ? 'secundario' : 'primario'}
                 tamanho="md"
                 larguraTotal
-                onClick={() => router.push(`/inspetor/local/${localIdRetorno}`)}
-                label="Voltar para a Sala"
-              />
+                onClick={() => {
+                  dadosCache.invalidate('inspetor_')
+                  router.push(`/inspetor/local/${localIdRetorno}`)
+                }}
+              >
+                Voltar para a Sala
+              </Botao>
             </div>
 
           </div>
