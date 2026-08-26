@@ -7,8 +7,7 @@ import { PillTag } from '@/components/ui/PillTag'
 import { AvatarPerfil } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
-import { SETORES_LABELS, TIPOS_NC_LABELS, SETORES_CORES } from '@/lib/roteamentoNC'
-import { verificarTecnicoAtivo } from '@/lib/supabase/mockDb'
+import { SETORES_LABELS, TIPOS_NC_LABELS, SETORES_CORES, verificarTecnicoAtivo } from '@/lib/roteamentoNC'
 import type { StatusNaoConformidade, CriticidadeItem, SetorTecnico, TipoNaoConformidade } from '@/lib/supabase/types'
 
 const CRITICIDADE_ORDEM: Record<CriticidadeItem, number> = {

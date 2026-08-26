@@ -80,3 +80,13 @@ export const TODOS_SETORES: SetorTecnico[] = [
   'farmacia',
   'almoxarifado',
 ]
+
+/**
+ * Verifica se há pelo menos um técnico ativo no setor dado.
+ * Retorna true para engenharia_clinica e false para demais setores por padrão.
+ */
+export function verificarTecnicoAtivo(setor: SetorTecnico | null, _hospitalId?: string): boolean {
+  if (!setor) return false
+  return setor === 'engenharia_clinica'
+}
+

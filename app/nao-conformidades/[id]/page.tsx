@@ -7,8 +7,7 @@ import { Botao } from '@/components/ui/Botao'
 import { PillTag } from '@/components/ui/PillTag'
 import { QRCodeAtivo } from '@/components/ui/QRCodeAtivo'
 import { criarClienteSupabase } from '@/lib/supabase/client'
-import { SETORES_LABELS, TIPOS_NC_LABELS, SETORES_CORES } from '@/lib/roteamentoNC'
-import { verificarTecnicoAtivo } from '@/lib/supabase/mockDb'
+import { SETORES_LABELS, TIPOS_NC_LABELS, SETORES_CORES, verificarTecnicoAtivo } from '@/lib/roteamentoNC'
 import type { StatusNaoConformidade, StatusAtivo, SetorTecnico, TipoNaoConformidade } from '@/lib/supabase/types'
 
 const STATUS_CORES: Record<StatusNaoConformidade, 'azul' | 'laranja' | 'verde' | 'vermelho' | 'cinza'> = {

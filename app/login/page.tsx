@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Botao } from '@/components/ui/Botao'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
-import { setUsuarioLogado, DEFAULT_USER, COORDENADOR_USER } from '@/lib/supabase/mockDb'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
 import { Avatar } from '@/components/ui/Avatar'
@@ -118,7 +117,7 @@ function FormularioLogin() {
         return
       }
 
-      // Bridging session profile to mockDb localStorage state so coordinator and engineering pages continue working
+      // Grava perfil da sessão no localStorage para acesso síncrono rápido no cliente
       localStorage.setItem('argus_usuario_atual', JSON.stringify({
         id: profile.id,
         nome: profile.nome,
