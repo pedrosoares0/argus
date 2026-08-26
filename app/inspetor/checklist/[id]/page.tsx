@@ -756,7 +756,7 @@ function ComponenteChecklist() {
           const StatusIcon = () => {
             if (resp.resposta === 'conforme') {
               return (
-                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-b from-[#54D362] to-[#31B44A] shadow-[0_2px_6px_rgba(49,180,74,0.3)] flex items-center justify-center shrink-0">
                   <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                   </svg>
@@ -852,10 +852,10 @@ function ComponenteChecklist() {
                         'flex flex-col items-center justify-center gap-1.5',
                         isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
                         isConf
-                          ? 'bg-[#34C759] border-[#34C759] text-white shadow-[0_4px_12px_rgba(52,199,89,0.25)] scale-[1.03] z-10'
+                          ? 'bg-gradient-to-b from-[#54D362] to-[#31B44A] border-[#31B44A] text-white shadow-[0_4px_12px_rgba(49,180,74,0.35)] scale-[1.03] z-10'
                           : hasResp
                             ? 'bg-slate-50/50 border-slate-100 text-slate-500 opacity-45 scale-[0.97]'
-                            : 'bg-white border-[#34C759]/30 text-[#34C759] hover:bg-[#34C759]/5',
+                            : 'bg-white border-[#31B44A]/35 text-[#31B44A] hover:bg-[#31B44A]/5',
                       ].join(' ')}
                     >
                       <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -1139,7 +1139,7 @@ function ComponenteChecklist() {
           <div className="bg-white/95 backdrop-blur-xl rounded-[28px] p-6 max-w-sm w-full shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-white/40 flex flex-col items-center text-center space-y-4 animate-[scaleIn_0.25s_ease-out]">
             
             {/* Animated Success Checkmark Ring */}
-            <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner border border-emerald-100 relative overflow-hidden group">
+            <div className="w-16 h-16 rounded-full bg-[#31B44A]/10 flex items-center justify-center text-[#31B44A] shadow-inner border border-[#31B44A]/20 relative overflow-hidden group">
               <svg className="w-8 h-8 animate-[scaleIn_0.3s_ease-out]" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>

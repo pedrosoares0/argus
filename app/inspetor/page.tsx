@@ -348,7 +348,7 @@ export default function PaginaInicialInspetor() {
                     <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mt-1">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ease-out ${
-                          sala.concluidaHoje ? 'bg-emerald-500' :
+                          sala.concluidaHoje ? 'bg-[#31B44A]' :
                           sala.statusCor === 'vermelho' ? 'bg-red-500' :
                           sala.ativosInspecionadosHoje > 0 ? 'bg-[#246BFD]' : 'bg-transparent'
                         }`}
@@ -359,7 +359,7 @@ export default function PaginaInicialInspetor() {
                     <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-slate-500 font-medium">
                       <span className={[
                         'w-2 h-2 rounded-full shrink-0',
-                        sala.concluidaHoje ? 'bg-emerald-500' :
+                        sala.concluidaHoje ? 'bg-[#31B44A]' :
                         sala.statusCor === 'vermelho' ? 'bg-red-500' :
                         sala.ativosInspecionadosHoje > 0 ? 'bg-slate-500' : 'bg-slate-300'
                       ].join(' ')} />

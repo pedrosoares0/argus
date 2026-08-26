@@ -489,7 +489,7 @@ export default function PaginaLocal() {
                       <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                         <span className={[
                           'w-2 h-2 rounded-full shrink-0',
-                          badgeCor === 'verde' ? 'bg-emerald-500' :
+                          badgeCor === 'verde' ? 'bg-[#31B44A]' :
                           badgeCor === 'vermelho' ? 'bg-red-500' :
                           badgeCor === 'laranja' ? 'bg-amber-500' : 'bg-slate-300'
                         ].join(' ')} />
