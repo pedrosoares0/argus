@@ -398,6 +398,11 @@ function ComponenteChecklist() {
   function setResposta(id: string, resposta: RespostaItem) {
     if (resposta === 'nao_conforme') {
       const item = itens.find(i => i.id === id)
+      // Remove qualquer resposta anterior deste item para garantir exclusividade mútua imediata
+      setRespostas((prev) => ({
+        ...prev,
+        [id]: { resposta: 'nao_conforme', evidencia_url: null, evidencia_texto: '' }
+      }))
       setModalNcItem(item)
       setNcDescricao('')
       setNcCriticidade('critico')
@@ -413,6 +418,9 @@ function ComponenteChecklist() {
         }
       }, 150)
     } else {
+      if (modalNcItem?.id === id) {
+        setModalNcItem(null)
+      }
       setRespostas((prev) => ({ ...prev, [id]: { resposta, evidencia_url: null, evidencia_texto: null } }))
       avancarProxima(id)
     }
@@ -492,6 +500,15 @@ function ComponenteChecklist() {
   }
 
   function handleCancelarModalNc() {
+    if (modalNcItem) {
+      setRespostas((prev) => {
+        const atual = prev[modalNcItem.id]
+        if (atual?.resposta === 'nao_conforme' && !atual?.evidencia_texto) {
+          return { ...prev, [modalNcItem.id]: { resposta: null } }
+        }
+        return prev
+      })
+    }
     setModalNcItem(null)
   }
 
@@ -747,14 +764,15 @@ function ComponenteChecklist() {
         {itens.map((secao) => {
           const resp = respostas[secao.id] || { resposta: null }
           const aberta = expandida === secao.id
-          const hasResp = resp.resposta !== null || modalNcItem?.id === secao.id
-          const isConf = resp.resposta === 'conforme'
-          const isNc = resp.resposta === 'nao_conforme' || modalNcItem?.id === secao.id
-          const isNsa = resp.resposta === 'nao_se_aplica'
+          const isOpeningNc = modalNcItem?.id === secao.id
+          const hasResp = resp.resposta !== null || isOpeningNc
+          const isConf = resp.resposta === 'conforme' && !isOpeningNc
+          const isNc = isOpeningNc || (resp.resposta === 'nao_conforme' && !isOpeningNc)
+          const isNsa = resp.resposta === 'nao_se_aplica' && !isOpeningNc
 
           // Ícone de status baseado na resposta
           const StatusIcon = () => {
-            if (resp.resposta === 'conforme') {
+            if (isConf) {
               return (
                 <div className="w-6 h-6 rounded-full bg-gradient-to-b from-[#54D362] to-[#31B44A] shadow-[0_2px_6px_rgba(49,180,74,0.3)] flex items-center justify-center shrink-0">
                   <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
@@ -763,16 +781,16 @@ function ComponenteChecklist() {
                 </div>
               )
             }
-            if (resp.resposta === 'nao_conforme') {
+            if (isNc) {
               return (
-                <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shrink-0">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-b from-[#F45F63] to-[#EA3A3A] shadow-[0_2px_6px_rgba(234,58,58,0.3)] flex items-center justify-center shrink-0">
                   <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
               )
             }
-            if (resp.resposta === 'nao_se_aplica') {
+            if (isNsa) {
               return (
                 <div className="w-6 h-6 rounded-full bg-slate-400 flex items-center justify-center shrink-0 shadow-sm">
                   <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
@@ -873,10 +891,10 @@ function ComponenteChecklist() {
                         'flex flex-col items-center justify-center gap-1.5',
                         isReadOnly ? 'cursor-default' : 'cursor-pointer active:scale-95',
                         isNc
-                          ? 'bg-[#FF3B30] border-[#FF3B30] text-white shadow-[0_4px_12px_rgba(255,59,48,0.25)] scale-[1.03] z-10'
+                          ? 'bg-gradient-to-b from-[#F45F63] to-[#EA3A3A] border-[#EA3A3A] text-white shadow-[0_4px_12px_rgba(234,58,58,0.35)] scale-[1.03] z-10'
                           : hasResp
                             ? 'bg-slate-50/50 border-slate-100 text-slate-500 opacity-45 scale-[0.97]'
-                            : 'bg-white border-[#FF3B30]/30 text-[#FF3B30] hover:bg-[#FF3B30]/5',
+                            : 'bg-white border-[#EA3A3A]/35 text-[#EA3A3A] hover:bg-[#EA3A3A]/5',
                       ].join(' ')}
                     >
                       <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -907,18 +925,28 @@ function ComponenteChecklist() {
                     </button>
                   </div>
 
-                  {/* Formulário Inline de Registro de Não Conformidade */}
+                  {/* Formulário Inline de Registro de Não Conformidade (Design Apple / Linear) */}
                   {!isReadOnly && modalNcItem?.id === secao.id && (
-                    <div id={`nc-form-${secao.id}`} className="bg-[#FF3B30]/5 border border-[#FF3B30]/10 rounded-2xl p-4.5 space-y-4 animate-[fadeIn_0.15s_ease-out] mt-3">
-                      <div>
-                        <h4 className="text-xs font-bold text-[#FF3B30] uppercase tracking-wider">
-                          Detalhes da Não Conformidade
-                        </h4>
+                    <div
+                      id={`nc-form-${secao.id}`}
+                      className="bg-[#FAFBFD] border border-slate-200/90 rounded-[22px] p-4 sm:p-5 space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)] animate-[fadeIn_0.2s_ease-out] mt-3"
+                    >
+                      {/* Header do Form */}
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#EA3A3A] animate-pulse shrink-0" />
+                          <h4 className="text-xs font-bold text-slate-800 tracking-tight">
+                            Registro de Não Conformidade
+                          </h4>
+                        </div>
+                        <span className="text-[10px] font-bold text-[#EA3A3A] bg-red-50/80 px-2 py-0.5 rounded-full border border-red-150">
+                          Abertura de Chamado
+                        </span>
                       </div>
 
                       {/* Setor Responsável */}
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                           Setor Responsável
                         </label>
                         <div className="flex flex-wrap gap-1.5">
@@ -930,13 +958,13 @@ function ComponenteChecklist() {
                                 type="button"
                                 onClick={() => setNcSetor(s)}
                                 className={[
-                                  'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all cursor-pointer select-none',
+                                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all cursor-pointer select-none',
                                   sel
-                                    ? 'bg-[#246BFD]/10 border-[#246BFD]/40 text-[#246BFD]'
-                                    : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                                    ? 'bg-[#246BFD] border-[#246BFD] text-white shadow-[0_2px_8px_rgba(36,107,253,0.3)] scale-[1.02]'
+                                    : 'bg-white border-slate-200/90 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
                                 ].join(' ')}
                               >
-                                <span>{SETORES_ICONES[s]}</span>
+                                <span className="text-xs">{SETORES_ICONES[s]}</span>
                                 <span>{SETORES_LABELS[s]}</span>
                               </button>
                             )
@@ -945,23 +973,23 @@ function ComponenteChecklist() {
                       </div>
 
                       {/* Descrição */}
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                           O que está inconforme?
                         </label>
                         <textarea
                           rows={2.5}
                           required
-                          placeholder="Ex: Faltando cânula de Guedel ou laringoscópio sem bateria..."
+                          placeholder="Descreva o problema encontrado (ex: laringoscópio sem bateria, trava do carrinho rompida)..."
                           value={ncDescricao}
                           onChange={(e) => setNcDescricao(e.target.value)}
-                          className="w-full bg-white border border-gray-200/80 rounded-xl px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#FF3B30] focus:ring-1 focus:ring-[#FF3B30]/10 transition-all resize-none"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#EA3A3A] focus:ring-2 focus:ring-[#EA3A3A]/10 transition-all resize-none shadow-2xs font-medium"
                         />
                       </div>
 
-                      {/* Evidência */}
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                      {/* Evidência Fotográfica */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                           Evidência Fotográfica
                         </label>
 
@@ -981,11 +1009,11 @@ function ComponenteChecklist() {
                         />
 
                         {ncFotoPreview ? (
-                          <div className="relative">
+                          <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-xs">
                             <img
                               src={ncFotoPreview}
                               alt="Preview"
-                              className="w-full h-28 object-cover rounded-xl border border-gray-200"
+                              className="w-full h-32 object-cover"
                             />
                             <button
                               type="button"
@@ -993,7 +1021,7 @@ function ComponenteChecklist() {
                                 setNcFotoPreview(null)
                                 setNcFotoFile(null)
                               }}
-                              className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center text-[10px] font-bold hover:bg-black/80 cursor-pointer"
+                              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/65 text-white flex items-center justify-center text-xs font-bold hover:bg-black/85 cursor-pointer shadow-md transition-all"
                             >
                               ✕
                             </button>
@@ -1002,26 +1030,28 @@ function ComponenteChecklist() {
                           <button
                             type="button"
                             onClick={() => document.getElementById(`foto-input-${secao.id}`)?.click()}
-                            className="w-full h-18 rounded-xl border-2 border-dashed border-gray-250 bg-slate-50/50 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-[#FF3B30] hover:text-[#FF3B30] transition-colors cursor-pointer"
+                            className="w-full h-16 rounded-xl border border-dashed border-slate-300 bg-white hover:bg-slate-50/80 hover:border-[#EA3A3A]/50 flex items-center justify-center gap-2.5 text-slate-500 hover:text-[#EA3A3A] transition-all cursor-pointer shadow-2xs group"
                           >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316z" />
-                            </svg>
-                            <span className="text-[10px] font-bold">Tirar foto ou anexar</span>
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-red-50 flex items-center justify-center text-slate-600 group-hover:text-[#EA3A3A] transition-colors">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316z" />
+                              </svg>
+                            </div>
+                            <span className="text-xs font-bold tracking-tight">Tirar foto ou anexar evidência</span>
                           </button>
                         )}
                       </div>
 
                       {/* Criticidade */}
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
-                          Criticidade
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                          Criticidade do Chamado
                         </label>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1.5 p-1 bg-slate-100/80 rounded-2xl border border-slate-200/60">
                           {[
-                            { valor: 'critico', label: 'Crítico', cor: 'bg-red-50 text-red-700 border-red-200' },
-                            { valor: 'importante', label: 'Importante', cor: 'bg-amber-50 text-amber-700 border-amber-200' },
-                            { valor: 'informativo', label: 'Informativo', cor: 'bg-sky-50 text-sky-700 border-sky-200' }
+                            { valor: 'critico', label: 'Crítico', cor: 'bg-[#EA3A3A] text-white shadow-xs' },
+                            { valor: 'importante', label: 'Importante', cor: 'bg-[#F78725] text-white shadow-xs' },
+                            { valor: 'informativo', label: 'Informativo', cor: 'bg-[#007AFF] text-white shadow-xs' }
                           ].map((c) => {
                             const sel = ncCriticidade === c.valor
                             return (
@@ -1030,8 +1060,8 @@ function ComponenteChecklist() {
                                 type="button"
                                 onClick={() => setNcCriticidade(c.valor as any)}
                                 className={[
-                                  'flex-1 py-1.5 px-0.5 text-[10px] sm:text-[11px] font-extrabold rounded-xl border text-center transition-all cursor-pointer',
-                                  sel ? `${c.cor} border border-current shadow-xs scale-[1.01]` : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                  'flex-1 py-2 px-1 text-[11px] sm:text-xs font-bold rounded-xl transition-all cursor-pointer select-none text-center',
+                                  sel ? `${c.cor} font-black scale-[1.01]` : 'text-slate-500 hover:text-slate-800'
                                 ].join(' ')}
                               >
                                 {c.label}
@@ -1042,7 +1072,7 @@ function ComponenteChecklist() {
                       </div>
 
                       {/* Ações */}
-                      <div className="flex gap-2 pt-1">
+                      <div className="flex gap-2 pt-2">
                         <Botao
                           type="button"
                           variante="secundario"
@@ -1060,7 +1090,7 @@ function ComponenteChecklist() {
                           carregando={ncEnviando}
                           disabled={!ncDescricao.trim()}
                           tamanho="sm"
-                          label="Confirmar"
+                          label="Confirmar NC"
                         />
                       </div>
                     </div>
