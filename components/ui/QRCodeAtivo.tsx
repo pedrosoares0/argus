@@ -222,12 +222,24 @@ export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio 
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#246BFD] hover:text-[#1C54D4] transition-colors py-1.5 px-3 rounded-xl bg-[#EBF4FF] hover:bg-[#EBF4FF]/80 cursor-pointer"
+        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#246BFD] hover:text-[#1C54D4] transition-colors py-1.5 px-2.5 rounded-xl bg-[#EBF4FF] hover:bg-[#EBF4FF]/80 cursor-pointer"
       >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h3.375c.621 0 1.125.504 1.125 1.125v3.375c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 8.25V4.875zM3.75 14.625c0-.621.504-1.125 1.125-1.125h3.375c.621 0 1.125.504 1.125 1.125V18c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 18v-3.375zM13.5 4.875c0-.621.504-1.125 1.125-1.125H18c.621 0 1.125.504 1.125 1.125v3.375c0 .621-.504 1.125-1.125 1.125h-3.375a1.125 1.125 0 01-1.125-1.125V4.875zM13.5 14.625c0-.621.504-1.125 1.125-1.125H18c.621 0 1.125.504 1.125 1.125V18c0 .621-.504 1.125-1.125 1.125h-3.375a1.125 1.125 0 01-1.125-1.125v-3.375z" />
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+          {/* Top-left scan marker */}
+          <path d="M3 3h5v2H5v3H3V3z" />
+          {/* Top-right scan marker */}
+          <path d="M16 3h5v5h-2V5h-3V3z" />
+          {/* Bottom-left scan marker */}
+          <path d="M3 16v5h5v-2H5v-3H3z" />
+          {/* Bottom-right scan marker */}
+          <path d="M21 16v5h-5v-2h3v-3h2z" />
+          {/* Inner QR pattern */}
+          <rect x="7" y="7" width="4" height="4" rx="0.5" />
+          <rect x="13" y="7" width="4" height="4" rx="0.5" />
+          <rect x="7" y="13" width="4" height="4" rx="0.5" />
+          <rect x="14" y="14" width="2" height="2" rx="0.3" />
         </svg>
-        QR Code do Ativo
+        QRCode
       </button>
 
       {/* Modal */}
