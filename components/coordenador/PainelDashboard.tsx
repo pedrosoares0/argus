@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Avatar, AvatarPerfil } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { dadosCache } from '@/lib/cache/dadosCache'
+import { CardsMetricasAtivos, type ContadoresAtivos } from '@/components/coordenador/CardsMetricasAtivos'
 
 type PeriodoFiltro = '7d' | '15d' | '30d'
 
@@ -23,6 +24,8 @@ interface InspetorRanking {
 }
 
 interface DadosDashboard {
+  // Contadores Globais de Ativos
+  contadoresAtivos: ContadoresAtivos
   // Rondas
   rondasNoPeriodo: number
   rondasSemNcNoPeriodo: number
@@ -327,6 +330,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           totalNcsAbertasRes,
           ncsParaRankingRes,
           ncsTodasPeriodoRes,
+          ativosRes,
         ] = await Promise.all([
           supabase
             .from('execucoes_checklist')
@@ -368,6 +372,10 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
             .select('id, criticidade')
             .eq('hospital_id', hospitalId)
             .gte('criado_em', dataInicioISO),
+          supabase
+            .from('ativos')
+            .select('id, status, locais(nome)')
+            .eq('hospital_id', hospitalId),
         ])
 
         const mapaUsuarios = new Map<string, { nome: string; perfil: string; avatarUrl?: string }>()
@@ -584,7 +592,29 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
           }
         })
 
+        // Cálculo de contadores globais de ativos para os cards de métricas
+        const ativosData = ativosRes.data || []
+        const ativosValidos = ativosData.filter((a: any) => {
+          const nomeLocal = (a.locais?.nome || '').toLowerCase()
+          return !nomeLocal.includes('sala 02') && !nomeLocal.includes('sala 2')
+        })
+        const totalAtivos = ativosValidos.length
+        const totalOperacional = ativosValidos.filter((a: any) => a.status === 'operacional').length
+        const totalRestricoes = ativosValidos.filter((a: any) => a.status === 'operacional_com_restricoes').length
+        const totalIndisponivel = ativosValidos.filter((a: any) => a.status === 'indisponivel' || a.status === 'em_manutencao').length
+        const taxaAtivosConformidade = totalAtivos > 0 ? Math.round((totalOperacional / totalAtivos) * 100) : 100
+
+        const contadoresAtivos: ContadoresAtivos = {
+          total: totalAtivos,
+          operacional: totalOperacional,
+          operacional_com_restricoes: totalRestricoes,
+          indisponivelOuManutencao: totalIndisponivel,
+          taxaConformidade: taxaAtivosConformidade,
+          totalSalas: 3,
+        }
+
         const resultadoCalculado = {
+          contadoresAtivos,
           rondasNoPeriodo: rondasData.length,
           rondasSemNcNoPeriodo,
           ncsAbertasNoPeriodo: ncsAbertasCount || ncsAbertasPeriodoData?.length || 0,
@@ -674,6 +704,12 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
 
   return (
     <div className="space-y-5">
+      {/* 4 Cards de Métricas Principais (Início do Painel) */}
+      <CardsMetricasAtivos
+        contadores={dados.contadoresAtivos}
+        clicavel={false}
+      />
+
       {/* Barra de Filtro Temporal e Resumo Rápido */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200/70 shadow-2xs">
         <div className="flex items-center gap-2">
