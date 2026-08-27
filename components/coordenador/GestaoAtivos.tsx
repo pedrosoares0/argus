@@ -161,35 +161,99 @@ const StatusIconeMini = ({ status }: { status: StatusAtivo }) => {
 
 export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
   const cacheKey = `coordenador_ativos_${hospitalId}`
-  const [ativos, setAtivos] = useState<any[]>(() => dadosCache.get<any[]>(cacheKey) || [])
+  const [ativosUnicos, setAtivosUnicos] = useState<any[]>(() => dadosCache.get<any[]>(`${cacheKey}_unicos`) || [])
+  const [salas, setSalas] = useState<SalaAgrupada[]>(() => dadosCache.get<SalaAgrupada[]>(`${cacheKey}_salas`) || [])
   const [termoBusca, setTermoBusca] = useState('')
   const [salaSelecionada, setSalaSelecionada] = useState<string>('todas')
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos')
-  const [carregando, setCarregando] = useState(() => !dadosCache.get(cacheKey))
+  const [carregando, setCarregando] = useState(() => !dadosCache.get(`${cacheKey}_salas`))
   const [salasExpandidas, setSalasExpandidas] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    async function carregarAtivos() {
-      if (!dadosCache.get(cacheKey)) {
+    async function carregarDados() {
+      if (!dadosCache.get(`${cacheKey}_salas`)) {
         setCarregando(true)
       }
       try {
         const supabase = criarClienteSupabase() as any
 
-        const { data: ativosData } = await supabase
-          .from('ativos')
-          .select('*, locais(*, centros_cirurgicos(*)), categorias_ativos(*)')
-          .eq('hospital_id', hospitalId)
-          .order('nome', { ascending: true })
+        // 1. Buscar salas e sala_ativos (M:N) em paralelo
+        const [locaisRes, salaAtivosRes, ativosRes] = await Promise.all([
+          supabase
+            .from('locais')
+            .select('*, centros_cirurgicos(*)')
+            .eq('tipo', 'sala')
+            .in('nome', ['Sala 01', 'Sala 03', 'Sala 04'])
+            .order('nome', { ascending: true }),
+          supabase
+            .from('sala_ativos')
+            .select('local_id, compartilhado, ativos(*, categorias_ativos(*))'),
+          supabase
+            .from('ativos')
+            .select('*, locais(*, centros_cirurgicos(*)), categorias_ativos(*)')
+            .eq('hospital_id', hospitalId)
+            .order('nome', { ascending: true })
+        ])
 
-        if (ativosData) {
-          // Filtrar fora registros de Sala 02 (apenas Sala 01, Sala 03 e Sala 04)
-          const ativosValidos = ativosData.filter((a: any) => {
-            const nomeLocal = (a.locais?.nome || '').toLowerCase()
-            return !nomeLocal.includes('sala 02') && !nomeLocal.includes('sala 2')
+        const locaisData = locaisRes.data || []
+        const salaAtivosData = salaAtivosRes.data || []
+        const todosAtivosData = (ativosRes.data || []).filter((a: any) => {
+          const nomeLocal = (a.locais?.nome || '').toLowerCase()
+          return !nomeLocal.includes('sala 02') && !nomeLocal.includes('sala 2')
+        })
+
+        setAtivosUnicos(todosAtivosData)
+        dadosCache.set(`${cacheKey}_unicos`, todosAtivosData)
+
+        if (locaisData.length > 0 && salaAtivosData.length > 0) {
+          // Montar agrupamento com base na tabela oficial sala_ativos (M:N)
+          const salasFormatadas: SalaAgrupada[] = locaisData.map((local: any) => {
+            const vinculosDestaSala = salaAtivosData.filter((sa: any) => sa.local_id === local.id && sa.ativos)
+            const ativosDestaSala = vinculosDestaSala.map((sa: any) => ({
+              ...sa.ativos,
+              compartilhado: sa.compartilhado,
+            }))
+
+            // Ordenar: primeiro Anestesia, depois Parada, depois alfabético
+            ativosDestaSala.sort((a: any, b: any) => {
+              if (a.nome.toLowerCase().includes('anestesia')) return -1
+              if (b.nome.toLowerCase().includes('anestesia')) return 1
+              if (a.nome.toLowerCase().includes('parada')) return -1
+              if (b.nome.toLowerCase().includes('parada')) return 1
+              return a.nome.localeCompare(b.nome)
+            })
+
+            return {
+              id: local.id,
+              nome: local.nome,
+              centroCirurgicoNome: local.centros_cirurgicos?.nome || 'Centro Cirúrgico Principal',
+              ativos: ativosDestaSala,
+            }
           })
-          setAtivos(ativosValidos)
-          dadosCache.set(cacheKey, ativosValidos)
+
+          setSalas(salasFormatadas)
+          dadosCache.set(`${cacheKey}_salas`, salasFormatadas)
+        } else if (todosAtivosData.length > 0) {
+          // Fallback caso sala_ativos não esteja populado
+          const mapa = new Map<string, SalaAgrupada>()
+          todosAtivosData.forEach((ativo: any) => {
+            const localId = ativo.locais?.id || ativo.local_id || 'sem_sala'
+            const nomeLocal = ativo.locais?.nome || 'Sem Sala'
+            const nomeCC = ativo.locais?.centros_cirurgicos?.nome || 'Centro Cirúrgico Principal'
+
+            if (!mapa.has(localId)) {
+              mapa.set(localId, {
+                id: localId,
+                nome: nomeLocal,
+                centroCirurgicoNome: nomeCC,
+                ativos: [],
+              })
+            }
+            mapa.get(localId)!.ativos.push(ativo)
+          })
+          const fallbackSalas = Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome))
+          setSalas(fallbackSalas)
+          dadosCache.set(`${cacheKey}_salas`, fallbackSalas)
         }
       } catch (err) {
         console.error('Erro ao carregar ativos:', err)
@@ -198,15 +262,15 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
       }
     }
 
-    carregarAtivos()
+    carregarDados()
   }, [hospitalId, cacheKey])
 
-  // Contadores globais
+  // Contadores globais baseados nos ativos únicos
   const contadores = useMemo(() => {
-    const total = ativos.length
-    const operacional = ativos.filter((a) => a.status === 'operacional').length
-    const operacional_com_restricoes = ativos.filter((a) => a.status === 'operacional_com_restricoes').length
-    const indisponivelOuManutencao = ativos.filter(
+    const total = ativosUnicos.length
+    const operacional = ativosUnicos.filter((a) => a.status === 'operacional').length
+    const operacional_com_restricoes = ativosUnicos.filter((a) => a.status === 'operacional_com_restricoes').length
+    const indisponivelOuManutencao = ativosUnicos.filter(
       (a) => a.status === 'indisponivel' || a.status === 'em_manutencao'
     ).length
     const taxaConformidade = total > 0 ? Math.round((operacional / total) * 100) : 100
@@ -218,34 +282,9 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
       indisponivelOuManutencao,
       taxaConformidade,
     }
-  }, [ativos])
+  }, [ativosUnicos])
 
-  // Agrupamento por sala (local) — apenas Sala 01, Sala 03 e Sala 04
-  const todasSalas = useMemo<SalaAgrupada[]>(() => {
-    const mapa = new Map<string, SalaAgrupada>()
-
-    ativos.forEach((ativo) => {
-      const nomeLocal = ativo.locais?.nome || 'Sem Sala Definida'
-      if (nomeLocal.toLowerCase().includes('sala 02') || nomeLocal.toLowerCase().includes('sala 2')) {
-        return
-      }
-
-      const localId = ativo.locais?.id || ativo.local_id || 'sem_sala'
-      const nomeCC = ativo.locais?.centros_cirurgicos?.nome || 'Centro Cirúrgico Geral'
-
-      if (!mapa.has(localId)) {
-        mapa.set(localId, {
-          id: localId,
-          nome: nomeLocal,
-          centroCirurgicoNome: nomeCC,
-          ativos: [],
-        })
-      }
-      mapa.get(localId)!.ativos.push(ativo)
-    })
-
-    return Array.from(mapa.values()).sort((a, b) => a.nome.localeCompare(b.nome))
-  }, [ativos])
+  const todasSalas = salas
 
   // Filtragem
   const salasFiltradas = useMemo(() => {
