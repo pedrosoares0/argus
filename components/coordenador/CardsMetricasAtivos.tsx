@@ -49,7 +49,7 @@ export function CardsMetricasAtivos({
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
       {/* CARD 1: OPERACIONAIS (Verde Conforme #54D362 → #31B44A) */}
       <div
         onClick={() => handleClick('operacional')}
@@ -59,7 +59,7 @@ export function CardsMetricasAtivos({
           boxShadow:
             'inset 0 4px 14px rgba(255, 255, 255, 0.95), inset 0 -4px 10px rgba(0, 0, 0, 0.1), inset 4px 0 12px rgba(255, 255, 255, 0.75), inset -4px 0 12px rgba(255, 255, 255, 0.75), 0 12px 32px rgba(49, 180, 74, 0.3)',
         }}
-        className={`relative overflow-hidden rounded-[28px] px-4.5 py-4 transition-all duration-300 select-none flex flex-col justify-between min-h-[120px] border-0 ${
+        className={`relative overflow-hidden rounded-[28px] px-6 py-5.5 transition-all duration-300 select-none flex flex-col justify-between min-h-[132px] border-0 ${
           clicavel ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''
         } ${filtroStatus === 'operacional' ? 'ring-4 ring-emerald-300 ring-offset-2' : ''}`}
       >
@@ -67,7 +67,7 @@ export function CardsMetricasAtivos({
         <div className="absolute top-0 inset-x-0 h-3/5 bg-gradient-to-b from-white/40 via-white/10 to-transparent rounded-t-[28px] pointer-events-none" />
 
         <div className="relative z-10 flex items-start justify-between">
-          <span className="text-[10px] font-black uppercase tracking-wider text-white/95 drop-shadow-xs">
+          <span className="text-[10.5px] font-black uppercase tracking-wider text-white/95 drop-shadow-xs">
             Operacionais
           </span>
           {/* Selo Florado do Badge Conforme */}
@@ -88,7 +88,7 @@ export function CardsMetricasAtivos({
           </div>
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 my-1">
           <div className="flex items-baseline gap-1">
             <span
               style={{ fontFamily: "'Nunito', sans-serif" }}
@@ -96,11 +96,11 @@ export function CardsMetricasAtivos({
             >
               {contadores.operacional}
             </span>
-            <span className="text-[11px] font-black text-white/70">/ {contadores.total}</span>
+            <span className="text-[11.5px] font-black text-white/70">/ {contadores.total}</span>
           </div>
         </div>
 
-        <div className="relative z-10 text-[10.5px] text-white/95">
+        <div className="relative z-10 text-[11px] text-white/95">
           <span className="font-extrabold drop-shadow-2xs">
             {contadores.taxaConformidade}% · Prontos para uso
           </span>
@@ -116,14 +116,14 @@ export function CardsMetricasAtivos({
           boxShadow:
             'inset 0 4px 14px rgba(255, 255, 255, 0.95), inset 0 -4px 10px rgba(0, 0, 0, 0.1), inset 4px 0 12px rgba(255, 255, 255, 0.75), inset -4px 0 12px rgba(255, 255, 255, 0.75), 0 12px 32px rgba(247, 135, 37, 0.3)',
         }}
-        className={`relative overflow-hidden rounded-[28px] px-4.5 py-4 transition-all duration-300 select-none flex flex-col justify-between min-h-[120px] border-0 ${
+        className={`relative overflow-hidden rounded-[28px] px-6 py-5.5 transition-all duration-300 select-none flex flex-col justify-between min-h-[132px] border-0 ${
           clicavel ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''
         } ${filtroStatus === 'operacional_com_restricoes' ? 'ring-4 ring-orange-300 ring-offset-2' : ''}`}
       >
         <div className="absolute top-0 inset-x-0 h-3/5 bg-gradient-to-b from-white/40 via-white/10 to-transparent rounded-t-[28px] pointer-events-none" />
 
         <div className="relative z-10 flex items-start justify-between">
-          <span className="text-[10px] font-black uppercase tracking-wider text-white/95 drop-shadow-xs">
+          <span className="text-[10.5px] font-black uppercase tracking-wider text-white/95 drop-shadow-xs">
             Restrições
           </span>
           {/* Triângulo de Alerta do Badge Importante */}
@@ -138,7 +138,7 @@ export function CardsMetricasAtivos({
           </div>
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 my-1">
           <span
             style={{ fontFamily: "'Nunito', sans-serif" }}
             className="text-[32px] sm:text-[36px] font-black tracking-tight leading-none text-white drop-shadow-sm"
@@ -147,7 +147,7 @@ export function CardsMetricasAtivos({
           </span>
         </div>
 
-        <div className="relative z-10 text-[10.5px] text-white/95">
+        <div className="relative z-10 text-[11px] text-white/95">
           <span className="font-extrabold drop-shadow-2xs">Requer atenção</span>
         </div>
       </div>
@@ -161,14 +161,14 @@ export function CardsMetricasAtivos({
           boxShadow:
             'inset 0 4px 14px rgba(255, 255, 255, 0.95), inset 0 -4px 10px rgba(0, 0, 0, 0.1), inset 4px 0 12px rgba(255, 255, 255, 0.75), inset -4px 0 12px rgba(255, 255, 255, 0.75), 0 12px 32px rgba(234, 58, 58, 0.3)',
         }}
-        className={`relative overflow-hidden rounded-[28px] px-4.5 py-4 transition-all duration-300 select-none flex flex-col justify-between min-h-[120px] border-0 ${
+        className={`relative overflow-hidden rounded-[28px] px-6 py-5.5 transition-all duration-300 select-none flex flex-col justify-between min-h-[132px] border-0 ${
           clicavel ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''
         } ${filtroStatus === 'indisponivel' ? 'ring-4 ring-rose-300 ring-offset-2' : ''}`}
       >
         <div className="absolute top-0 inset-x-0 h-3/5 bg-gradient-to-b from-white/40 via-white/10 to-transparent rounded-t-[28px] pointer-events-none" />
 
         <div className="relative z-10 flex items-start justify-between">
-          <span className="text-[10px] font-black uppercase tracking-wider text-white/95 drop-shadow-xs">
+          <span className="text-[10.5px] font-black uppercase tracking-wider text-white/95 drop-shadow-xs">
             Indisponíveis
           </span>
           {/* Círculo X do Badge Crítico */}
@@ -180,7 +180,7 @@ export function CardsMetricasAtivos({
           </div>
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 my-1">
           <span
             style={{ fontFamily: "'Nunito', sans-serif" }}
             className="text-[32px] sm:text-[36px] font-black tracking-tight leading-none text-white drop-shadow-sm"
@@ -189,7 +189,7 @@ export function CardsMetricasAtivos({
           </span>
         </div>
 
-        <div className="relative z-10 text-[10.5px] text-white/95">
+        <div className="relative z-10 text-[11px] text-white/95">
           <span className="font-extrabold drop-shadow-2xs">Crítico</span>
         </div>
       </div>
@@ -203,14 +203,14 @@ export function CardsMetricasAtivos({
           boxShadow:
             'inset 0 4px 14px rgba(255, 255, 255, 0.95), inset 0 -4px 10px rgba(0, 0, 0, 0.1), inset 4px 0 12px rgba(255, 255, 255, 0.75), inset -4px 0 12px rgba(255, 255, 255, 0.75), 0 12px 32px rgba(36, 107, 253, 0.3)',
         }}
-        className={`relative overflow-hidden rounded-[28px] px-4.5 py-4 transition-all duration-300 select-none flex flex-col justify-between min-h-[120px] border-0 ${
+        className={`relative overflow-hidden rounded-[28px] px-6 py-5.5 transition-all duration-300 select-none flex flex-col justify-between min-h-[132px] border-0 ${
           clicavel ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''
         } ${filtroStatus === 'todos' && salaSelecionada === 'todas' ? 'ring-4 ring-blue-300 ring-offset-2' : ''}`}
       >
         <div className="absolute top-0 inset-x-0 h-3/5 bg-gradient-to-b from-white/40 via-white/10 to-transparent rounded-t-[28px] pointer-events-none" />
 
         <div className="relative z-10 flex items-start justify-between">
-          <span className="text-[10px] font-black uppercase tracking-wider text-white/95 drop-shadow-xs">
+          <span className="text-[10.5px] font-black uppercase tracking-wider text-white/95 drop-shadow-xs">
             Salas
           </span>
           <div className="w-7 h-7 rounded-full bg-white/25 backdrop-blur-md border border-white/45 flex items-center justify-center text-white shadow-xs">
@@ -224,7 +224,7 @@ export function CardsMetricasAtivos({
           </div>
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 my-1">
           <span
             style={{ fontFamily: "'Nunito', sans-serif" }}
             className="text-[32px] sm:text-[36px] font-black tracking-tight leading-none text-white drop-shadow-sm"
@@ -233,7 +233,7 @@ export function CardsMetricasAtivos({
           </span>
         </div>
 
-        <div className="relative z-10 text-[10.5px] text-white/95">
+        <div className="relative z-10 text-[11px] text-white/95">
           <span className="font-extrabold drop-shadow-2xs">Mapeadas</span>
         </div>
       </div>

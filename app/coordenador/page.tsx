@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion } from 'motion/react'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { PainelDashboard } from '@/components/coordenador/PainelDashboard'
 import { FilaValidacaoNCs } from '@/components/coordenador/FilaValidacaoNCs'
@@ -142,8 +143,8 @@ export default function PaginaCoordenador() {
           </p>
         </div>
 
-        {/* Seletor de Abas Desktop (Apple Segmented Control Style) */}
-        <div className="hidden md:flex items-center bg-slate-200/60 p-1.5 rounded-2xl gap-1 shadow-inner border border-slate-200/80">
+        {/* Seletor de Abas Desktop com Bubble Effect e formato 100% arredondado */}
+        <div className="hidden md:flex items-center bg-slate-200/70 p-1.5 rounded-full gap-1 border border-slate-200/80 shadow-inner relative">
           {ABAS.map((aba) => {
             const ativa = abaAtiva === aba.id
             return (
@@ -154,17 +155,21 @@ export default function PaginaCoordenador() {
                   setAbaAtiva(aba.id)
                   window.scrollTo({ top: 0, behavior: 'smooth' })
                 }}
-                className={[
-                  'flex items-center gap-2 py-2 px-4 rounded-xl cursor-pointer text-xs font-bold transition-all duration-200 select-none active:scale-95',
-                  ativa
-                    ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-white/40',
-                ].join(' ')}
+                className={`relative z-10 flex items-center gap-2 py-2 px-4.5 rounded-full cursor-pointer text-xs font-bold transition-colors duration-200 select-none ${
+                  ativa ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
+                }`}
               >
-                <div className={`w-4 h-4 ${ativa ? 'text-purple-600' : 'text-slate-400'}`}>
+                {ativa && (
+                  <motion.div
+                    layoutId="abaAtivaBubble"
+                    transition={{ type: 'spring', bounce: 0.22, duration: 0.42 }}
+                    className="absolute inset-0 bg-white rounded-full shadow-[0_3px_12px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)] border border-slate-100/80 -z-10"
+                  />
+                )}
+                <div className={`w-4 h-4 transition-colors duration-200 ${ativa ? 'text-purple-600' : 'text-slate-400'}`}>
                   {aba.icone}
                 </div>
-                <span>{aba.label}</span>
+                <span className="font-extrabold">{aba.label}</span>
               </button>
             )
           })}
@@ -193,7 +198,7 @@ export default function PaginaCoordenador() {
          ══════════════════════════════════════════════════ */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto px-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] pointer-events-none">
         <nav className="pointer-events-auto bg-white/50 backdrop-blur-[24px] saturate-[180%] rounded-full border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] p-1.5">
-          <div className="flex items-center justify-between gap-1">
+          <div className="flex items-center justify-between gap-1 relative">
             {ABAS.map((aba) => {
               const ativa = abaAtiva === aba.id
               return (
@@ -204,14 +209,17 @@ export default function PaginaCoordenador() {
                     setAbaAtiva(aba.id)
                     window.scrollTo({ top: 0, behavior: 'smooth' })
                   }}
-                  className={[
-                    'flex-1 flex flex-col items-center justify-center py-1.5 px-3 rounded-full cursor-pointer',
-                    'transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.92]',
-                    ativa
-                      ? 'bg-gradient-to-b from-[#7C3AED]/16 to-[#7C3AED]/8 text-[#7C3AED] shadow-[0_3px_10px_rgba(124,58,237,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.8),inset_0_0_0_1px_rgba(124,58,237,0.18)] font-black'
-                      : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100/30',
-                  ].join(' ')}
+                  className={`relative z-10 flex-1 flex flex-col items-center justify-center py-1.5 px-3 rounded-full cursor-pointer transition-colors duration-200 select-none active:scale-95 ${
+                    ativa ? 'text-[#7C3AED] font-black' : 'text-gray-400 hover:text-gray-600'
+                  }`}
                 >
+                  {ativa && (
+                    <motion.div
+                      layoutId="abaAtivaMobileBubble"
+                      transition={{ type: 'spring', bounce: 0.22, duration: 0.42 }}
+                      className="absolute inset-0 bg-gradient-to-b from-[#7C3AED]/16 to-[#7C3AED]/8 rounded-full shadow-[0_3px_10px_rgba(124,58,237,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.8),inset_0_0_0_1px_rgba(124,58,237,0.18)] -z-10"
+                    />
+                  )}
                   <div className="w-5 h-5 flex items-center justify-center shrink-0">
                     {aba.icone}
                   </div>
