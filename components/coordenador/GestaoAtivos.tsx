@@ -332,12 +332,15 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
   const alternarExpansaoSala = (salaId: string) => {
     setSalasExpandidas((prev) => ({
       ...prev,
-      [salaId]: prev[salaId] !== undefined ? !prev[salaId] : false,
+      [salaId]: !prev[salaId],
     }))
   }
 
   const isSalaAberta = (salaId: string) => {
-    return salasExpandidas[salaId] !== undefined ? salasExpandidas[salaId] : true
+    if (termoBusca.trim().length > 0) {
+      return true
+    }
+    return Boolean(salasExpandidas[salaId])
   }
 
   if (carregando) {
