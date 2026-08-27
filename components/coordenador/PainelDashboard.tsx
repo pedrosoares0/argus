@@ -673,417 +673,413 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Filtro Temporal */}
-      <div className="bg-[#F1F3F6] p-1 rounded-full flex gap-1 select-none">
-        {([
-          { id: '7d', label: '7 dias' },
-          { id: '15d', label: '15 dias' },
-          { id: '30d', label: '30 dias' },
-        ] as { id: PeriodoFiltro; label: string }[]).map((opt) => {
-          const ativo = periodo === opt.id
-          return (
-            <button
-              key={opt.id}
-              onClick={() => setPeriodo(opt.id)}
-              className={[
-                'flex-1 text-center py-2 px-3 text-[11px] font-bold tracking-tight rounded-full transition-all duration-200 cursor-pointer active:scale-95',
-                ativo
-                  ? 'bg-white text-slate-800 shadow-[0_2px_6px_rgba(0,0,0,0.06)]'
-                  : 'text-gray-500 hover:text-slate-800',
-              ].join(' ')}
-            >
-              {opt.label}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          PAINEL DE ANÉIS LIMPO & MODERNO (APPLE HEALTH STYLE)
-         ══════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-[24px] p-5 border border-slate-100/90 shadow-[var(--shadow-card)] space-y-4">
-        {/* Cabeçalho Limpo */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
-          <div>
-            <h2 className="text-[13.5px] font-extrabold text-slate-900 tracking-tight leading-none">
-              Indicadores de Prontidão
-            </h2>
-            <p className="text-[10px] text-slate-400 font-medium mt-1">
-              Desempenho operacional em {labelPeriodo}
-            </p>
-          </div>
-
-          {/* Badges de Resumo */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="inline-flex items-center gap-1 bg-slate-50 text-slate-600 font-bold font-nunito text-[10.5px] px-2.5 py-1 rounded-full border border-slate-200/60">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              {dados.rondasNoPeriodo} rondas
-            </span>
-            <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-600 font-bold font-nunito text-[10.5px] px-2.5 py-1 rounded-full border border-rose-100/80">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-              {dados.ncsAbertasNoPeriodo} NCs
-            </span>
+    <div className="space-y-5">
+      {/* Barra de Filtro Temporal e Resumo Rápido */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200/70 shadow-2xs">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider pl-2">Período:</span>
+          {/* Filtro Temporal */}
+          <div className="bg-[#F1F3F6] p-0.5 rounded-full flex gap-1 select-none">
+            {([
+              { id: '7d', label: '7 dias' },
+              { id: '15d', label: '15 dias' },
+              { id: '30d', label: '30 dias' },
+            ] as { id: PeriodoFiltro; label: string }[]).map((opt) => {
+              const ativo = periodo === opt.id
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setPeriodo(opt.id)}
+                  className={[
+                    'py-1.5 px-3 text-[11px] font-bold tracking-tight rounded-full transition-all duration-200 cursor-pointer active:scale-95 select-none',
+                    ativo
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-gray-500 hover:text-slate-900',
+                  ].join(' ')}
+                >
+                  {opt.label}
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        {/* Trio de Indicadores Circulares com Layout Limpo */}
-        <div className="grid grid-cols-3 divide-x divide-slate-100 pt-1">
-          {/* Indicador 1: Rondas Conformes */}
-          <div className="flex flex-col items-center text-center px-1">
-            <AnelCircular3D
-              porcentagem={taxaRondasSemFalhas}
-              gradienteId="gradRondasOk"
-              corInicio="#84CC16"
-              corFim="#10B981"
-              tamanho={72}
-              espessura={6}
-            />
-            <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
-              Rondas 100% OK
-            </h4>
-            <span className="text-[10px] font-black font-nunito text-emerald-600 mt-0.5">
-              {dados.rondasSemNcNoPeriodo} de {dados.rondasNoPeriodo}
-            </span>
-          </div>
-
-          {/* Indicador 2: Itens Aprovados */}
-          <div className="flex flex-col items-center text-center px-1">
-            <AnelCircular3D
-              porcentagem={taxaItensAprovados}
-              gradienteId="gradItensAprovados"
-              corInicio="#38BDF8"
-              corFim="#6366F1"
-              tamanho={72}
-              espessura={6}
-            />
-            <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
-              Itens Aprovados
-            </h4>
-            <span className="text-[10px] font-black font-nunito text-indigo-600 mt-0.5">
-              {dados.totalItensConformes} de {dados.totalItens}
-            </span>
-          </div>
-
-          {/* Indicador 3: Não-Críticas */}
-          <div className="flex flex-col items-center text-center px-1">
-            <AnelCircular3D
-              porcentagem={taxaNaoCritica}
-              gradienteId="gradNaoCritico"
-              corInicio="#FBBF24"
-              corFim="#F97316"
-              tamanho={72}
-              espessura={6}
-            />
-            <h4 className="text-[11.5px] font-bold text-slate-800 mt-2 leading-tight">
-              Não-Críticas
-            </h4>
-            <span className="text-[10px] font-black font-nunito text-amber-600 mt-0.5">
-              {Math.max(dados.ncsAbertasNoPeriodo - dados.ncsPorCriticidade.critico, 0)} de {dados.ncsAbertasNoPeriodo}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          RANKING DE ATIVOS COM MAIS NCs (BARRA 3D SUAVE)
-         ══════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-[24px] p-5 border border-gray-100 shadow-[var(--shadow-card)]">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-[14px] font-extrabold text-gray-900 tracking-tight leading-none">
-                Ativos com Mais NCs
-              </h3>
-              <p className="text-[10px] text-gray-400 font-medium mt-1">
-                Frequência de não conformidades por equipamento
-              </p>
-            </div>
-          </div>
-          <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 shrink-0">
-            {labelPeriodo}
+        <div className="flex items-center gap-2 pr-1">
+          <span className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 font-bold font-nunito text-[11px] px-3 py-1 rounded-full border border-blue-200/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+            {dados.rondasNoPeriodo} rondas concluídas
+          </span>
+          <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-700 font-bold font-nunito text-[11px] px-3 py-1 rounded-full border border-rose-200/60">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+            {dados.ncsAbertasNoPeriodo} NCs
           </span>
         </div>
+      </div>
 
-        {dados.rankingAtivos.length > 0 ? (
-          <div className="space-y-3.5">
-            {dados.rankingAtivos.map((ativo, idx) => {
-              const maxNcs = dados.rankingAtivos[0]?.quantidadeNcs || 1
-              const proporcao = (ativo.quantidadeNcs / maxNcs) * 100
+      {/* Grid Principal do Dashboard (12 Colunas no Desktop) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        
+        {/* ══════════════════════════════════════════════════
+            COLUNA ESQUERDA (lg:col-span-7) — INDICADORES & RONDAS
+           ══════════════════════════════════════════════════ */}
+        <div className="lg:col-span-7 space-y-5">
+          
+          {/* PAINEL DE ANÉIS LIMPO & MODERNO (APPLE HEALTH STYLE) */}
+          <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-slate-100/90 shadow-[var(--shadow-card)] space-y-4">
+            {/* Cabeçalho Limpo */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
+              <div>
+                <h2 className="text-[15px] font-black text-slate-900 tracking-tight leading-none font-space-grotesk">
+                  Indicadores de Prontidão
+                </h2>
+                <p className="text-[11px] text-slate-400 font-medium mt-1">
+                  Desempenho operacional em {labelPeriodo}
+                </p>
+              </div>
 
-              return (
-                <div
-                  key={ativo.ativoId}
-                  className="bg-gray-50/60 rounded-2xl p-3.5 border border-gray-100/80 space-y-2.5"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-6 h-6 rounded-lg bg-gradient-to-b from-white to-gray-50 border border-gray-200/90 flex items-center justify-center text-[10px] font-black font-nunito text-gray-700 shrink-0 shadow-[0_1.5px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)]">
-                        {idx + 1}º
+              <div className="hidden sm:flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-500 bg-slate-100/80 px-2.5 py-0.5 rounded-full">
+                  Hospital Itaberaba
+                </span>
+              </div>
+            </div>
+
+            {/* Trio de Indicadores Circulares */}
+            <div className="grid grid-cols-3 divide-x divide-slate-100 pt-2">
+              {/* Indicador 1: Rondas Conformes */}
+              <div className="flex flex-col items-center text-center px-1">
+                <AnelCircular3D
+                  porcentagem={taxaRondasSemFalhas}
+                  gradienteId="gradRondasOk"
+                  corInicio="#84CC16"
+                  corFim="#10B981"
+                  tamanho={76}
+                  espessura={6.5}
+                />
+                <h4 className="text-[12px] font-black text-slate-800 mt-2.5 leading-tight">
+                  Rondas 100% OK
+                </h4>
+                <span className="text-[10.5px] font-black font-nunito text-emerald-600 mt-0.5">
+                  {dados.rondasSemNcNoPeriodo} de {dados.rondasNoPeriodo}
+                </span>
+              </div>
+
+              {/* Indicador 2: Itens Aprovados */}
+              <div className="flex flex-col items-center text-center px-1">
+                <AnelCircular3D
+                  porcentagem={taxaItensAprovados}
+                  gradienteId="gradItensAprovados"
+                  corInicio="#38BDF8"
+                  corFim="#6366F1"
+                  tamanho={76}
+                  espessura={6.5}
+                />
+                <h4 className="text-[12px] font-black text-slate-800 mt-2.5 leading-tight">
+                  Itens Aprovados
+                </h4>
+                <span className="text-[10.5px] font-black font-nunito text-indigo-600 mt-0.5">
+                  {dados.totalItensConformes} de {dados.totalItens}
+                </span>
+              </div>
+
+              {/* Indicador 3: Não-Críticas */}
+              <div className="flex flex-col items-center text-center px-1">
+                <AnelCircular3D
+                  porcentagem={taxaNaoCritica}
+                  gradienteId="gradNaoCritico"
+                  corInicio="#FBBF24"
+                  corFim="#F97316"
+                  tamanho={76}
+                  espessura={6.5}
+                />
+                <h4 className="text-[12px] font-black text-slate-800 mt-2.5 leading-tight">
+                  Não-Críticas
+                </h4>
+                <span className="text-[10.5px] font-black font-nunito text-amber-600 mt-0.5">
+                  {Math.max(dados.ncsAbertasNoPeriodo - dados.ncsPorCriticidade.critico, 0)} de {dados.ncsAbertasNoPeriodo}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ATIVIDADE DE RONDAS (RONDAS CONCLUÍDAS POR DIA) */}
+          <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-gray-100 shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-[15px] font-black text-gray-900 tracking-tight leading-none font-space-grotesk">
+                  Atividade de Rondas
+                </h3>
+                <p className="text-[11px] text-gray-400 font-medium mt-1">
+                  Volume diário de rondas de inspeção concluídas
+                </p>
+              </div>
+              <span className="text-[10.5px] font-bold font-nunito text-gray-600 bg-gray-50 px-3 py-1 rounded-full border border-gray-200/80 shrink-0">
+                {dados.rondasNoPeriodo} concluída{dados.rondasNoPeriodo !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div className="pt-3 pb-1">
+              <div className="flex items-end gap-1.5 sm:gap-2" style={{ height: '120px' }}>
+                {dados.rondasPorDia.map((dia, idx) => {
+                  const altura = maxRondasDia > 0 ? (dia.quantidade / maxRondasDia) * 100 : 0
+                  const hojeLocal = formatarDataChaveLocal(new Date())
+                  const ehHoje = dia.data === hojeLocal
+                  const temRonda = dia.quantidade > 0
+                  const mostrarLabel = periodo === '7d' || idx % (periodo === '15d' ? 2 : 4) === 0
+
+                  return (
+                    <div
+                      key={dia.data}
+                      className="flex-1 flex flex-col items-center justify-end h-full gap-1.5 group"
+                    >
+                      {/* Número de rondas */}
+                      <span
+                        className={`text-[10px] font-black font-nunito leading-none transition-colors ${
+                          temRonda ? 'text-gray-800 font-black' : 'text-transparent group-hover:text-gray-300'
+                        }`}
+                      >
+                        {dia.quantidade}
                       </span>
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-bold text-gray-900 truncate leading-tight">
-                          {ativo.nomeAtivo}
-                        </p>
-                        <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">
-                          {ativo.localNome} · {ativo.centroCirurgicoNome}
-                        </p>
+
+                      {/* Barra 3D */}
+                      <div className="w-full bg-gray-100/90 rounded-t-xl h-[78px] flex items-end overflow-hidden p-0.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]">
+                        <div
+                          className={`w-full rounded-lg transition-all duration-500 ${
+                            ehHoje && temRonda
+                              ? 'bg-gradient-to-t from-[#7C3AED] to-[#A78BFA] shadow-[0_2px_6px_rgba(124,58,237,0.4),inset_0_1px_0.5px_rgba(255,255,255,0.5)]'
+                              : temRonda
+                              ? 'bg-gradient-to-t from-blue-500 to-sky-400 shadow-[0_2px_5px_rgba(59,130,246,0.35),inset_0_1px_0.5px_rgba(255,255,255,0.5)]'
+                              : 'bg-transparent'
+                          }`}
+                          style={{
+                            height: temRonda ? `${Math.max(altura, 14)}%` : '0%',
+                          }}
+                        />
+                      </div>
+
+                      {/* Rótulo do dia */}
+                      {mostrarLabel && (
+                        <div className="flex flex-col items-center leading-none">
+                          <span className={`text-[9px] font-bold ${ehHoje ? 'text-[#7C3AED]' : 'text-gray-400'}`}>
+                            {dia.diaSemana}
+                          </span>
+                          <span className={`text-[8.5px] font-semibold mt-0.5 ${ehHoje ? 'text-[#7C3AED] font-black' : 'text-gray-300'}`}>
+                            {dia.diaNumero}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Tempo Médio de Resolução + NCs por Criticidade */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Tempo Médio */}
+            <div className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-[var(--shadow-card)]">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tempo Médio de Resolução</span>
+              <p className="text-[24px] font-black font-nunito text-gray-900 mt-2 leading-none">
+                {dados.tempoMedioResolucaoMs !== null ? formatarDuracao(dados.tempoMedioResolucaoMs) : '—'}
+              </p>
+              {tendenciaResolucao && (
+                <div className={`mt-2 inline-flex items-center gap-1 text-[10px] font-bold font-nunito px-2 py-0.5 rounded-full ${
+                  tendenciaResolucao === 'melhorou' ? 'bg-emerald-50 text-emerald-600' :
+                  tendenciaResolucao === 'piorou' ? 'bg-red-50 text-red-500' :
+                  'bg-gray-50 text-gray-400'
+                }`}>
+                  {tendenciaResolucao === 'melhorou' ? '↓' : tendenciaResolucao === 'piorou' ? '↑' : '→'}
+                  {tendenciaResolucao === 'melhorou' ? ' Melhorou vs período anterior' : tendenciaResolucao === 'piorou' ? ' Piorou vs período anterior' : ' Estável'}
+                </div>
+              )}
+            </div>
+
+            {/* NCs por Criticidade */}
+            <div className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-[var(--shadow-card)]">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">NCs por Criticidade</span>
+              <div className="mt-3.5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                  <span className="text-[11px] text-gray-600 font-bold flex-1">Crítico</span>
+                  <span className="text-[13px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.critico}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                  <span className="text-[11px] text-gray-600 font-bold flex-1">Importante</span>
+                  <span className="text-[13px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.importante}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shrink-0" />
+                  <span className="text-[11px] text-gray-600 font-bold flex-1">Informativo</span>
+                  <span className="text-[13px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.informativo}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* ══════════════════════════════════════════════════
+            COLUNA DIREITA (lg:col-span-5) — RANKINGS & FEED
+           ══════════════════════════════════════════════════ */}
+        <div className="lg:col-span-5 space-y-5">
+          
+          {/* RANKING DE ATIVOS COM MAIS NCs */}
+          <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-gray-100 shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-[14px] font-black text-gray-900 tracking-tight leading-none font-space-grotesk">
+                    Ativos com Mais NCs
+                  </h3>
+                  <p className="text-[10px] text-gray-400 font-medium mt-1">
+                    Frequência por equipamento
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 shrink-0">
+                {labelPeriodo}
+              </span>
+            </div>
+
+            {dados.rankingAtivos.length > 0 ? (
+              <div className="space-y-3">
+                {dados.rankingAtivos.slice(0, 5).map((ativo, idx) => {
+                  const maxNcs = dados.rankingAtivos[0]?.quantidadeNcs || 1
+                  const proporcao = (ativo.quantidadeNcs / maxNcs) * 100
+
+                  return (
+                    <div
+                      key={ativo.ativoId}
+                      className="bg-gray-50/70 rounded-2xl p-3 border border-gray-100/80 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-6 h-6 rounded-lg bg-gradient-to-b from-white to-gray-50 border border-gray-200/90 flex items-center justify-center text-[10px] font-black font-nunito text-gray-700 shrink-0 shadow-[0_1.5px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,1)]">
+                            {idx + 1}º
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[12.5px] font-bold text-gray-900 truncate leading-tight">
+                              {ativo.nomeAtivo}
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-medium truncate mt-0.5">
+                              {ativo.localNome} · {ativo.centroCirurgicoNome}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10.5px] font-black font-nunito text-red-600 bg-red-50 border border-red-200/70 px-2.5 py-0.5 rounded-full shrink-0">
+                          {ativo.quantidadeNcs} NC{ativo.quantidadeNcs !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+
+                      <div className="w-full h-2 bg-gray-200/80 rounded-full overflow-hidden p-[1px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)]">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-red-500 shadow-[0_1.5px_4px_rgba(239,68,68,0.35)] transition-all duration-500"
+                          style={{ width: `${Math.max(proporcao, 8)}%` }}
+                        />
                       </div>
                     </div>
-                    <span className="text-[11px] font-black font-nunito text-red-600 bg-gradient-to-b from-red-50 to-red-100/70 border border-red-200/70 shadow-[0_1px_3px_rgba(220,38,38,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] px-2.5 py-1 rounded-full shrink-0">
-                      {ativo.quantidadeNcs} NC{ativo.quantidadeNcs !== 1 ? 's' : ''}
-                    </span>
-                  </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="py-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-[11px] text-gray-400 font-medium">
+                  Nenhuma não conformidade registrada em {labelPeriodo}.
+                </p>
+              </div>
+            )}
+          </div>
 
-                  {/* Barra de Proporção com Efeito 3D Suave */}
-                  <div className="space-y-1">
-                    <div className="w-full h-2.5 bg-gray-200/80 rounded-full overflow-hidden p-[1px] shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)] border border-gray-200/40">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-amber-400 via-rose-500 to-red-500 shadow-[0_1.5px_4px_rgba(239,68,68,0.35),inset_0_1px_0.5px_rgba(255,255,255,0.5)] transition-all duration-500"
-                        style={{ width: `${Math.max(proporcao, 8)}%` }}
-                      />
-                    </div>
-                  </div>
+          {/* PÓDIO LEADERBOARD DE INSPETORES */}
+          <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-gray-100 shadow-[var(--shadow-card)] space-y-4">
+            <div className="flex items-center justify-between pb-1 border-b border-gray-100/80">
+              <div>
+                <h3 className="text-[14px] font-black text-gray-900 tracking-tight leading-none font-space-grotesk">
+                  Inspetores Mais Ativos
+                </h3>
+                <p className="text-[10px] text-gray-400 font-medium mt-1">
+                  Top 3 em rondas concluídas
+                </p>
+              </div>
+              <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 shrink-0">
+                {labelPeriodo}
+              </span>
+            </div>
+
+            {dados.rankingInspetores.length > 0 ? (
+              <div className="pt-3 pb-1 space-y-3">
+                <div className="grid grid-cols-3 items-end gap-2">
+                  <ColunaPodio
+                    posicao={1}
+                    inspetor={dados.rankingInspetores[0]}
+                    alturaPilar="h-[100px]"
+                  />
+                  <ColunaPodio
+                    posicao={2}
+                    inspetor={dados.rankingInspetores[1]}
+                    alturaPilar="h-[72px]"
+                  />
+                  <ColunaPodio
+                    posicao={3}
+                    inspetor={dados.rankingInspetores[2]}
+                    alturaPilar="h-[52px]"
+                  />
                 </div>
-              )
-            })}
+              </div>
+            ) : (
+              <div className="py-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-[11px] text-gray-400 font-medium">
+                  Nenhuma ronda realizada em {labelPeriodo}.
+                </p>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="py-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-            <svg className="w-6 h-6 text-gray-300 mx-auto mb-1.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-[11px] text-gray-400 font-medium">
-              Nenhuma não conformidade registrada em {labelPeriodo}.
-            </p>
-          </div>
-        )}
-      </div>
 
-      {/* Tempo Médio de Resolução + NCs por Criticidade */}
-      <div className="grid grid-cols-2 gap-2">
-        {/* Tempo Médio */}
-        <div className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-[var(--shadow-card)]">
-          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Tempo Médio</span>
-          <p className="text-[9px] text-gray-400 font-medium -mt-0.5">de resolução</p>
-          <p className="text-[20px] font-black font-nunito text-gray-900 mt-2 leading-none">
-            {dados.tempoMedioResolucaoMs !== null ? formatarDuracao(dados.tempoMedioResolucaoMs) : '—'}
-          </p>
-          {tendenciaResolucao && (
-            <div className={`mt-1.5 inline-flex items-center gap-0.5 text-[9px] font-bold font-nunito px-1.5 py-0.5 rounded-full ${tendenciaResolucao === 'melhorou' ? 'bg-emerald-50 text-emerald-600' :
-              tendenciaResolucao === 'piorou' ? 'bg-red-50 text-red-500' :
-                'bg-gray-50 text-gray-400'
-              }`}>
-              {tendenciaResolucao === 'melhorou' ? '↓' : tendenciaResolucao === 'piorou' ? '↑' : '→'}
-              {tendenciaResolucao === 'melhorou' ? ' Melhorou' : tendenciaResolucao === 'piorou' ? ' Piorou' : ' Estável'}
+          {/* RONDAS RECENTES */}
+          {dados.rondasRecentes.length > 0 && (
+            <div className="bg-white rounded-[28px] p-5 sm:p-6 border border-gray-100 shadow-[var(--shadow-card)]">
+              <h3 className="text-[14px] font-black text-gray-900 tracking-tight mb-3 font-space-grotesk">Rondas Recentes</h3>
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+                {dados.rondasRecentes.map((ronda) => {
+                  const dataObj = ronda.dataHora ? new Date(ronda.dataHora) : null
+                  const hora = dataObj
+                    ? dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                    : ''
+                  const dia = dataObj
+                    ? dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                    : ''
+
+                  return (
+                    <div key={ronda.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center text-[10px] font-extrabold text-purple-700 shrink-0">
+                        {ronda.inspetorNome.replace(/^(Enf\.|Eng\.|Coord\.)\s*/i, '').substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-bold text-gray-900 truncate">{ronda.inspetorNome}</p>
+                        <p className="text-[10px] text-gray-400 font-medium truncate">
+                          {ronda.nomeAtivo} · {ronda.localNome}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[10.5px] font-bold font-nunito text-gray-700">{hora}</p>
+                        <p className="text-[9px] font-bold font-nunito text-gray-400">{dia}</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
-        </div>
 
-        {/* NCs por Criticidade */}
-        <div className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-[var(--shadow-card)]">
-          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">NCs por Criticidade</span>
-          <p className="text-[9px] text-gray-400 font-medium -mt-0.5">em {labelPeriodo}</p>
-          <div className="mt-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-              <span className="text-[10px] text-gray-600 font-medium flex-1">Crítico</span>
-              <span className="text-[11.5px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.critico}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-              <span className="text-[10px] text-gray-600 font-medium flex-1">Importante</span>
-              <span className="text-[11.5px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.importante}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
-              <span className="text-[10px] text-gray-600 font-medium flex-1">Informativo</span>
-              <span className="text-[11.5px] font-black font-nunito text-gray-900">{dados.ncsPorCriticidade.informativo}</span>
-            </div>
-          </div>
         </div>
       </div>
-
-      {/* ══════════════════════════════════════════════════
-          ATIVIDADE DE RONDAS (RONDAS CONCLUÍDAS POR DIA)
-         ══════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-[24px] p-5 border border-gray-100 shadow-[var(--shadow-card)]">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-[14px] font-extrabold text-gray-900 tracking-tight leading-none">
-              Atividade de Rondas
-            </h3>
-            <p className="text-[10px] text-gray-400 font-medium mt-1">
-              Rondas de inspeção concluídas por dia
-            </p>
-          </div>
-          <span className="text-[10px] font-bold font-nunito text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 shrink-0">
-            {dados.rondasNoPeriodo} concluída{dados.rondasNoPeriodo !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        <div className="pt-2 pb-1">
-          <div className="flex items-end gap-1.5" style={{ height: '110px' }}>
-            {dados.rondasPorDia.map((dia, idx) => {
-              const altura = maxRondasDia > 0 ? (dia.quantidade / maxRondasDia) * 100 : 0
-              const hojeLocal = formatarDataChaveLocal(new Date())
-              const ehHoje = dia.data === hojeLocal
-              const temRonda = dia.quantidade > 0
-              const mostrarLabel = periodo === '7d' || idx % (periodo === '15d' ? 2 : 4) === 0
-
-              return (
-                <div
-                  key={dia.data}
-                  className="flex-1 flex flex-col items-center justify-end h-full gap-1.5 group"
-                >
-                  {/* Número de rondas */}
-                  <span
-                    className={`text-[9.5px] font-black font-nunito leading-none transition-colors ${temRonda ? 'text-gray-800 font-black' : 'text-transparent group-hover:text-gray-300'
-                      }`}
-                  >
-                    {dia.quantidade}
-                  </span>
-
-                  {/* Barra 3D */}
-                  <div className="w-full bg-gray-100/90 rounded-t-lg h-[70px] flex items-end overflow-hidden p-0.5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]">
-                    <div
-                      className={`w-full rounded-md transition-all duration-500 ${ehHoje && temRonda
-                        ? 'bg-gradient-to-t from-[#7C3AED] to-[#A78BFA] shadow-[0_2px_6px_rgba(124,58,237,0.4),inset_0_1px_0.5px_rgba(255,255,255,0.5)]'
-                        : temRonda
-                          ? 'bg-gradient-to-t from-blue-500 to-sky-400 shadow-[0_2px_5px_rgba(59,130,246,0.35),inset_0_1px_0.5px_rgba(255,255,255,0.5)]'
-                          : 'bg-transparent'
-                        }`}
-                      style={{
-                        height: temRonda ? `${Math.max(altura, 14)}%` : '0%',
-                      }}
-                    />
-                  </div>
-
-                  {/* Rótulo do dia */}
-                  {mostrarLabel && (
-                    <div className="flex flex-col items-center leading-none">
-                      <span className={`text-[8px] font-bold ${ehHoje ? 'text-[#7C3AED]' : 'text-gray-400'}`}>
-                        {dia.diaSemana}
-                      </span>
-                      <span className={`text-[7.5px] font-semibold mt-0.5 ${ehHoje ? 'text-[#7C3AED] font-black' : 'text-gray-300'}`}>
-                        {dia.diaNumero}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════
-          PÓDIO LEADERBOARD DE INSPETORES (MONOCROMÁTICO APPLE)
-         ══════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-[var(--shadow-card)] space-y-4">
-        {/* Header do Card */}
-        <div className="flex items-center justify-between pb-1 border-b border-gray-100/80">
-          <div>
-            <h3 className="text-[14px] font-black text-gray-900 tracking-tight leading-none">
-              Inspetores Mais Ativos
-            </h3>
-            <p className="text-[10px] text-gray-400 font-medium mt-1">
-              Top 3 em rondas concluídas em {labelPeriodo}
-            </p>
-          </div>
-          <span className="text-[10px] font-bold text-gray-500 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 shrink-0">
-            {labelPeriodo}
-          </span>
-        </div>
-
-        {/* Bloco do Pódio Físico Monocromático (1º - 2º - 3º) */}
-        {dados.rankingInspetores.length > 0 ? (
-          <div className="pt-3 pb-1 space-y-3">
-            <div className="grid grid-cols-3 items-end gap-2 sm:gap-3">
-              {/* 1º Lugar (Esquerda - Mais Alto) */}
-              <ColunaPodio
-                posicao={1}
-                inspetor={dados.rankingInspetores[0]}
-                alturaPilar="h-[106px]"
-              />
-
-              {/* 2º Lugar (Centro - Altura Média) */}
-              <ColunaPodio
-                posicao={2}
-                inspetor={dados.rankingInspetores[1]}
-                alturaPilar="h-[76px]"
-              />
-
-              {/* 3º Lugar (Direita - Menor Altura) */}
-              <ColunaPodio
-                posicao={3}
-                inspetor={dados.rankingInspetores[2]}
-                alturaPilar="h-[56px]"
-              />
-            </div>
-
-            {/* Legenda dos Indicadores em Uma Palavra */}
-            <div className="flex items-center justify-center gap-3 pt-2.5 border-t border-gray-100/80 text-[10px] font-semibold text-gray-400 select-none">
-              <span className="inline-flex items-center gap-1">
-                <span className="text-[11px] font-black text-emerald-600">✓</span> Itens Conformes
-              </span>
-              <span className="text-gray-200">·</span>
-              <span className="inline-flex items-center gap-1">
-                <span className="text-[11px] font-black text-red-500">✕</span> Itens Não Conformes
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="py-8 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-            <p className="text-[11px] text-gray-400 font-medium">
-              Nenhuma ronda realizada em {labelPeriodo}.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Rondas Recentes */}
-      {dados.rondasRecentes.length > 0 && (
-        <div className="bg-white rounded-[24px] p-5 border border-gray-100 shadow-[var(--shadow-card)]">
-          <h3 className="text-[14px] font-extrabold text-gray-900 tracking-tight mb-3">Rondas Recentes</h3>
-          <div className="space-y-3">
-            {dados.rondasRecentes.map((ronda) => {
-              const dataObj = ronda.dataHora ? new Date(ronda.dataHora) : null
-              const hora = dataObj
-                ? dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                : ''
-              const dia = dataObj
-                ? dataObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-                : ''
-
-              return (
-                <div key={ronda.id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-extrabold text-blue-600 shrink-0">
-                    {ronda.inspetorNome.replace(/^(Enf\.|Eng\.|Coord\.)\s*/i, '').substring(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-bold text-gray-900 truncate">{ronda.inspetorNome}</p>
-                    <p className="text-[10px] text-gray-400 font-medium truncate">
-                      {ronda.nomeAtivo} · {ronda.localNome}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-[10px] font-bold font-nunito text-gray-600">{hora}</p>
-                    <p className="text-[9px] font-bold font-nunito text-gray-400">{dia}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-
     </div>
   )
 }

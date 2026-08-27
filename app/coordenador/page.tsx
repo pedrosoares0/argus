@@ -130,19 +130,49 @@ export default function PaginaCoordenador() {
   const { titulo, subtitulo } = TITULOS_ABA[abaAtiva]
 
   return (
-    <div className="px-5 pt-3 pb-28 space-y-5">
-      {/* Título Dinâmico */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-          {titulo}
-        </h1>
-        <p className="text-[13px] text-gray-500 mt-0.5">
-          {subtitulo}
-        </p>
+    <div className="space-y-6">
+      {/* Header com Título e Seletor de Abas Desktop */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight font-space-grotesk">
+            {titulo}
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-500 font-medium mt-0.5">
+            {subtitulo}
+          </p>
+        </div>
+
+        {/* Seletor de Abas Desktop (Apple Segmented Control Style) */}
+        <div className="hidden md:flex items-center bg-slate-200/60 p-1.5 rounded-2xl gap-1 shadow-inner border border-slate-200/80">
+          {ABAS.map((aba) => {
+            const ativa = abaAtiva === aba.id
+            return (
+              <button
+                key={aba.id}
+                type="button"
+                onClick={() => {
+                  setAbaAtiva(aba.id)
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                className={[
+                  'flex items-center gap-2 py-2 px-4 rounded-xl cursor-pointer text-xs font-bold transition-all duration-200 select-none active:scale-95',
+                  ativa
+                    ? 'bg-white text-slate-900 shadow-sm scale-[1.02]'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-white/40',
+                ].join(' ')}
+              >
+                <div className={`w-4 h-4 ${ativa ? 'text-purple-600' : 'text-slate-400'}`}>
+                  {aba.icone}
+                </div>
+                <span>{aba.label}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Conteúdo das Abas com Persistência em Memória (Keep-Alive & Prefetch) */}
-      <div>
+      <div className="w-full">
         <div className={abaAtiva === 'dashboard' ? 'block animate-fadeIn' : 'hidden'}>
           <PainelDashboard hospitalId={hospitalId} />
         </div>
@@ -158,11 +188,11 @@ export default function PaginaCoordenador() {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          NAV INFERIOR — TRANSLÚCIDA COM BLUR INTENSO
-          E INDICADOR ATIVO EM CÁPSULA LARGA (APPLE STYLE)
+          NAV INFERIOR — APENAS MOBILE (md:hidden)
+          TRANSLÚCIDA COM BLUR INTENSO E INDICADOR ATIVO
          ══════════════════════════════════════════════════ */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto px-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] pointer-events-none">
-        <nav className="pointer-events-auto bg-white/40 backdrop-blur-[24px] saturate-[180%] rounded-full border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.7)] p-1.5">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto px-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] pointer-events-none">
+        <nav className="pointer-events-auto bg-white/50 backdrop-blur-[24px] saturate-[180%] rounded-full border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] p-1.5">
           <div className="flex items-center justify-between gap-1">
             {ABAS.map((aba) => {
               const ativa = abaAtiva === aba.id

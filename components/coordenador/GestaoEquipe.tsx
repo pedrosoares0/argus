@@ -270,7 +270,7 @@ export function GestaoEquipe({ hospitalId }: GestaoEquipeProps) {
 
       {/* Lista de membros */}
       {listaAtual.length > 0 ? (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
           {listaAtual
             .sort((a, b) => {
               // Ordenar por atividade mais recente primeiro
