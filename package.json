@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/genai": "^2.19.0",
     "@paper-design/shaders": "^0.0.80",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.0",

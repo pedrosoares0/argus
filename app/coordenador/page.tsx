@@ -7,6 +7,7 @@ import { PainelDashboard } from '@/components/coordenador/PainelDashboard'
 import { FilaValidacaoNCs } from '@/components/coordenador/FilaValidacaoNCs'
 import { GestaoEquipe } from '@/components/coordenador/GestaoEquipe'
 import { GestaoAtivos } from '@/components/coordenador/GestaoAtivos'
+import { OrbIA } from '@/components/ui/OrbIA'
 
 type AbaCoordenador = 'dashboard' | 'ncs' | 'equipe' | 'ativos'
 
@@ -143,36 +144,48 @@ export default function PaginaCoordenador() {
           </p>
         </div>
 
-        {/* Seletor de Abas Desktop com Bubble Effect e formato 100% arredondado */}
-        <div className="hidden md:flex items-center bg-slate-200/70 p-1.5 rounded-full gap-1 border border-slate-200/80 shadow-inner relative">
-          {ABAS.map((aba) => {
-            const ativa = abaAtiva === aba.id
-            return (
-              <button
-                key={aba.id}
-                type="button"
-                onClick={() => {
-                  setAbaAtiva(aba.id)
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className={`relative z-10 flex items-center gap-2 py-2 px-4.5 rounded-full cursor-pointer text-xs font-bold transition-colors duration-200 select-none ${
-                  ativa ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                {ativa && (
-                  <motion.div
-                    layoutId="abaAtivaBubble"
-                    transition={{ type: 'spring', bounce: 0.22, duration: 0.42 }}
-                    className="absolute inset-0 bg-white rounded-full shadow-[0_3px_12px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)] border border-slate-100/80 -z-10"
-                  />
-                )}
-                <div className={`w-4 h-4 transition-colors duration-200 ${ativa ? 'text-purple-600' : 'text-slate-400'}`}>
-                  {aba.icone}
-                </div>
-                <span className="font-extrabold">{aba.label}</span>
-              </button>
-            )
-          })}
+        {/* Seletor de Abas Desktop + Botão Orb ao lado fora da barra */}
+        <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center bg-slate-200/70 p-1.5 rounded-full gap-1 border border-slate-200/80 shadow-inner relative">
+            {ABAS.map((aba) => {
+              const ativa = abaAtiva === aba.id
+              return (
+                <button
+                  key={aba.id}
+                  type="button"
+                  onClick={() => {
+                    setAbaAtiva(aba.id)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className={`relative z-10 flex items-center gap-2 py-2 px-4.5 rounded-full cursor-pointer text-xs font-bold transition-colors duration-200 select-none ${
+                    ativa ? 'text-slate-900' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {ativa && (
+                    <motion.div
+                      layoutId="abaAtivaBubble"
+                      transition={{ type: 'spring', bounce: 0.22, duration: 0.42 }}
+                      className="absolute inset-0 bg-white rounded-full shadow-[0_3px_12px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)] border border-slate-100/80 -z-10"
+                    />
+                  )}
+                  <div className={`w-4 h-4 transition-colors duration-200 ${ativa ? 'text-sky-600' : 'text-slate-400'}`}>
+                    {aba.icone}
+                  </div>
+                  <span className="font-extrabold">{aba.label}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Botão Orb Desktop — Fora da barra de abas, Glassmorphic com Orb ampliado */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('argus:abrir-chat-ia'))}
+            className="w-11 h-11 rounded-full bg-white/70 backdrop-blur-[24px] saturate-[180%] border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform shrink-0"
+            title="Abrir Argus IA"
+          >
+            <OrbIA tamanho={38} />
+          </button>
         </div>
       </div>
 
@@ -194,41 +207,54 @@ export default function PaginaCoordenador() {
 
       {/* ══════════════════════════════════════════════════
           NAV INFERIOR — APENAS MOBILE (md:hidden)
-          TRANSLÚCIDA COM BLUR INTENSO E INDICADOR ATIVO
+          BARRA DE ABAS TERMINA EM ATIVOS + ORB GLASSMORPHIC
          ══════════════════════════════════════════════════ */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto px-4 pb-[max(0.65rem,env(safe-area-inset-bottom))] pointer-events-none">
-        <nav className="pointer-events-auto bg-white/50 backdrop-blur-[24px] saturate-[180%] rounded-full border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] p-1.5">
-          <div className="flex items-center justify-between gap-1 relative">
-            {ABAS.map((aba) => {
-              const ativa = abaAtiva === aba.id
-              return (
-                <button
-                  key={aba.id}
-                  type="button"
-                  onClick={() => {
-                    setAbaAtiva(aba.id)
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  className={`relative z-10 flex-1 flex flex-col items-center justify-center py-1.5 px-3 rounded-full cursor-pointer transition-colors duration-200 select-none active:scale-95 ${
-                    ativa ? 'text-[#7C3AED] font-black' : 'text-gray-400 hover:text-gray-600'
-                  }`}
-                >
-                  {ativa && (
-                    <motion.div
-                      layoutId="abaAtivaMobileBubble"
-                      transition={{ type: 'spring', bounce: 0.22, duration: 0.42 }}
-                      className="absolute inset-0 bg-gradient-to-b from-[#7C3AED]/16 to-[#7C3AED]/8 rounded-full shadow-[0_3px_10px_rgba(124,58,237,0.15),inset_0_1px_1.5px_rgba(255,255,255,0.8),inset_0_0_0_1px_rgba(124,58,237,0.18)] -z-10"
-                    />
-                  )}
-                  <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                    {aba.icone}
-                  </div>
-                  <span className="text-[9.5px] font-bold tracking-wide mt-0.5">{aba.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </nav>
+        <div className="flex items-center gap-2 pointer-events-auto">
+          {/* Navbar inferior (Dashboard até Ativos) */}
+          <nav className="flex-1 bg-white/70 backdrop-blur-[24px] saturate-[180%] rounded-full border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] p-1.5">
+            <div className="flex items-center justify-between gap-1 relative">
+              {ABAS.map((aba) => {
+                const ativa = abaAtiva === aba.id
+                return (
+                  <button
+                    key={aba.id}
+                    type="button"
+                    onClick={() => {
+                      setAbaAtiva(aba.id)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                    className={`relative z-10 flex-1 flex flex-col items-center justify-center py-1.5 px-2 rounded-full cursor-pointer transition-colors duration-200 select-none active:scale-95 ${
+                      ativa ? 'text-slate-900 font-black' : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    {ativa && (
+                      <motion.div
+                        layoutId="abaAtivaMobileBubble"
+                        transition={{ type: 'spring', bounce: 0.22, duration: 0.42 }}
+                        className="absolute inset-0 bg-slate-900/10 rounded-full shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.8),inset_0_0_0_1px_rgba(15,23,42,0.1)] -z-10"
+                      />
+                    )}
+                    <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                      {aba.icone}
+                    </div>
+                    <span className="text-[9.5px] font-bold tracking-wide mt-0.5">{aba.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+
+          {/* Botão Orb Mobile — Glassmorphic idêntico à navbar com Orb ampliado e margem justa */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('argus:abrir-chat-ia'))}
+            className="w-[48px] h-[48px] rounded-full bg-white/70 backdrop-blur-[24px] saturate-[180%] border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform shrink-0"
+            title="Abrir Argus IA"
+          >
+            <OrbIA tamanho={42} />
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import CommandMenu from '@/components/ui/command-menu'
+import { ChatIA } from '@/components/coordenador/ChatIA'
+import { OrbIA } from '@/components/ui/OrbIA'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
 export default function LayoutCoordenador({
@@ -130,7 +132,7 @@ export default function LayoutCoordenador({
           </div>
           
           {/* CommandMenu Interativo Compacto */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <CommandMenu
               title={nomeExibido}
               perfil="coordenador"
@@ -194,6 +196,9 @@ export default function LayoutCoordenador({
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-28 md:pb-12">
         {children}
       </main>
+
+      {/* Chat IA — Exclusivo do Coordenador */}
+      <ChatIA />
     </div>
   )
 }
