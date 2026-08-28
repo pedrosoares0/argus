@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     if (!apiKey || apiKey === 'SUA_CHAVE_AQUI' || apiKey.trim() === '') {
       return NextResponse.json(
         {
-          error: 'Chave GEMINI_API_KEY não configurada no .env.local.',
+          error: 'Chave GEMINI_API_KEY não configurada nas variáveis de ambiente da hospedagem (ex: Vercel Settings -> Environment Variables).',
         },
         { status: 500 }
       )
