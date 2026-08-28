@@ -47,17 +47,27 @@ export default function PaginaCadastro() {
   const [setorSelecionado, setSetorSelecionado] = useState('')
   const [hospitalId, setHospitalId] = useState('e632822a-0000-0000-0000-000000000001') // Default hospital ID
   
-  const [hospitais, setHospitais] = useState<any[]>([
-    { id: 'e632822a-0000-0000-0000-000000000001', nome: 'Hospital Público Itaberaba' }
-  ])
+  const [hospitais, setHospitais] = useState<any[]>([])
+  const [carregandoHospitais, setCarregandoHospitais] = useState(true)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState<string | null>(null)
 
-  // Carregar hospitais cadastrados
+  // Carregar hospitais cadastrados em tempo real
   useEffect(() => {
     async function carregarHospitais() {
       try {
+        // Tenta buscar via API interna
+        const res = await fetch('/api/hospitais')
+        const json = await res.json()
+        if (json?.hospitais && json.hospitais.length > 0) {
+          setHospitais(json.hospitais)
+          setHospitalId(json.hospitais[0].id)
+          setCarregandoHospitais(false)
+          return
+        }
+
+        // Fallback: busca direta via Supabase Client
         const supabase = criarClienteSupabase() as any
         const { data } = await supabase
           .from('hospitais')
@@ -66,9 +76,14 @@ export default function PaginaCadastro() {
         if (data && data.length > 0) {
           setHospitais(data)
           setHospitalId(data[0].id)
+        } else {
+          setHospitais([{ id: 'e632822a-0000-0000-0000-000000000001', nome: 'Hospital Geral' }])
         }
       } catch (err) {
         console.error('Erro ao carregar hospitais:', err)
+        setHospitais([{ id: 'e632822a-0000-0000-0000-000000000001', nome: 'Hospital Geral' }])
+      } finally {
+        setCarregandoHospitais(false)
       }
     }
     carregarHospitais()

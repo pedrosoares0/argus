@@ -62,4 +62,13 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- 4. Permite leitura pública da lista de hospitais para o select no cadastro
+ALTER TABLE public.hospitais ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Permitir leitura publica de hospitais" ON public.hospitais;
+CREATE POLICY "Permitir leitura publica de hospitais"
+  ON public.hospitais
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
 COMMIT;
