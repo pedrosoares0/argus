@@ -1,8 +1,8 @@
 # 📖 ARGUS — Documento de Referência Completo ("A Bíblia")
 
-> **Última atualização**: 26 de Agosto de 2026  
-> **Versão do projeto**: 0.1.0 (MVP)  
-> **Stack**: Next.js 16 · React 19 · Supabase · Tailwind CSS 4 · TypeScript 5
+> **Última atualização**: 28 de Agosto de 2026  
+> **Versão do projeto**: 0.2.0  
+> **Stack**: Next.js 16 · React 19 · Supabase · Tailwind CSS 4 · TypeScript 5 · Google Gemini IA · WebGPU / WebGL
 
 ---
 
@@ -15,6 +15,7 @@ Argus é uma **plataforma web mobile-first de Prontidão Operacional do Centro C
 - Registrar **Não Conformidades (NCs)** quando um item não está conforme, com foto, criticidade e setor responsável.
 - Encaminhar NCs automaticamente para setores técnicos (Engenharia Clínica, Manutenção, Farmácia, Almoxarifado).
 - Fornecer visão gerencial para **Coordenadores** validarem correções, gerirem equipe e ativos.
+- Disponibilizar a **Argus IA**: assistente inteligente em tempo real alimentada com dados do banco para análise de prontidão, produtividade e resolução de NCs.
 - Notificar a equipe por **e-mail** quando NCs críticas são abertas.
 
 ### Contexto Hospitalar
@@ -34,7 +35,7 @@ O sistema possui **6 perfis** definidos no enum `PerfilUsuario`:
 | `inspetor` | Enfermeiros e Técnicos em campo | `/inspetor` | Ronda de verificação, scanner QR, execução de checklist, registro de NCs, histórico de inspeções |
 | `tecnico` | Profissional de setor técnico especializado | `/engenharia` | Mesma fila de NCs da Engenharia, filtrada por setor do técnico |
 | `engenharia_clinica` | Engenheiros clínicos | `/engenharia` | Fila de NCs, assumir responsabilidade, registrar manutenção, finalizar reparo |
-| `coordenador` | Coordenação do setor | `/coordenador` | Dashboard, validação de NCs, gestão de equipe, gestão de ativos, QR codes |
+| `coordenador` | Coordenação do setor | `/coordenador` | Dashboard, validação de NCs, gestão de equipe, gestão de ativos, QR codes, **Argus IA (Assistente Operacional)** |
 | `gestor` | Gestor hospitalar | `/gestor` *(não implementado)* | Visão macro *(futuro)* |
 | `administrador` | Admin do sistema | `/admin` *(não implementado)* | Configuração global *(futuro)* |
 
@@ -72,12 +73,13 @@ Definido em `lib/roteamentoNC.ts`:
 | Linguagem | TypeScript | ^5 |
 | Estilização | Tailwind CSS | ^4 |
 | Backend/Auth/DB | Supabase (SSR + JS Client) | ^2.112 / ^0.12 |
+| IA Generativa | Google Gemini Flash | gemini-3.5-flash / latest |
+| Shaders / Gráficos | WebGPU (WGSL) / WebGL | Nativo + Custom Shaders |
 | Animações | Motion (Framer Motion) | ^13 |
 | QR Code | qrcode.react | ^4.2 |
-| E-mail | Nodemailer | ^9 |
+| E-mail | Nodemailer / Resend | ^9 |
 | Icons | Lucide React | ^1.31 |
 | Scroll | Lenis | ^1.3 |
-| Shaders | @paper-design/shaders | ^0.0.80 |
 
 ### 3.2 Estrutura de Diretórios
 
@@ -110,6 +112,7 @@ argus/
 │   ├── nao-conformidades/      # ══ MÓDULO NC (COMPARTILHADO) ══
 │   │   └── [id]/page.tsx       # Detalhe da NC: timeline, ações por perfil, manutenção
 │   └── api/
+│       ├── chat-ia/route.ts    # API Route: streaming SSE com Google Gemini Flash e dados reais
 │       ├── seed-plantao/       # (vazio — reservado)
 │       └── send-email/route.ts # API Route: envio de e-mail SMTP via Nodemailer
 ├── components/
@@ -121,17 +124,25 @@ argus/
 │   │   ├── IconeMascote.tsx    # Ícone mascote "blop" do Argus
 │   │   ├── ItemLista.tsx       # Item de lista com seta
 │   │   ├── LenisProvider.tsx   # Provider de smooth scroll
+│   │   ├── OrbIA.tsx           # Glass Liquid Orb com shader WebGPU (WGSL) e fallback WebGL
+│   │   ├── orbIAShader.ts      # Fonte WGSL do shader Frost Liquid Orb
+│   │   ├── ai-chat-input.tsx   # Input de chat em formato de cápsula redonda e botão circular
+│   │   ├── response-stream.tsx # Streaming typewriter para respostas da IA
 │   │   ├── PillTag.tsx         # Badge/pill colorido (verde, laranja, vermelho, azul, cinza)
 │   │   ├── PillUsuario.tsx     # Pill com avatar + nome do usuário
 │   │   ├── QRCodeAtivo.tsx     # Gerador de QR Code com download
 │   │   ├── command-menu.tsx    # Menu de comando estilo Apple (perfil + navegação)
 │   │   └── liquid-metal-button.tsx # Botão com efeito liquid-metal shader
 │   └── coordenador/            # Componentes do módulo Coordenador
+│       ├── ChatIA.tsx           # Drawer lateral com Glassmorphism para interação com Argus IA
 │       ├── PainelDashboard.tsx  # Dashboard com métricas, gráficos, timeline
 │       ├── FilaValidacaoNCs.tsx # Fila de validação de NCs pela coordenação
 │       ├── GestaoEquipe.tsx     # Gestão de inspetores e técnicos
 │       └── GestaoAtivos.tsx     # Gestão de ativos com status e QR
 ├── lib/
+│   ├── ia/
+│   │   └── coletarDadosHospital.ts # Agregador de snapshot do hospital em tempo real para IA
+│   ├── tratarErrosAuth.ts      # Tradutor e blindagem humanizada de erros de autenticação
 │   ├── roteamentoNC.ts         # Mapa tipo NC → setor, labels, cores
 │   ├── cache/
 │   │   └── dadosCache.ts       # Cache SWR em memória (Map) com TTL de 3min
@@ -548,15 +559,15 @@ Todos os layouts têm `handleSair()`:
 Tela em `/cadastro`. Permite criar contas com os perfis:
 - **Inspetor**: Enfermagem / Campo
 - **Técnico**: Setor especializado (com seletor de setor)
+- **Coordenador**: Gestão do Centro Cirúrgico & IA
 
 Campos: Nome, E-mail, Hospital (select), Número do Conselho (COREN/CRM/CREA), Perfil, Setor (se técnico), Senha + Confirmação.
 
 Fluxo:
-1. `supabase.auth.signUp()` com metadados (`hospital_id`, `nome`, `perfil`, `setor`).
-2. `upsert` na tabela `public.usuarios` para garantir presença.
-3. Grava no localStorage e redireciona.
-
-> **Importante**: Perfis `coordenador`, `gestor` e `administrador` **NÃO** aparecem no cadastro público. São criados manualmente no banco.
+1. `supabase.auth.signUp()` com metadados (`hospital_id`, `nome`, `perfil`, `setor`, `numero_conselho`).
+2. Trigger `handle_new_user()` no Postgres sincroniza automaticamente com a tabela `public.usuarios` (`id, hospital_id, nome, email, perfil, setor, numero_conselho, criado_em`).
+3. Tratamento centralizado de erros via `lib/tratarErrosAuth.ts` para garantir mensagens amigáveis em português sem erros `{}` ou termos técnicos em inglês.
+4. Grava na sessão local e redireciona para a rota do perfil (`/inspetor`, `/engenharia`, `/coordenador`).
 
 ---
 
@@ -565,7 +576,7 @@ Fluxo:
 ### Rota de API (`/api/send-email`)
 
 - **Método**: POST
-- **Transporte**: SMTP via Nodemailer (configurável por `.env`)
+- **Transporte**: SMTP via Nodemailer / Resend (configurável por `.env.local`)
 - **Template**: HTML responsivo com branding Argus (Space Grotesk, cards arredondados, badge de criticidade)
 - **Destinatários fixos**: `pedrosoaress365@gmail.com`, `p.moraisneto@outlook.com` + e-mail do inspetor
 - **Conteúdo**: Nome do ativo, problema relatado, criticidade, botão CTA para Argus
@@ -642,14 +653,14 @@ Chaves principais:
 | Cards grandes | `28px` |
 | Cards médios | `24px` |
 | Inputs/modais | `20px` - `24px` |
-| Botões/pills | `9999px` (full) |
+| Botões/pills/inputs chat | `9999px` (full) |
 | Mini cards | `12px` - `16px` |
 
 ### Estilo Visual Geral
 
 - **Mobile-first**: `max-w-md mx-auto` em todos os layouts
-- **Glassmorphism**: Nav inferior com `bg-white/40 backdrop-blur-[24px] saturate-[180%]`
-- **Apple-style**: Tab bars, cards, seletores segmentados
+- **Glassmorphism**: Nav inferior e Chat IA com `bg-white/70 backdrop-blur-[24px] saturate-[180%]`
+- **Apple-style**: Tab bars, cards, seletores segmentados, chat input minimalista
 - **Micro-animações**: `fadeIn` (opacity + translateY), `scale` em hover/active
 - **Feedback tátil**: `active:scale-[0.92]` em botões, `active:scale-[0.98]` em links
 - **Gradient header** (inspetor): `from-[#79C7FF] via-[#79C7FF]/5 to-[#FAFAFC]`
@@ -662,6 +673,9 @@ Chaves principais:
 |---|---|---|
 | `Botao` | `components/ui/Botao.tsx` | Botão com variantes `primario`, `secundario`, `perigo`, `fantasma` |
 | `LiquidMetalButton` | `components/ui/liquid-metal-button.tsx` | Botão premium com shader WebGL de liquid metal |
+| `OrbIA` | `components/ui/OrbIA.tsx` | Glass Liquid Orb animado via WebGPU (WGSL) com fallback WebGL |
+| `AIChatInput` | `components/ui/ai-chat-input.tsx` | Input de chat em formato de cápsula redonda (`rounded-full`) e botão circular de envio (`ArrowUp`) |
+| `ResponseStream` | `components/ui/response-stream.tsx` | Componente de typewriter streaming para respostas da IA |
 | `PillTag` | `components/ui/PillTag.tsx` | Badge colorido: `verde`, `laranja`, `vermelho`, `azul`, `cinza` |
 | `BarraBusca` | `components/ui/BarraBusca.tsx` | Input de busca com ícone de lupa |
 | `Avatar` | `components/ui/Avatar.tsx` | Compound component (Avatar.Image + Avatar.Fallback) |
@@ -675,11 +689,51 @@ Chaves principais:
 
 ---
 
-## 13. Estado Atual do Projeto
+## 13. Módulo Argus IA (Assistente de Prontidão Operacional)
+
+### 13.1 Visão Geral
+
+O **Argus IA** é o copiloto inteligente em tempo real exclusivo para o perfil de **Coordenador** (e Administrador). Ele permite que o gestor faça perguntas em linguagem natural e receba diagnósticos operacionais imediatos sobre:
+- Quantidade e criticidade de Não Conformidades abertas.
+- Salas cirúrgicas com risco de atraso ou itens pendentes.
+- Produtividade e volume de rondas realizadas por cada inspetor.
+- Histórico de resoluções de equipamentos pela equipe de Engenharia Clínica e Manutenção.
+
+### 13.2 Arquitetura de Dados (Sem Alucinações)
+
+1. **Coleta em Tempo Real (`lib/ia/coletarDadosHospital.ts`)**:
+   - A cada pergunta, o backend consulta o Supabase e compila um snapshot atualizado do hospital:
+     - Todos os ativos e seus status (`disponivel`, `em_manutencao`, `inativo`).
+     - Todas as NCs ativas com número único (`NC-2026-XXXX`), criticidade, tipo e setor responsável.
+     - Últimas 30 execuções de checklist concluídas e o nome do inspetor executor.
+     - Lista de usuários da equipe de campo.
+2. **Injeção no System Prompt**:
+   - O snapshot é anexado ao prompt de sistema do modelo **Google Gemini Flash** (`gemini-3.5-flash` / `gemini-3.6-flash`).
+   - A IA responde estritamente baseada nos dados reais injetados, sem inventar informações.
+3. **Personalização Natural**:
+   - O backend extrai o primeiro nome do coordenador logado e instrui a IA a se dirigir a ele de forma natural e pontual (sem repetições mecânicas).
+
+### 13.3 Streaming SSE (`/api/chat-ia`)
+
+- Rota HTTP POST com suporte a Server-Sent Events (SSE).
+- Respostas transmitidas caractere a caractere diretamente para o componente `ResponseStream`.
+- Parser de Markdown com formatação estruturada de listas identadas (`•`), badges coloridos para NCs (`NC-2026-E009`) e pills de criticidade (*Crítica*, *Importante*, *Informativa*).
+
+### 13.4 Interface & Liquid Glass Orb
+
+- **Botão de Ativação**: Posicionado organicamente fora da barra de abas, ao lado direito de "Ativos" no Desktop e Mobile.
+- **Shader WebGPU (Frost Preset - Style 15)**: Implementado em WGSL com simulação de fluxo óptico e vidro líquido.
+- **Fallback WebGL**: Para dispositivos móveis ou navegadores sem WebGPU ativo, um shader WebGL de alta fidelidade é executado com paridade visual instantânea.
+- **Chat Drawer**: Painel deslizante com fundo em Glassmorphism translúcido (`backdrop-blur-[24px]`).
+
+---
+
+## 14. Estado Atual do Projeto
 
 ### ✅ Implementado e Funcional
 
-- Login e cadastro com Supabase Auth real
+- Login e cadastro com Supabase Auth real e tradução humanizada de erros
+- **Módulo Argus IA** completo com streaming SSE, contexto em tempo real e WebGPU Glass Liquid Orb
 - Dashboard do Inspetor com lista de salas (dados reais do Supabase)
 - Scanner QR via câmera do dispositivo (BarcodeDetector API)
 - Execução completa de checklist com persistência no Supabase
@@ -688,7 +742,7 @@ Chaves principais:
 - Fila de NCs para Engenharia Clínica (dados reais)
 - Detalhe da NC com ações por perfil (assumir, manutenção, finalizar, validar, rejeitar)
 - Resolução direta de NCs pelo coordenador (sem técnico)
-- Dashboard do Coordenador com 4 abas (Painel, NCs, Equipe, Ativos)
+- Dashboard do Coordenador com 4 abas (Painel, NCs, Equipe, Ativos) + Acesso à Argus IA
 - Histórico de inspeções com modo somente-leitura
 - Cache SWR para navegação instantânea
 - Design mobile-first premium (glassmorphism, liquid-metal, micro-animações)
