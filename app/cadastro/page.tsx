@@ -8,6 +8,7 @@ import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { Avatar } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { TODOS_SETORES, SETORES_LABELS } from '@/lib/roteamentoNC'
+import { traduzirErroAuth } from '@/lib/tratarErrosAuth'
 
 const ROLES = [
   { 
@@ -111,7 +112,7 @@ export default function PaginaCadastro() {
       })
 
       if (error) {
-        setErro(error.message)
+        setErro(traduzirErroAuth(error))
         setCarregando(false)
         return
       }
@@ -158,7 +159,7 @@ export default function PaginaCadastro() {
 
     } catch (err: any) {
       console.error(err)
-      setErro('Erro de conexão ao tentar realizar cadastro.')
+      setErro(traduzirErroAuth(err))
       setCarregando(false)
     }
   }

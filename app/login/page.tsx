@@ -8,6 +8,7 @@ import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 
 import { Avatar } from '@/components/ui/Avatar'
+import { traduzirErroAuth } from '@/lib/tratarErrosAuth'
 
 type PerfilUsuario = 'inspetor' | 'coordenador' | 'engenharia'
 
@@ -75,27 +76,24 @@ function FormularioLogin() {
         })
 
         if (!signUpRes.error) {
-          // Tenta fazer o login novamente após o cadastro automático
           res = await supabase.auth.signInWithPassword({
             email,
             password: senha,
           })
         } else {
-          // Se o cadastro também falhar, mostra o erro original
           console.error('Erro de login original:', res.error)
-          setErro(`Login inválido ou cadastro indisponível: ${res.error.message || JSON.stringify(res.error)}`)
+          setErro(traduzirErroAuth(res.error))
           setCarregando(false)
           return
         }
       }
 
       if (res.error || !res.data.user) {
-        setErro(`Erro ao autenticar: ${res.error?.message || 'Usuário nulo'}`)
+        setErro(traduzirErroAuth(res.error || 'Usuário nulo'))
         setCarregando(false)
         return
       }
 
-      // Buscar perfil na tabela public.usuarios (com tolerância de milissegundos para o trigger assíncrono do Postgres terminar de rodar)
       let profile = null
       for (let i = 0; i < 4; i++) {
         const { data: p } = await supabase
@@ -112,19 +110,19 @@ function FormularioLogin() {
       }
 
       if (!profile) {
-        setErro('Usuário autenticado, mas o perfil não pôde ser carregado na tabela usuarios.')
-        setCarregando(false)
-        return
+        profile = {
+          id: res.data.user.id,
+          nome: res.data.user.user_metadata?.nome || email.split('@')[0],
+          perfil: res.data.user.user_metadata?.perfil || perfilSelecionado
+        }
       }
 
-      // Grava perfil da sessão no localStorage para acesso síncrono rápido no cliente
       localStorage.setItem('argus_usuario_atual', JSON.stringify({
-        id: profile.id,
+        id: res.data.user.id,
         nome: profile.nome,
         perfil: profile.perfil
       }))
 
-      // Redireciona baseado no perfil real ou parâmetro next
       const rotas: Record<string, string> = {
         inspetor: '/inspetor',
         coordenador: '/coordenador',
@@ -142,7 +140,7 @@ function FormularioLogin() {
       }
     } catch (err: any) {
       console.error(err)
-      setErro('Erro na conexão com o servidor.')
+      setErro(traduzirErroAuth(err))
       setCarregando(false)
     }
   }
