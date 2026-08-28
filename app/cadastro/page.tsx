@@ -29,8 +29,8 @@ const ROLES = [
     valor: 'coordenador', 
     label: 'Coordenador', 
     desc: 'Gestão CC & IA',
-    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/green.jpg',
-    fallback: 'CD' 
+    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/purple.jpg',
+    fallback: 'CO' 
   },
 ]
 
