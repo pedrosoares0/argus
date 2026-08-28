@@ -6,6 +6,16 @@
 export function traduzirErroAuth(erro: any): string {
   if (!erro) return 'Ocorreu um erro inesperado. Tente novamente.'
 
+  // Se for um erro do tipo AuthRetryableFetchError ou status 500 com mensagem vazia/{}
+  if (
+    erro?.name === 'AuthRetryableFetchError' ||
+    erro?.__isAuthError && erro?.status === 500 ||
+    erro?.message === '{}' ||
+    erro === '{}'
+  ) {
+    return 'Erro temporário de comunicação com o banco de dados ao salvar o usuário. Tente novamente em instantes.'
+  }
+
   // Se for um objeto vazio sem propriedades úteis
   if (typeof erro === 'object' && Object.keys(erro).length === 0 && !erro.message && !erro.error_description) {
     return 'Ocorreu um erro inesperado ao processar sua solicitação. Tente novamente.'
@@ -43,6 +53,11 @@ export function traduzirErroAuth(erro: any): string {
     }
   }
 
+  // Se mesmo após tudo isso a mensagem for "{}"
+  if (mensagem.trim() === '{}' || mensagem.trim() === '') {
+    return 'Ocorreu um erro inesperado ao processar sua solicitação. Tente novamente.'
+  }
+
   const msgMin = mensagem.toLowerCase()
 
   // Dicionário de traduções e mensagens amigáveis
@@ -68,6 +83,10 @@ export function traduzirErroAuth(erro: any): string {
 
   if (msgMin.includes('rate limit') || msgMin.includes('over_email_send_rate_limit') || msgMin.includes('too many requests') || msgMin.includes('429')) {
     return 'Muitas tentativas em pouco tempo. Por segurança, aguarde alguns segundos antes de tentar novamente.'
+  }
+
+  if (msgMin.includes('database error saving new user') || msgMin.includes('unexpected_failure')) {
+    return 'Erro no banco de dados ao registrar novo usuário. O trigger do Supabase requer atualização de colunas.'
   }
 
   if (msgMin.includes('failed to fetch') || msgMin.includes('networkerror') || msgMin.includes('network request failed') || msgMin.includes('connection refused')) {
