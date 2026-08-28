@@ -1,0 +1,6 @@
+[build]
+  command = "npm run build"
+
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/**, .next/**"
+  SECRETS_SCAN_OMIT_KEYS = "GEMINI_API_KEY"
