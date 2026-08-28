@@ -98,8 +98,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 4. Obter hospital_id
-    const hospitalId = profile?.hospital_id || user.user_metadata?.hospital_id || null
+    // 4. Obter hospital_id com fallback resiliente
+    const hospitalId = profile?.hospital_id || user.user_metadata?.hospital_id || 'e632822a-0000-0000-0000-000000000001'
 
     // 5. Parsear mensagens enviadas pelo chat
     const body = await request.json()

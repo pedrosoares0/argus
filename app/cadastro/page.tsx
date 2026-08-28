@@ -24,6 +24,13 @@ const ROLES = [
     avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/orange.jpg',
     fallback: 'TC' 
   },
+  { 
+    valor: 'coordenador', 
+    label: 'Coordenador', 
+    desc: 'Gestão CC & IA',
+    avatarUrl: 'https://heroui-assets.nyc3.cdn.digitaloceanspaces.com/avatars/green.jpg',
+    fallback: 'CD' 
+  },
 ]
 
 export default function PaginaCadastro() {
