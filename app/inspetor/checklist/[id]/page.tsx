@@ -60,6 +60,36 @@ function ComponenteChecklist() {
   const [erro, setErro] = useState<string | null>(null)
   const [sucesso, setSucesso] = useState(false)
   const [proximoAtivo, setProximoAtivo] = useState<{ id: string; nome: string } | null>(null)
+  const [executorInspecao, setExecutorInspecao] = useState<{ nome: string; perfil: string } | null>(null)
+  const [fotoZoom, setFotoZoom] = useState<{ url: string; autorNome?: string; autorPerfil?: string } | string | null>(null)
+
+  function formatarPerfil(perfil?: string | null) {
+    if (!perfil) return 'Inspetor'
+    const p = perfil.toLowerCase()
+    if (p === 'inspetor') return 'Inspetor'
+    if (p === 'coordenador') return 'Coordenador'
+    if (p === 'engenharia') return 'Engenharia Clínica'
+    if (p === 'tecnico') return 'Técnico'
+    return perfil.charAt(0).toUpperCase() + perfil.slice(1)
+  }
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setFotoZoom(null)
+      }
+    }
+    if (fotoZoom) {
+      window.addEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [fotoZoom])
 
   const primeiroNome = (() => {
     if (!usuario?.nome) return ''
@@ -96,7 +126,7 @@ function ComponenteChecklist() {
           const [execRes, itemsExecRes] = await Promise.all([
             supabase
               .from('execucoes_checklist')
-              .select('*, modelos_checklist(*), ativos(*, locais(*))')
+              .select('*, usuarios(nome, perfil), modelos_checklist(*), ativos(*, locais(*))')
               .eq('id', execId)
               .single(),
             supabase
@@ -114,6 +144,12 @@ function ComponenteChecklist() {
           const itemsExecData = itemsExecRes.data || []
 
           if (execData) {
+            if (execData.usuarios) {
+              setExecutorInspecao({
+                nome: execData.usuarios.nome,
+                perfil: execData.usuarios.perfil
+              })
+            }
             if (execData.ativos) setAtivo(execData.ativos)
             setModeloSelecionado(execData.modelos_checklist)
 
@@ -236,7 +272,7 @@ function ComponenteChecklist() {
 
             const { data: ultimaExecHoje } = await supabase
               .from('execucoes_checklist')
-              .select('id, iniciado_em, finalizado_em')
+              .select('id, iniciado_em, finalizado_em, usuarios(nome, perfil)')
               .eq('ativo_id', targetAssetId)
               .eq('status', 'concluida')
               .gte('finalizado_em', inicioHoje.toISOString())
@@ -245,6 +281,12 @@ function ComponenteChecklist() {
               .maybeSingle()
 
             if (ultimaExecHoje) {
+              if (ultimaExecHoje.usuarios) {
+                setExecutorInspecao({
+                  nome: (ultimaExecHoje as any).usuarios?.nome,
+                  perfil: (ultimaExecHoje as any).usuarios?.perfil
+                })
+              }
               const { data: itensExecSalvos } = await supabase
                 .from('itens_execucao_checklist')
                 .select('*, nao_conformidades(*)')
@@ -1012,19 +1054,33 @@ function ComponenteChecklist() {
                         />
 
                         {ncFotoPreview ? (
-                          <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-xs">
+                          <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-xs group">
                             <img
                               src={ncFotoPreview}
-                              alt="Preview"
-                              className="w-full h-32 object-cover"
+                              alt="Preview da evidência"
+                              className="w-full h-32 object-cover cursor-zoom-in"
+                              onClick={() => setFotoZoom(ncFotoPreview)}
                             />
+                            <div
+                              onClick={() => setFotoZoom(ncFotoPreview)}
+                              className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-zoom-in"
+                            >
+                              <span className="bg-white/95 text-slate-800 text-[11px] font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 pointer-events-none">
+                                <svg className="w-3.5 h-3.5 text-slate-700" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+                                </svg>
+                                Toque para ampliar
+                              </span>
+                            </div>
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation()
                                 setNcFotoPreview(null)
                                 setNcFotoFile(null)
                               }}
-                              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/65 text-white flex items-center justify-center text-xs font-bold hover:bg-black/85 cursor-pointer shadow-md transition-all"
+                              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/65 text-white flex items-center justify-center text-xs font-bold hover:bg-black/85 cursor-pointer shadow-md transition-all z-10 active:scale-95"
+                              title="Remover foto"
                             >
                               ✕
                             </button>
@@ -1101,27 +1157,71 @@ function ComponenteChecklist() {
 
                   {/* Evidências e Descrição da NC (mostrado quando resposta é nao_conforme e possui descrição/foto) */}
                   {resp.resposta === 'nao_conforme' && (resp.evidencia_texto || resp.evidencia_url) && (
-                    <div className="bg-red-50/50 rounded-xl p-3.5 border border-red-100/50 space-y-2 mt-2.5">
+                    <div className="bg-red-50/50 rounded-xl p-3.5 space-y-2.5 mt-2.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
                       {resp.evidencia_texto && (
                         <div>
-                          <p className="text-[9px] font-bold text-red-400 tracking-[0.08em] uppercase">
+                          <p className="text-[9px] font-bold text-slate-900 tracking-[0.08em] uppercase">
                             Descrição da NC
                           </p>
-                          <p className="text-sm text-gray-700 font-medium leading-relaxed mt-0.5">
+                          <p className="text-sm text-red-500 font-medium leading-relaxed mt-0.5">
                             {resp.evidencia_texto}
                           </p>
                         </div>
                       )}
                       {resp.evidencia_url && (
                         <div>
-                          <p className="text-[9px] font-bold text-red-400 tracking-[0.08em] uppercase mb-1">
+                          <p className="text-[9px] font-bold text-slate-900 tracking-[0.08em] uppercase mb-1.5">
                             Evidência Fotográfica
                           </p>
-                          <img
-                            src={resp.evidencia_url}
-                            alt="Evidência"
-                            className="rounded-xl max-h-40 object-cover border border-gray-150"
-                          />
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              const autor = executorInspecao || { nome: usuario?.nome || 'Inspetor', perfil: usuario?.perfil || 'inspetor' }
+                              setFotoZoom({ url: resp.evidencia_url, autorNome: autor.nome, autorPerfil: formatarPerfil(autor.perfil) })
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                const autor = executorInspecao || { nome: usuario?.nome || 'Inspetor', perfil: usuario?.perfil || 'inspetor' }
+                                setFotoZoom({ url: resp.evidencia_url, autorNome: autor.nome, autorPerfil: formatarPerfil(autor.perfil) })
+                              }
+                            }}
+                            className="relative group cursor-zoom-in overflow-hidden rounded-xl border border-gray-200/60 bg-black/5 active:scale-[0.98] transition-all max-w-xs shadow-2xs"
+                          >
+                            <img
+                              src={resp.evidencia_url}
+                              alt="Evidência fotográfica da não conformidade"
+                              className="rounded-xl max-h-48 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            />
+                            {/* Hover overlay */}
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                              <span className="bg-white/95 backdrop-blur-md text-gray-900 font-bold text-xs px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 scale-95 group-hover:scale-100 transition-transform">
+                                <svg className="w-3.5 h-3.5 text-gray-700" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+                                </svg>
+                                Ampliar foto
+                              </span>
+                            </div>
+                            {/* Always visible indicator for mobile/touch */}
+                            <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-lg shadow-sm group-hover:opacity-0 transition-opacity flex items-center gap-1 text-[10px] font-medium">
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+                              </svg>
+                              Ampliar
+                            </div>
+                          </div>
+
+                          {/* Autor discreto embaixo da imagem */}
+                          <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-medium mt-1.5 px-0.5">
+                            <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                            </svg>
+                            <span className="truncate">
+                              Foto registrada por <strong className="text-gray-700 font-semibold">{executorInspecao?.nome || usuario?.nome || 'Inspetor'}</strong> · <span className="text-gray-500">{formatarPerfil(executorInspecao?.perfil || usuario?.perfil)}</span>
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1223,6 +1323,67 @@ function ComponenteChecklist() {
               </Botao>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL ZOOM FOTO (Apple Lightbox Style) ── */}
+      {fotoZoom && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-[fadeIn_0.2s_ease-out] select-none"
+          onClick={() => setFotoZoom(null)}
+        >
+          {/* Header Controls */}
+          <div 
+            className="w-full max-w-md sm:max-w-lg flex items-center justify-between py-2 text-white mb-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs font-semibold text-white/90 tracking-wide uppercase">
+                Evidência Fotográfica
+              </span>
+            </div>
+            <button
+              type="button"
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 active:scale-90 text-white flex items-center justify-center backdrop-blur-xl transition-all shadow-md cursor-pointer border border-white/20"
+              onClick={() => setFotoZoom(null)}
+              aria-label="Fechar visualização"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Foto Expandida */}
+          <div 
+            className="relative max-w-md sm:max-w-lg w-full flex items-center justify-center overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/15 bg-black/50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={typeof fotoZoom === 'string' ? fotoZoom : fotoZoom.url}
+              alt="Evidência ampliada"
+              className="w-full max-h-[75vh] object-contain select-none"
+            />
+          </div>
+
+          {/* Legenda/Autor discreto */}
+          <div className="flex flex-col items-center gap-1.5 mt-3 text-center">
+            {typeof fotoZoom !== 'string' && fotoZoom.autorNome && (
+              <div className="flex items-center gap-1.5 text-xs text-white/90 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full border border-white/15 shadow-sm">
+                <svg className="w-3.5 h-3.5 text-white/70 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                </svg>
+                <span>
+                  Foto por <strong className="text-white font-semibold">{fotoZoom.autorNome}</strong> · <span className="text-white/80">{fotoZoom.autorPerfil}</span>
+                </span>
+              </div>
+            )}
+            <p className="text-[10.5px] font-medium text-white/50 tracking-wide">
+              Toque em qualquer lugar fora da foto para fechar
+            </p>
           </div>
         </div>
       )}

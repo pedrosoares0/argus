@@ -24,9 +24,26 @@ function FormularioNC() {
   const [criticidade, setCriticidade] = useState<CriticidadeItem>('critico')
   const [setorResponsavel, setSetorResponsavel] = useState<SetorTecnico>('engenharia_clinica')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [fotoZoom, setFotoZoom] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
 
   const [dataHora, setDataHora] = useState('')
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setFotoZoom(null)
+    }
+    if (fotoZoom) {
+      window.addEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [fotoZoom])
 
   useEffect(() => {
     setDataHora(new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
@@ -170,16 +187,29 @@ function FormularioNC() {
         />
 
         {fotoPreview ? (
-          <div className="relative">
+          <div className="relative group">
             <img
               src={fotoPreview}
               alt="Evidência fotográfica"
-              className="w-full h-36 object-cover rounded-xl border border-gray-200"
+              className="w-full h-36 object-cover rounded-xl border border-gray-200 cursor-zoom-in"
+              onClick={() => setFotoZoom(fotoPreview)}
             />
+            <div
+              onClick={() => setFotoZoom(fotoPreview)}
+              className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-zoom-in rounded-xl pointer-events-none"
+            >
+              <span className="bg-white/95 text-slate-800 text-[11px] font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-slate-700" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+                </svg>
+                Toque para ampliar
+              </span>
+            </div>
             <button
               type="button"
               onClick={removerFoto}
-              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center text-xs font-bold hover:bg-black/70 transition-colors cursor-pointer"
+              className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-black/65 text-white flex items-center justify-center text-xs font-bold hover:bg-black/85 transition-colors cursor-pointer shadow-md z-10 active:scale-95"
+              title="Remover foto"
             >
               ✕
             </button>
@@ -269,6 +299,51 @@ function FormularioNC() {
           {enviando ? 'Registrando...' : 'Registrar NC'}
         </button>
       </div>
+
+      {/* ── MODAL ZOOM FOTO (Apple Lightbox Style) ── */}
+      {fotoZoom && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-[fadeIn_0.2s_ease-out] select-none"
+          onClick={() => setFotoZoom(null)}
+        >
+          <div 
+            className="w-full max-w-md sm:max-w-lg flex items-center justify-between py-2 text-white mb-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs font-semibold text-white/90 tracking-wide uppercase">
+                Evidência Fotográfica
+              </span>
+            </div>
+            <button
+              type="button"
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 active:scale-90 text-white flex items-center justify-center backdrop-blur-xl transition-all shadow-md cursor-pointer border border-white/20"
+              onClick={() => setFotoZoom(null)}
+              aria-label="Fechar visualização"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div 
+            className="relative max-w-md sm:max-w-lg w-full flex items-center justify-center overflow-hidden rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/15 bg-black/50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={fotoZoom}
+              alt="Evidência ampliada"
+              className="w-full max-h-[75vh] object-contain select-none"
+            />
+          </div>
+
+          <p className="text-[11px] font-medium text-white/60 mt-3 tracking-wide">
+            Toque em qualquer lugar fora da foto para fechar
+          </p>
+        </div>
+      )}
     </div>
   )
 }
