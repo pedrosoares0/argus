@@ -86,9 +86,21 @@ export default function PaginaAtivo() {
   }
 
   const statusCfg = STATUS_ATIVO[ativo.status as StatusAtivo] || STATUS_ATIVO.operacional
-  const isAnestesia = ativo.nome?.toLowerCase().includes('anestesia') || ativo.categorias_ativos?.nome?.toLowerCase().includes('anestesia')
-  const isCarrinho = ativo.nome?.toLowerCase().includes('carrinho') || ativo.categorias_ativos?.nome?.toLowerCase().includes('carrinho') || isAnestesia
-  const iconeAtivo = isAnestesia ? '/icon-anestesia.webp' : '/icon-carrinho.webp'
+  const obterIconeEquipamento = (nome: string, categoria?: string) => {
+    const n = `${nome || ''} ${categoria || ''}`.toLowerCase()
+    if (n.includes('anestesia')) return '/carrinho-anestesia.webp'
+    if (n.includes('parada') || n.includes('carrinho')) return '/carrinho-parada.webp'
+    if (n.includes('bisturi')) return '/bisturi.webp'
+    if (n.includes('aspirador')) return '/aspirador.webp'
+    if (n.includes('bomba') || n.includes('infus')) return '/bomba-infusao.webp'
+    if (n.includes('foco')) return '/foco.webp'
+    if (n.includes('gases') || n.includes('gas')) return '/gas.webp'
+    if (n.includes('mesa') || n.includes('cama')) return '/cama.webp'
+    if (n.includes('monitor')) return '/monitor.webp'
+    return '/carrinho-parada.webp'
+  }
+  const iconeAtivo = obterIconeEquipamento(ativo.nome, ativo.categorias_ativos?.nome)
+  const isCarrinho = true
   const nomeLocal = ativo.locais?.nome || 'Sem local'
   const nomeSetor = ativo.locais?.centros_cirurgicos?.nome || 'Centro Cirúrgico'
 
@@ -122,7 +134,7 @@ export default function PaginaAtivo() {
             )}
             <div className="min-w-0 space-y-0.5">
               <h1 className="text-sm sm:text-lg font-bold text-gray-900 tracking-tight leading-tight">
-                {ativo.nome}
+                {ativo.nome?.replace(/\bSala\s+(\d+)/i, 'S. $1')}
               </h1>
               <p className="text-xs text-gray-500 font-semibold">{nomeSetor}</p>
               <p className="text-[10px] text-gray-400 font-medium">{nomeLocal}</p>

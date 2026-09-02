@@ -63,16 +63,16 @@ interface SalaAgrupada {
 // Helpers para ícones visuais (mesmos utilizados no inspetor)
 const obterIconeEquipamento = (nome: string, categoria?: string) => {
   const n = `${nome || ''} ${categoria || ''}`.toLowerCase()
-  if (n.includes('anestesia')) return '/icon-anestesia.webp'
-  if (n.includes('parada') || n.includes('carrinho')) return '/icon-carrinho.webp'
-  if (n.includes('bisturi')) return '/icon-bisturi.webp'
-  if (n.includes('aspirador')) return '/icon-aspiradorCirurgico.webp'
-  if (n.includes('bomba') || n.includes('infus')) return encodeURI('/icon-bombaInfusão.webp')
-  if (n.includes('foco')) return '/icon-focoCirurgico.webp'
-  if (n.includes('gases') || n.includes('gas')) return '/icon-gasesMedicinais.webp'
-  if (n.includes('mesa')) return '/icon-mesaCirurgica.webp'
-  if (n.includes('monitor')) return '/icon-monitorMulti.webp'
-  return '/icon-carrinho.webp'
+  if (n.includes('anestesia')) return '/carrinho-anestesia.webp'
+  if (n.includes('parada') || n.includes('carrinho')) return '/carrinho-parada.webp'
+  if (n.includes('bisturi')) return '/bisturi.webp'
+  if (n.includes('aspirador')) return '/aspirador.webp'
+  if (n.includes('bomba') || n.includes('infus')) return '/bomba-infusao.webp'
+  if (n.includes('foco')) return '/foco.webp'
+  if (n.includes('gases') || n.includes('gas')) return '/gas.webp'
+  if (n.includes('mesa') || n.includes('cama')) return '/cama.webp'
+  if (n.includes('monitor')) return '/monitor.webp'
+  return '/carrinho-parada.webp'
 }
 
 const obterIconeSala = (nome: string) => {
@@ -542,11 +542,11 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
                             return (
                               <div
                                 key={ativo.id}
-                                className="relative overflow-hidden rounded-[22px] bg-white p-3.5 sm:p-4 shadow-[0_3px_14px_rgba(0,0,0,0.04)] border border-slate-200/70 flex flex-col justify-between min-h-[115px]"
+                                className="relative block overflow-hidden rounded-[24px] bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-slate-200/75 min-h-[120px] sm:min-h-[130px] flex flex-col justify-between"
                               >
-                                {/* Imagem do equipamento no fundo à direita sem fade, cortada na borda */}
+                                {/* Imagem do equipamento no fundo à direita com opacidade suave e tamanho calibrado */}
                                 {iconeAtivoUrl && (
-                                  <div className="absolute -right-5 -bottom-2 w-28 h-28 sm:w-32 sm:h-32 pointer-events-none select-none z-0 flex items-end justify-end overflow-hidden">
+                                  <div className="absolute -right-3 -bottom-2 sm:-right-4 sm:-bottom-2 w-28 h-28 sm:w-32 sm:h-32 pointer-events-none select-none z-0 flex items-end justify-end overflow-hidden">
                                     <img
                                       src={iconeAtivoUrl}
                                       alt=""
@@ -555,16 +555,16 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
                                   </div>
                                 )}
 
-                                {/* Topo: Badge de Status padronizado + Tag compartilhada e QR Code */}
+                                {/* Topo: Badge de Status padronizado + Tag compartilhada e Botão discreto de QR Code */}
                                 <div className="relative z-10 flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <div className="scale-75 origin-left -mr-2.5 shrink-0">
+                                    <div className="scale-75 origin-left -mr-3 shrink-0">
                                       <PillTag cor={statusInfo.pillCor}>
                                         {statusInfo.label}
                                       </PillTag>
                                     </div>
                                     {compartilhado && (
-                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 inline-flex items-center whitespace-nowrap">
+                                      <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 inline-flex items-center whitespace-nowrap">
                                         Salas 1, 3 e 4
                                       </span>
                                     )}
@@ -577,25 +577,26 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
                                       nomeAtivo={ativo.nome}
                                       codigoQr={ativo.codigo_qr}
                                       patrimonio={ativo.patrimonio}
+                                      iconOnly={true}
                                     />
                                   </div>
                                 </div>
 
-                                {/* Base: Título e Categoria/Patrimônio */}
-                                <div className="relative z-10 max-w-[65%] sm:max-w-[70%] pt-3 space-y-0.5">
-                                  <h5 className="text-[14px] font-bold text-slate-900 leading-snug">
-                                    {ativo.nome}
+                                {/* Base: Título e Detalhes da Inspeção/Patrimônio em primeiro plano (linha única) */}
+                                <div className="relative z-10 max-w-[65%] sm:max-w-[70%] pt-4 space-y-1">
+                                  <h5 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
+                                    {ativo.nome?.replace(/\bSala\s+(\d+)/i, 'S. $1')}
                                   </h5>
-                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
-                                    <span className="font-semibold text-slate-600">
-                                      {ativo.categorias_ativos?.nome || 'Equipamento'}
+                                  <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                                    <span className={[
+                                      'w-1.5 h-1.5 rounded-full shrink-0',
+                                      statusInfo.pillCor === 'verde' ? 'bg-[#31B44A]' :
+                                      statusInfo.pillCor === 'vermelho' ? 'bg-red-500' :
+                                      statusInfo.pillCor === 'laranja' ? 'bg-amber-500' : 'bg-blue-400'
+                                    ].join(' ')} />
+                                    <span className="truncate">
+                                      {ativo.patrimonio ? `Pat: ${ativo.patrimonio}` : ativo.categorias_ativos?.nome || 'Equipamento'}
                                     </span>
-                                    {ativo.patrimonio && (
-                                      <>
-                                        <span>·</span>
-                                        <span className="font-mono text-slate-400">Pat: {ativo.patrimonio}</span>
-                                      </>
-                                    )}
                                   </div>
                                 </div>
                               </div>

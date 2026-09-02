@@ -11,9 +11,10 @@ interface QRCodeAtivoProps {
   nomeAtivo: string
   codigoQr: string
   patrimonio?: string | null
+  iconOnly?: boolean
 }
 
-export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio }: QRCodeAtivoProps) {
+export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio, iconOnly = false }: QRCodeAtivoProps) {
   const [aberto, setAberto] = useState(false)
   const [copiado, setCopiado] = useState(false)
   const qrPrintRef = useRef<HTMLDivElement>(null)
@@ -219,28 +220,48 @@ export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio 
   return (
     <>
       {/* Botão de Ação para Visualização */}
-      <button
-        type="button"
-        onClick={() => setAberto(true)}
-        className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#246BFD] hover:text-[#1C54D4] transition-colors py-1.5 px-2.5 rounded-xl bg-[#EBF4FF] hover:bg-[#EBF4FF]/80 cursor-pointer"
-      >
-        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-          {/* Top-left scan marker */}
-          <path d="M3 3h5v2H5v3H3V3z" />
-          {/* Top-right scan marker */}
-          <path d="M16 3h5v5h-2V5h-3V3z" />
-          {/* Bottom-left scan marker */}
-          <path d="M3 16v5h5v-2H5v-3H3z" />
-          {/* Bottom-right scan marker */}
-          <path d="M21 16v5h-5v-2h3v-3h2z" />
-          {/* Inner QR pattern */}
-          <rect x="7" y="7" width="4" height="4" rx="0.5" />
-          <rect x="13" y="7" width="4" height="4" rx="0.5" />
-          <rect x="7" y="13" width="4" height="4" rx="0.5" />
-          <rect x="14" y="14" width="2" height="2" rx="0.3" />
-        </svg>
-        QRCode
-      </button>
+      {iconOnly ? (
+        <button
+          type="button"
+          onClick={() => setAberto(true)}
+          title="Visualizar QR Code"
+          className="w-7 h-7 rounded-full bg-slate-100/90 hover:bg-slate-200/80 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 3h5v2H5v3H3V3z" />
+            <path d="M16 3h5v5h-2V5h-3V3z" />
+            <path d="M3 16v5h5v-2H5v-3H3z" />
+            <path d="M21 16v5h-5v-2h3v-3h2z" />
+            <rect x="7" y="7" width="4" height="4" rx="0.5" />
+            <rect x="13" y="7" width="4" height="4" rx="0.5" />
+            <rect x="7" y="13" width="4" height="4" rx="0.5" />
+            <rect x="14" y="14" width="2" height="2" rx="0.3" />
+          </svg>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAberto(true)}
+          className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#246BFD] hover:text-[#1C54D4] transition-colors py-1.5 px-2.5 rounded-xl bg-[#EBF4FF] hover:bg-[#EBF4FF]/80 cursor-pointer"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+            {/* Top-left scan marker */}
+            <path d="M3 3h5v2H5v3H3V3z" />
+            {/* Top-right scan marker */}
+            <path d="M16 3h5v5h-2V5h-3V3z" />
+            {/* Bottom-left scan marker */}
+            <path d="M3 16v5h5v-2H5v-3H3z" />
+            {/* Bottom-right scan marker */}
+            <path d="M21 16v5h-5v-2h3v-3h2z" />
+            {/* Inner QR pattern */}
+            <rect x="7" y="7" width="4" height="4" rx="0.5" />
+            <rect x="13" y="7" width="4" height="4" rx="0.5" />
+            <rect x="7" y="13" width="4" height="4" rx="0.5" />
+            <rect x="14" y="14" width="2" height="2" rx="0.3" />
+          </svg>
+          QRCode
+        </button>
+      )}
 
       {/* Modal */}
       {aberto && (

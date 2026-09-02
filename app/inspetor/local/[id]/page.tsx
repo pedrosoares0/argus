@@ -338,15 +338,15 @@ export default function PaginaLocal() {
   // Helper para ícones visuais dos equipamentos
   const obterIconeEquipamento = (nome: string) => {
     const n = (nome || '').toLowerCase()
-    if (n.includes('anestesia')) return '/icon-anestesia.webp'
-    if (n.includes('parada') || n.includes('carrinho')) return '/icon-carrinho.webp'
-    if (n.includes('bisturi')) return '/icon-bisturi.webp'
-    if (n.includes('aspirador')) return '/icon-aspiradorCirurgico.webp'
-    if (n.includes('bomba') || n.includes('infus')) return encodeURI('/icon-bombaInfusão.webp')
-    if (n.includes('foco')) return '/icon-focoCirurgico.webp'
-    if (n.includes('gases') || n.includes('gas')) return '/icon-gasesMedicinais.webp'
-    if (n.includes('mesa')) return '/icon-mesaCirurgica.webp'
-    if (n.includes('monitor')) return '/icon-monitorMulti.webp'
+    if (n.includes('anestesia')) return '/carrinho-anestesia.webp'
+    if (n.includes('parada') || n.includes('carrinho')) return '/carrinho-parada.webp'
+    if (n.includes('bisturi')) return '/bisturi.webp'
+    if (n.includes('aspirador')) return '/aspirador.webp'
+    if (n.includes('bomba') || n.includes('infus')) return '/bomba-infusao.webp'
+    if (n.includes('foco')) return '/foco.webp'
+    if (n.includes('gases') || n.includes('gas')) return '/gas.webp'
+    if (n.includes('mesa') || n.includes('cama')) return '/cama.webp'
+    if (n.includes('monitor')) return '/monitor.webp'
     return null
   }
 
@@ -595,9 +595,9 @@ export default function PaginaLocal() {
                   className="relative block overflow-hidden rounded-[24px] bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100/90 active:scale-[0.99] transition-transform min-h-[120px] sm:min-h-[130px] flex flex-col justify-between"
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
-                  {/* Imagem do equipamento no fundo à direita sem fade, cortada na borda */}
+                  {/* Imagem do equipamento no fundo à direita com opacidade suave e tamanho calibrado */}
                   {iconeImg ? (
-                    <div className="absolute -right-6 -bottom-3 sm:-right-7 sm:-bottom-3 w-36 h-36 sm:w-40 sm:h-40 pointer-events-none select-none z-0 flex items-end justify-end overflow-hidden">
+                    <div className="absolute -right-3 -bottom-2 sm:-right-4 sm:-bottom-2 w-28 h-28 sm:w-32 sm:h-32 pointer-events-none select-none z-0 flex items-end justify-end overflow-hidden">
                       <img
                         src={iconeImg}
                         alt=""
@@ -630,7 +630,7 @@ export default function PaginaLocal() {
                   {/* Base: Título e Detalhes da Inspeção em primeiro plano */}
                   <div className="relative z-10 max-w-[65%] sm:max-w-[70%] pt-4 space-y-1">
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
-                      {ativo.nome}
+                      {ativo.nome?.replace(/\bSala\s+(\d+)/i, 'S. $1')}
                     </h3>
 
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">

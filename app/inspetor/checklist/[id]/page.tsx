@@ -780,7 +780,7 @@ function ComponenteChecklist() {
       {/* Card de Contexto */}
       <div className="bg-white rounded-2xl p-4 shadow-[0_1px_8px_rgba(0,0,0,0.03)] border border-gray-100/80 space-y-3.5">
         <div>
-          <h1 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">{ativo.nome}</h1>
+          <h1 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">{ativo.nome?.replace(/\bSala\s+(\d+)/i, 'S. $1')}</h1>
 
           {/* Seletor de Modelo */}
           {isReadOnly ? (
