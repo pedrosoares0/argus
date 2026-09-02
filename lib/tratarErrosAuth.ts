@@ -1,5 +1,5 @@
 /**
- * Utilitário de tratamento e tradução de erros de autenticação e banco de dados (Supabase / Argus).
+ * Utilitário de tratamento e tradução de erros de autenticação e banco de dados (Supabase / Primus).
  * Garante que NUNCA apareça "{}" ou mensagens técnicas em inglês para o usuário final.
  */
 

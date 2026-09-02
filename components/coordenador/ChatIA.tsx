@@ -135,8 +135,8 @@ export function ChatIA() {
     function handleAbrirChat() {
       setAberto(true)
     }
-    window.addEventListener('argus:abrir-chat-ia', handleAbrirChat)
-    return () => window.removeEventListener('argus:abrir-chat-ia', handleAbrirChat)
+    window.addEventListener('primus:abrir-chat-ia', handleAbrirChat)
+    return () => window.removeEventListener('primus:abrir-chat-ia', handleAbrirChat)
   }, [])
 
   // Auto-scroll
@@ -302,7 +302,7 @@ export function ChatIA() {
                 <div className="flex items-center gap-2.5">
                   <OrbIA tamanho={26} />
                   <h2 className="text-sm font-semibold text-slate-900 tracking-tight font-space-grotesk">
-                    Argus IA
+                    Primus IA
                   </h2>
                 </div>
 

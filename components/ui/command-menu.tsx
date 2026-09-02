@@ -199,12 +199,15 @@ export default function CommandMenu({
 				aria-expanded={isOpen}
 			>
 				{avatarFinal}
-				<div className="flex flex-col items-start leading-tight text-left pr-0.5 max-w-[110px] sm:max-w-[150px]">
-					<span className="text-[11.5px] font-bold text-slate-800 tracking-tight truncate">
+				<div className="flex flex-col items-start leading-tight text-left pr-1 min-w-0 max-w-[130px] sm:max-w-[180px]">
+					<span className="w-full block text-[11.5px] font-bold text-slate-800 tracking-tight truncate">
 						{title}
 					</span>
 					{status.length > 0 && (
-						<span className="text-[9.5px] font-semibold text-slate-400 truncate">
+						<span 
+							className="w-full block text-[9.5px] font-semibold text-slate-400 truncate"
+							title={typeof status[statusIndex] === 'string' ? (status[statusIndex] as string) : undefined}
+						>
 							{status[statusIndex]}
 						</span>
 					)}

@@ -24,14 +24,14 @@ export default function LayoutInspetor({
 
   useEffect(() => {
     async function carregarUsuario() {
-      const stored = localStorage.getItem('argus_usuario_atual')
+      const stored = (localStorage.getItem('primus_usuario_atual') || localStorage.getItem('argus_usuario_atual'))
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
           if (parsed?.nome && !parsed.nome.toLowerCase().includes('ana beatriz')) {
             setUsuario(parsed)
           } else {
-            localStorage.removeItem('argus_usuario_atual')
+            localStorage.removeItem('primus_usuario_atual')
           }
         } catch (e) {
           console.error(e)
@@ -52,7 +52,7 @@ export default function LayoutInspetor({
           if (profile?.nome) {
             const u = { nome: profile.nome, perfil: profile.perfil || 'inspetor' }
             setUsuario(u)
-            localStorage.setItem('argus_usuario_atual', JSON.stringify(u))
+            localStorage.setItem('primus_usuario_atual', JSON.stringify(u))
             return
           }
 
@@ -60,7 +60,7 @@ export default function LayoutInspetor({
           if (metaNome) {
             const u = { nome: metaNome, perfil: user.user_metadata?.perfil || 'inspetor' }
             setUsuario(u)
-            localStorage.setItem('argus_usuario_atual', JSON.stringify(u))
+            localStorage.setItem('primus_usuario_atual', JSON.stringify(u))
             return
           }
         }
@@ -121,7 +121,7 @@ export default function LayoutInspetor({
     } catch (e) {
       console.error(e)
     }
-    localStorage.removeItem('argus_usuario_atual')
+    localStorage.removeItem('primus_usuario_atual')
     router.push('/login')
   }
 
@@ -132,7 +132,7 @@ export default function LayoutInspetor({
       {/* Header no tom do background */}
       <header className={`relative z-50 px-4 pt-4 pb-3 flex items-center justify-between transition-all duration-200 ${isGradientPage ? 'bg-transparent' : 'bg-[#F4F6FA] border-b border-slate-200/70'}`}>
         <Link href="/inspetor" className={`text-xl font-bold tracking-tight hover:opacity-80 transition-opacity font-brand ${isGradientPage ? 'text-white' : 'text-gray-900'}`}>
-          Argus
+          Primus
         </Link>
         
         {/* CommandMenu Interativo Compacto */}
@@ -141,7 +141,7 @@ export default function LayoutInspetor({
           perfil="inspetor"
           status={[
             'Inspetor(a)',
-            'Hospital Itaberaba',
+            'Hosp. Piem. Paraguaçu',
             <span key="online" className="flex items-center gap-1 text-blue-600 font-semibold">
               <span className="size-1.5 rounded-full bg-blue-500 animate-pulse" />
               Pronto para Ronda

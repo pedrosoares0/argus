@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { criarClienteServidor } from '@/lib/supabase/server'
 import { buscarResumoHospital } from '@/lib/ia/coletarDadosHospital'
 
-const SYSTEM_PROMPT = `Você é o assistente inteligente da plataforma Argus — Prontidão Operacional do Centro Cirúrgico.
+const SYSTEM_PROMPT = `Você é o assistente inteligente da plataforma Primus — Prontidão Operacional do Centro Cirúrgico.
 
 ## Sua Função
 - Analisar os dados operacionais REAIS do hospital fornecidos no contexto abaixo.
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const auth = await resolverUsuarioAutenticado(request)
     if (!auth) {
       return NextResponse.json(
-        { error: 'Sessão não autenticada. Faça login no Argus.' },
+        { error: 'Sessão não autenticada. Faça login no Primus.' },
         { status: 401 }
       )
     }

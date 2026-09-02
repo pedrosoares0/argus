@@ -8,6 +8,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# Diretrizes do Projeto Argus
+# Diretrizes do Projeto Primus
 
-Consulte sempre o documento oficial **[`docs/ARGUS_BIBLE.md`](./docs/ARGUS_BIBLE.md)** como fonte única da verdade para entender o domínio, arquitetura, esquema de banco de dados, ciclo de vida das Não Conformidades (NCs) e regras de permissões antes de implementar novas funcionalidades ou refatorações.
+Consulte sempre o documento oficial **[`docs/PRIMUS_BIBLE.md`](./docs/PRIMUS_BIBLE.md)** como fonte única da verdade para entender o domínio, arquitetura, esquema de banco de dados, ciclo de vida das Não Conformidades (NCs) e regras de permissões antes de implementar novas funcionalidades ou refatorações.

@@ -44,7 +44,7 @@ export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio,
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Etiqueta Argus - ${nomeAtivo}</title>
+            <title>Etiqueta Primus - ${nomeAtivo}</title>
             <link rel="preconnect" href="https://fonts.googleapis.com" />
             <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
             <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
@@ -182,7 +182,7 @@ export function QRCodeAtivo({ ativoId, localId, nomeAtivo, codigoQr, patrimonio,
             <div class="etiqueta-wrapper">
               <div class="etiqueta-card">
                 <div class="header-logo">
-                  <span class="brand-title">Argus</span>
+                  <span class="brand-title">Primus</span>
                   <span class="brand-subtitle">Identificação de Ativo</span>
                 </div>
                 

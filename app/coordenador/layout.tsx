@@ -20,18 +20,18 @@ export default function LayoutCoordenador({
   useEffect(() => {
     async function carregarUsuario() {
       // 1. Limpa qualquer resquício de mock antigo ou nomes incorretos do cache
-      const stored = localStorage.getItem('argus_usuario_atual')
+      const stored = (localStorage.getItem('primus_usuario_atual') || localStorage.getItem('argus_usuario_atual'))
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
           if (parsed?.nome && !parsed.nome.toLowerCase().includes('ana beatriz')) {
             setUsuario({ nome: parsed.nome, perfil: parsed.perfil || 'coordenador' })
           } else {
-            localStorage.removeItem('argus_usuario_atual')
+            localStorage.removeItem('primus_usuario_atual')
           }
         } catch (e) {
           console.error(e)
-          localStorage.removeItem('argus_usuario_atual')
+          localStorage.removeItem('primus_usuario_atual')
         }
       }
 
@@ -56,7 +56,7 @@ export default function LayoutCoordenador({
               perfil: profile.perfil || 'coordenador'
             }
             setUsuario(dadosUsuario)
-            localStorage.setItem('argus_usuario_atual', JSON.stringify(dadosUsuario))
+            localStorage.setItem('primus_usuario_atual', JSON.stringify(dadosUsuario))
             return
           }
 
@@ -68,7 +68,7 @@ export default function LayoutCoordenador({
               perfil: user.user_metadata?.perfil || 'coordenador'
             }
             setUsuario(dadosUsuario)
-            localStorage.setItem('argus_usuario_atual', JSON.stringify(dadosUsuario))
+            localStorage.setItem('primus_usuario_atual', JSON.stringify(dadosUsuario))
             return
           }
 
@@ -81,7 +81,7 @@ export default function LayoutCoordenador({
               perfil: 'coordenador'
             }
             setUsuario(dadosUsuario)
-            localStorage.setItem('argus_usuario_atual', JSON.stringify(dadosUsuario))
+            localStorage.setItem('primus_usuario_atual', JSON.stringify(dadosUsuario))
             return
           }
         }
@@ -113,7 +113,7 @@ export default function LayoutCoordenador({
     } catch (e) {
       console.error(e)
     }
-    localStorage.removeItem('argus_usuario_atual')
+    localStorage.removeItem('primus_usuario_atual')
     router.push('/login')
   }
 
@@ -124,7 +124,7 @@ export default function LayoutCoordenador({
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/coordenador" className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity font-brand flex items-center gap-2.5">
-              <span>Argus</span>
+              <span>Primus</span>
               <span className="hidden sm:inline-flex text-[11px] font-extrabold text-purple-700 bg-purple-100/80 px-2.5 py-0.5 rounded-full border border-purple-200/60 uppercase tracking-wider">
                 Coordenação
               </span>
@@ -138,7 +138,7 @@ export default function LayoutCoordenador({
               perfil="coordenador"
               status={[
                 'Coordenador(a)',
-                'Hospital Itaberaba',
+                'Hosp. Piem. Paraguaçu',
                 <span key="online" className="flex items-center gap-1 text-purple-600 font-semibold">
                   <span className="size-1.5 rounded-full bg-purple-500 animate-pulse" />
                   Painel Ativo

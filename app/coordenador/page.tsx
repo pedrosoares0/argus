@@ -82,7 +82,7 @@ export default function PaginaCoordenador() {
         const DEFAULT_HOSPITAL = 'e632822a-0000-0000-0000-000000000001'
 
         let currentUser = null
-        const stored = localStorage.getItem('argus_usuario_atual')
+        const stored = (localStorage.getItem('primus_usuario_atual') || localStorage.getItem('argus_usuario_atual'))
         if (stored) {
           try {
             currentUser = JSON.parse(stored)
@@ -180,9 +180,9 @@ export default function PaginaCoordenador() {
           {/* Botão Orb Desktop — Fora da barra de abas, Glassmorphic com Orb ampliado */}
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('argus:abrir-chat-ia'))}
+            onClick={() => window.dispatchEvent(new CustomEvent('primus:abrir-chat-ia'))}
             className="w-11 h-11 rounded-full bg-white/70 backdrop-blur-[24px] saturate-[180%] border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform shrink-0"
-            title="Abrir Argus IA"
+            title="Abrir Primus IA"
           >
             <OrbIA tamanho={38} />
           </button>
@@ -248,9 +248,9 @@ export default function PaginaCoordenador() {
           {/* Botão Orb Mobile — Glassmorphic idêntico à navbar com Orb ampliado e margem justa */}
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('argus:abrir-chat-ia'))}
+            onClick={() => window.dispatchEvent(new CustomEvent('primus:abrir-chat-ia'))}
             className="w-[48px] h-[48px] rounded-full bg-white/70 backdrop-blur-[24px] saturate-[180%] border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.8)] flex items-center justify-center cursor-pointer active:scale-95 transition-transform shrink-0"
-            title="Abrir Argus IA"
+            title="Abrir Primus IA"
           >
             <OrbIA tamanho={42} />
           </button>

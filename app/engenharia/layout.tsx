@@ -17,14 +17,14 @@ export default function LayoutEngenharia({
 
   useEffect(() => {
     async function carregarUsuario() {
-      const stored = localStorage.getItem('argus_usuario_atual')
+      const stored = (localStorage.getItem('primus_usuario_atual') || localStorage.getItem('argus_usuario_atual'))
       if (stored) {
         try {
           const parsed = JSON.parse(stored)
           if (parsed?.nome && !parsed.nome.toLowerCase().includes('ana beatriz')) {
             setUsuario(parsed)
           } else {
-            localStorage.removeItem('argus_usuario_atual')
+            localStorage.removeItem('primus_usuario_atual')
           }
         } catch (e) {
           console.error(e)
@@ -45,7 +45,7 @@ export default function LayoutEngenharia({
           if (profile?.nome) {
             const u = { nome: profile.nome, perfil: profile.perfil || 'engenharia_clinica' }
             setUsuario(u)
-            localStorage.setItem('argus_usuario_atual', JSON.stringify(u))
+            localStorage.setItem('primus_usuario_atual', JSON.stringify(u))
             return
           }
 
@@ -53,7 +53,7 @@ export default function LayoutEngenharia({
           if (metaNome) {
             const u = { nome: metaNome, perfil: user.user_metadata?.perfil || 'engenharia_clinica' }
             setUsuario(u)
-            localStorage.setItem('argus_usuario_atual', JSON.stringify(u))
+            localStorage.setItem('primus_usuario_atual', JSON.stringify(u))
             return
           }
         }
@@ -83,7 +83,7 @@ export default function LayoutEngenharia({
     } catch (e) {
       console.error(e)
     }
-    localStorage.removeItem('argus_usuario_atual')
+    localStorage.removeItem('primus_usuario_atual')
     router.push('/login')
   }
 
@@ -92,7 +92,7 @@ export default function LayoutEngenharia({
       {/* Header no tom do background cinza */}
       <header className="relative z-50 bg-[#F4F6FA] px-4 pt-4 pb-3 flex items-center justify-between border-b border-gray-200/50">
         <Link href="/engenharia" className="text-xl font-bold text-gray-900 tracking-tight hover:opacity-80 transition-opacity font-brand">
-          Argus
+          Primus
         </Link>
         
         {/* CommandMenu Interativo Compacto */}
@@ -101,7 +101,7 @@ export default function LayoutEngenharia({
           perfil="engenharia_clinica"
           status={[
             'Engenharia Clínica',
-            'Hospital Itaberaba',
+            'Hosp. Piem. Paraguaçu',
             <span key="online" className="flex items-center gap-1 text-amber-600 font-semibold">
               <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
               Ordens de Serviço

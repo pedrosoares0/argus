@@ -49,7 +49,7 @@ function ComponenteChecklist() {
   const [usuario, setUsuario] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('argus_usuario_atual')
+        const stored = (localStorage.getItem('primus_usuario_atual') || localStorage.getItem('argus_usuario_atual'))
         if (stored) return JSON.parse(stored)
       } catch (e) {
         console.error(e)
@@ -695,7 +695,7 @@ function ComponenteChecklist() {
 
         // Limpar sessionStorage
         itens.forEach(item => {
-          sessionStorage.removeItem(`argus_nc_${item.id}`)
+          sessionStorage.removeItem(`primus_nc_${item.id}`)
         })
 
         // Enviar e-mails de notificação pelo Resend em paralelo (background)

@@ -1,5 +1,5 @@
 -- =============================================================================
--- Argus — Script de Seed (Cadastro do Hospital Público Itaberaba e Carrinho de Parada)
+-- Primus — Script de Seed (Cadastro do Hospital Piemonte Paraguaçu e Carrinho de Parada)
 -- Respeita estritamente o schema definido em 001_initial_schema.sql.
 -- =============================================================================
 
@@ -15,9 +15,9 @@ WHERE email IN ('inspetor@gmail.com', 'engenharia@gmail.com', 'coordenador@gmail
 DELETE FROM public.usuarios 
 WHERE id NOT IN (SELECT id FROM auth.users);
 
--- 2. Garante os dados estruturais do Hospital Público Itaberaba
+-- 2. Garante os dados estruturais do Hospital Piemonte Paraguaçu
 INSERT INTO public.hospitais (id, nome, criado_em)
-VALUES ('e632822a-0000-0000-0000-000000000001', 'Hospital Público Itaberaba', now())
+VALUES ('e632822a-0000-0000-0000-000000000001', 'Hospital Piemonte Paraguaçu', now())
 ON CONFLICT (id) DO UPDATE SET nome = EXCLUDED.nome;
 
 INSERT INTO public.unidades (id, hospital_id, nome, criado_em)
@@ -80,7 +80,7 @@ ON CONFLICT (categoria_id, versao) DO UPDATE SET
 
 -- 5. Cria os Ativos (Carrinho de Parada e Carrinho de Anestesia)
 INSERT INTO public.ativos (id, hospital_id, categoria_id, local_id, nome, patrimonio, codigo_qr, status, criado_em)
-VALUES ('e632822a-0000-0000-0000-000000000008', 'e632822a-0000-0000-0000-000000000001', 'e632822a-0000-0000-0000-000000000005', 'e632822a-0000-0000-0000-000000000004', 'Carrinho de Parada - Itaberaba #1', 'PAT-CARRINHO-01', 'Car.Par1', 'operacional', now())
+VALUES ('e632822a-0000-0000-0000-000000000008', 'e632822a-0000-0000-0000-000000000001', 'e632822a-0000-0000-0000-000000000005', 'e632822a-0000-0000-0000-000000000004', 'Carrinho de Parada #1', 'PAT-CARRINHO-01', 'Car.Par1', 'operacional', now())
 ON CONFLICT (id) DO UPDATE SET
   hospital_id = EXCLUDED.hospital_id,
   categoria_id = EXCLUDED.categoria_id,

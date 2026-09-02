@@ -775,7 +775,7 @@ export function PainelDashboard({ hospitalId }: PainelDashboardProps) {
 
               <div className="hidden sm:flex items-center gap-1.5">
                 <span className="text-[11px] font-bold text-slate-500 bg-slate-100/80 px-2.5 py-0.5 rounded-full">
-                  Hospital Itaberaba
+                  Hospital Piemonte Paraguaçu
                 </span>
               </div>
             </div>

@@ -15,7 +15,7 @@ export default function GestaoQRCodesCoordenador() {
         const supabase = criarClienteSupabase() as any
         let idEncontrado = ''
 
-        const stored = localStorage.getItem('argus_usuario_atual')
+        const stored = (localStorage.getItem('primus_usuario_atual') || localStorage.getItem('argus_usuario_atual'))
         if (stored) {
           try {
             const parsed = JSON.parse(stored)

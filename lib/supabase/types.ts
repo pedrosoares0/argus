@@ -1,5 +1,5 @@
 /**
- * Tipos do banco de dados Supabase — Argus
+ * Tipos do banco de dados Supabase — Primus
  *
  * PLACEHOLDER: Este arquivo será substituído pelo output de:
  *   supabase gen types typescript --project-id ilkqkqzhnlmhoxqavcfp > lib/supabase/types.ts

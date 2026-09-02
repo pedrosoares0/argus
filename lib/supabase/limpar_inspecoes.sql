@@ -1,5 +1,5 @@
 -- =============================================================================
--- Argus — Script de Limpeza Completa de Inspeções e Testes
+-- Primus — Script de Limpeza Completa de Inspeções e Testes
 -- Executar no SQL Editor do Supabase (https://supabase.com/dashboard)
 -- Zera todo o histórico de execuções, itens, NCs e restaura as salas e ativos
 -- =============================================================================

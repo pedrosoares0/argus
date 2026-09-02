@@ -1,4 +1,4 @@
-# 📖 ARGUS — Documento de Referência Completo ("A Bíblia")
+# 📖 PRIMUS — Documento de Referência Completo ("A Bíblia")
 
 > **Última atualização**: 28 de Agosto de 2026  
 > **Versão do projeto**: 0.2.0  
@@ -6,21 +6,21 @@
 
 ---
 
-## 1. O que é o Argus
+## 1. O que é o Primus
 
-Argus é uma **plataforma web mobile-first de Prontidão Operacional do Centro Cirúrgico** para hospitais. Seu propósito central é:
+Primus é uma **plataforma web mobile-first de Prontidão Operacional do Centro Cirúrgico** para hospitais. Seu propósito central é:
 
 - Garantir que **salas cirúrgicas, equipamentos e materiais** estejam prontos e seguros antes de procedimentos.
 - Permitir que **inspetores** (enfermeiros/técnicos) realizem **rondas de verificação** (checklists) nos equipamentos de cada sala.
 - Registrar **Não Conformidades (NCs)** quando um item não está conforme, com foto, criticidade e setor responsável.
 - Encaminhar NCs automaticamente para setores técnicos (Engenharia Clínica, Manutenção, Farmácia, Almoxarifado).
 - Fornecer visão gerencial para **Coordenadores** validarem correções, gerirem equipe e ativos.
-- Disponibilizar a **Argus IA**: assistente inteligente em tempo real alimentada com dados do banco para análise de prontidão, produtividade e resolução de NCs.
+- Disponibilizar a **Primus IA**: assistente inteligente em tempo real alimentada com dados do banco para análise de prontidão, produtividade e resolução de NCs.
 - Notificar a equipe por **e-mail** quando NCs críticas são abertas.
 
 ### Contexto Hospitalar
 
-- Hospital piloto: **Hospital Público Itaberaba** (Bahia).
+- Hospital piloto: **Hospital Piemonte Paraguaçu** (Bahia).
 - Foco: Centro Cirúrgico Principal (salas 01, 03 e 04 visíveis para inspetor).
 - Equipamentos: Carrinho de Parada, Carrinho de Anestesia, Monitor Multiparamétrico, Mesa Cirúrgica, Bisturi Elétrico, Aspirador Cirúrgico, Foco Cirúrgico, Bombas de Infusão, Gases Medicinais.
 
@@ -35,7 +35,7 @@ O sistema possui **6 perfis** definidos no enum `PerfilUsuario`:
 | `inspetor` | Enfermeiros e Técnicos em campo | `/inspetor` | Ronda de verificação, scanner QR, execução de checklist, registro de NCs, histórico de inspeções |
 | `tecnico` | Profissional de setor técnico especializado | `/engenharia` | Mesma fila de NCs da Engenharia, filtrada por setor do técnico |
 | `engenharia_clinica` | Engenheiros clínicos | `/engenharia` | Fila de NCs, assumir responsabilidade, registrar manutenção, finalizar reparo |
-| `coordenador` | Coordenação do setor | `/coordenador` | Dashboard, validação de NCs, gestão de equipe, gestão de ativos, QR codes, **Argus IA (Assistente Operacional)** |
+| `coordenador` | Coordenação do setor | `/coordenador` | Dashboard, validação de NCs, gestão de equipe, gestão de ativos, QR codes, **Primus IA (Assistente Operacional)** |
 | `gestor` | Gestor hospitalar | `/gestor` *(não implementado)* | Visão macro *(futuro)* |
 | `administrador` | Admin do sistema | `/admin` *(não implementado)* | Configuração global *(futuro)* |
 
@@ -84,7 +84,7 @@ Definido em `lib/roteamentoNC.ts`:
 ### 3.2 Estrutura de Diretórios
 
 ```
-argus/
+primus/
 ├── app/
 │   ├── layout.tsx              # Layout raiz (fontes, meta, LenisProvider)
 │   ├── page.tsx                # Redirect → /login
@@ -121,7 +121,7 @@ argus/
 │   │   ├── BarraBusca.tsx      # Input de busca com ícone
 │   │   ├── Botao.tsx           # Botão com variantes (primário, secundário, perigo)
 │   │   ├── Card.tsx            # Card genérico
-│   │   ├── IconeMascote.tsx    # Ícone mascote "blop" do Argus
+│   │   ├── IconeMascote.tsx    # Ícone mascote "blop" do Primus
 │   │   ├── ItemLista.tsx       # Item de lista com seta
 │   │   ├── LenisProvider.tsx   # Provider de smooth scroll
 │   │   ├── OrbIA.tsx           # Glass Liquid Orb com shader WebGPU (WGSL) e fallback WebGL
@@ -134,7 +134,7 @@ argus/
 │   │   ├── command-menu.tsx    # Menu de comando estilo Apple (perfil + navegação)
 │   │   └── liquid-metal-button.tsx # Botão com efeito liquid-metal shader
 │   └── coordenador/            # Componentes do módulo Coordenador
-│       ├── ChatIA.tsx           # Drawer lateral com Glassmorphism para interação com Argus IA
+│       ├── ChatIA.tsx           # Drawer lateral com Glassmorphism para interação com Primus IA
 │       ├── PainelDashboard.tsx  # Dashboard com métricas, gráficos, timeline
 │       ├── FilaValidacaoNCs.tsx # Fila de validação de NCs pela coordenação
 │       ├── GestaoEquipe.tsx     # Gestão de inspetores e técnicos
@@ -151,7 +151,7 @@ argus/
 │       ├── server.ts           # Supabase server client (cookies)
 │       ├── types.ts            # Tipos TypeScript do schema (manual)
 │       ├── mockDb.ts           # Mock database local (localStorage) — legado
-│       ├── seed.sql            # Seed do Hospital Itaberaba + ativos iniciais
+│       ├── seed.sql            # Seed do Hospital Piemonte Paraguaçu + ativos iniciais
 │       ├── seed_carrinho_anestesia.sql  # Seed do Carrinho de Anestesia
 │       ├── migration_salas_ativos.sql   # Migration: sala_ativos M:N, categorias, itens
 │       ├── migration_perfil_tecnico.sql # Migration: perfil de técnico
@@ -170,7 +170,7 @@ SMTP_HOST=...
 SMTP_PORT=587
 SMTP_USER=...
 SMTP_PASS=...
-SMTP_FROM=Argus <alertas@argusclinica.com.br>
+SMTP_FROM=Primus <alertas@primusclinica.com.br>
 ```
 
 ---
@@ -512,7 +512,7 @@ Tela compartilhada entre todos os perfis. Adapta os botões de ação ao perfil 
 2. `supabase.auth.signInWithPassword()` autentica no Supabase Auth.
 3. Se falhar, tenta `signUp()` automático (auto-cadastro para credenciais de teste).
 4. Busca perfil na tabela `public.usuarios` (por `id` ou `auth_user_id`) com retry de até 4 tentativas (delay 200ms para trigger assíncrono).
-5. Grava no `localStorage` como `argus_usuario_atual` para acesso rápido client-side.
+5. Grava no `localStorage` como `primus_usuario_atual` para acesso rápido client-side.
 6. Redireciona para a rota do perfil.
 
 ### Rotas por Perfil
@@ -538,7 +538,7 @@ Tela compartilhada entre todos os perfis. Adapta os botões de ação ao perfil 
 
 O sistema mantém **dois mecanismos paralelos** de sessão:
 1. **Supabase Auth** (cookies + JWT) — autenticação real e queries ao banco.
-2. **localStorage** (`argus_usuario_atual`) — bridge para componentes client-side que precisam do nome/perfil do usuário sem fazer fetch assíncrono.
+2. **localStorage** (`primus_usuario_atual`) — bridge para componentes client-side que precisam do nome/perfil do usuário sem fazer fetch assíncrono.
 
 Cada layout (`inspetor`, `coordenador`, `engenharia`) carrega o usuário no `useEffect`:
 1. Primeiro lê do localStorage (renderização instantânea).
@@ -549,7 +549,7 @@ Cada layout (`inspetor`, `coordenador`, `engenharia`) carrega o usuário no `use
 
 Todos os layouts têm `handleSair()`:
 1. `supabase.auth.signOut()`
-2. `localStorage.removeItem('argus_usuario_atual')`
+2. `localStorage.removeItem('primus_usuario_atual')`
 3. Redireciona para `/login`
 
 ---
@@ -577,9 +577,9 @@ Fluxo:
 
 - **Método**: POST
 - **Transporte**: SMTP via Nodemailer / Resend (configurável por `.env.local`)
-- **Template**: HTML responsivo com branding Argus (Space Grotesk, cards arredondados, badge de criticidade)
+- **Template**: HTML responsivo com branding Primus (Space Grotesk, cards arredondados, badge de criticidade)
 - **Destinatários fixos**: `pedrosoaress365@gmail.com`, `p.moraisneto@outlook.com` + e-mail do inspetor
-- **Conteúdo**: Nome do ativo, problema relatado, criticidade, botão CTA para Argus
+- **Conteúdo**: Nome do ativo, problema relatado, criticidade, botão CTA para Primus
 - **Anexo**: Se a foto de evidência vier como Base64, é convertida e anexada
 - **Trigger**: Chamado automaticamente pela tela de checklist após conclusão com itens não conformes (fire-and-forget, não bloqueia a UI)
 
@@ -637,7 +637,7 @@ Chaves principais:
 ### Tipografia
 
 - **Corpo**: `-apple-system`, `SF Pro Display`, sistema
-- **Brand** (`.font-brand`): `Space Grotesk` (weight 600-700) — usado no logo "Argus"
+- **Brand** (`.font-brand`): `Space Grotesk` (weight 600-700) — usado no logo "Primus"
 - **Round** (`.font-round`): `Nunito` (weight 700-900) — headers arredondados
 
 ### Sombras
@@ -689,11 +689,11 @@ Chaves principais:
 
 ---
 
-## 13. Módulo Argus IA (Assistente de Prontidão Operacional)
+## 13. Módulo Primus IA (Assistente de Prontidão Operacional)
 
 ### 13.1 Visão Geral
 
-O **Argus IA** é o copiloto inteligente em tempo real exclusivo para o perfil de **Coordenador** (e Administrador). Ele permite que o gestor faça perguntas em linguagem natural e receba diagnósticos operacionais imediatos sobre:
+O **Primus IA** é o copiloto inteligente em tempo real exclusivo para o perfil de **Coordenador** (e Administrador). Ele permite que o gestor faça perguntas em linguagem natural e receba diagnósticos operacionais imediatos sobre:
 - Quantidade e criticidade de Não Conformidades abertas.
 - Salas cirúrgicas com risco de atraso ou itens pendentes.
 - Produtividade e volume de rondas realizadas por cada inspetor.
@@ -733,7 +733,7 @@ O **Argus IA** é o copiloto inteligente em tempo real exclusivo para o perfil d
 ### ✅ Implementado e Funcional
 
 - Login e cadastro com Supabase Auth real e tradução humanizada de erros
-- **Módulo Argus IA** completo com streaming SSE, contexto em tempo real e WebGPU Glass Liquid Orb
+- **Módulo Primus IA** completo com streaming SSE, contexto em tempo real e WebGPU Glass Liquid Orb
 - Dashboard do Inspetor com lista de salas (dados reais do Supabase)
 - Scanner QR via câmera do dispositivo (BarcodeDetector API)
 - Execução completa de checklist com persistência no Supabase
@@ -742,7 +742,7 @@ O **Argus IA** é o copiloto inteligente em tempo real exclusivo para o perfil d
 - Fila de NCs para Engenharia Clínica (dados reais)
 - Detalhe da NC com ações por perfil (assumir, manutenção, finalizar, validar, rejeitar)
 - Resolução direta de NCs pelo coordenador (sem técnico)
-- Dashboard do Coordenador com 4 abas (Painel, NCs, Equipe, Ativos) + Acesso à Argus IA
+- Dashboard do Coordenador com 4 abas (Painel, NCs, Equipe, Ativos) + Acesso à Primus IA
 - Histórico de inspeções com modo somente-leitura
 - Cache SWR para navegação instantânea
 - Design mobile-first premium (glassmorphism, liquid-metal, micro-animações)
@@ -804,7 +804,7 @@ O **Argus IA** é o copiloto inteligente em tempo real exclusivo para o perfil d
 
 O hospital de teste está populado com:
 
-- **1 Hospital**: "Hospital Público Itaberaba"
+- **1 Hospital**: "Hospital Piemonte Paraguaçu"
 - **1 Unidade**: "Unidade de Internação"
 - **1 Centro Cirúrgico**: "Centro Cirúrgico Principal"
 - **4 Salas**: 01, 02, 03, 04 — apenas 01, 03, 04 aparecem no dashboard do inspetor

@@ -89,7 +89,7 @@ function FormularioNC() {
 
       const secaoId = params.get('secao')
       if (secaoId) {
-        sessionStorage.setItem(`argus_nc_${secaoId}`, JSON.stringify({
+        sessionStorage.setItem(`primus_nc_${secaoId}`, JSON.stringify({
           descricao,
           criticidade,
           setor_responsavel: setorResponsavel,

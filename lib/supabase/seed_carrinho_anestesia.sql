@@ -1,5 +1,5 @@
 -- =============================================================================
--- Argus — Script de Cadastro: Carrinho de Anestesia
+-- Primus — Script de Cadastro: Carrinho de Anestesia
 -- Executar no SQL Editor do Supabase para adicionar a categoria,
 -- modelo de checklist, os 14 itens e o ativo Carrinho de Anestesia.
 -- =============================================================================

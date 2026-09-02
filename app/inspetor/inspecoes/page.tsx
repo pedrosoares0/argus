@@ -17,7 +17,7 @@ export default function PaginaHistoricoInspecoes() {
   const [usuario, setUsuario] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('argus_usuario_atual')
+        const stored = (localStorage.getItem('primus_usuario_atual') || localStorage.getItem('argus_usuario_atual'))
         if (stored) return JSON.parse(stored)
       } catch (e) {
         console.error(e)
