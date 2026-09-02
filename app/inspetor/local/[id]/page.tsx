@@ -400,9 +400,11 @@ export default function PaginaLocal() {
             </div>
           </div>
 
-          <PillTag cor={statusSalaCor} className="scale-90 sm:scale-100 origin-right">
-            {statusSalaLabel}
-          </PillTag>
+          <div className="scale-75 origin-right -ml-3 shrink-0">
+            <PillTag cor={statusSalaCor}>
+              {statusSalaLabel}
+            </PillTag>
+          </div>
         </div>
 
         {/* Barra de Progresso da Ronda de Hoje */}
@@ -467,9 +469,11 @@ export default function PaginaLocal() {
                       </div>
                       <p className="text-[11px] text-red-500 font-medium mt-0.5 leading-snug">{desc}</p>
                     </div>
-                    <PillTag cor={cor} className="scale-75 origin-top-right shrink-0">
-                      {nc.criticidade === 'critico' ? 'Crítico' : 'Importante'}
-                    </PillTag>
+                    <div className="scale-75 origin-top-right -ml-2 shrink-0">
+                      <PillTag cor={cor}>
+                        {nc.criticidade === 'critico' ? 'Crítico' : 'Importante'}
+                      </PillTag>
+                    </div>
                   </div>
 
                   {/* Evidência Fotográfica */}
@@ -544,13 +548,16 @@ export default function PaginaLocal() {
         </div>
 
         {carregando && ativos.length === 0 ? (
-          <div className="space-y-2.5">
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="bg-white rounded-[24px] p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100/80 animate-pulse flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-[16px] bg-gray-100 shrink-0" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-1/2 bg-gray-200 rounded" />
-                  <div className="h-3 w-1/3 bg-gray-100 rounded" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="bg-white rounded-[24px] p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100/80 animate-pulse min-h-[120px] flex flex-col justify-between"
+              >
+                <div className="h-6 w-24 bg-gray-100 rounded-full" />
+                <div className="space-y-2 pt-4">
+                  <div className="h-5 w-3/4 bg-gray-200 rounded-lg" />
+                  <div className="h-3.5 w-1/2 bg-gray-100 rounded-md" />
                 </div>
               </div>
             ))}
@@ -560,89 +567,86 @@ export default function PaginaLocal() {
             Nenhum equipamento vinculado a esta sala.
           </div>
         ) : (
-          ativos.map((ativo, i) => {
-            const iconeImg = obterIconeEquipamento(ativo.nome)
+          <div className="space-y-3">
+            {ativos.map((ativo, i) => {
+              const iconeImg = obterIconeEquipamento(ativo.nome)
 
-            let badgeCor: 'verde' | 'vermelho' | 'laranja' | 'azul' = 'azul'
-            let badgeLabel = 'Pendente'
+              let badgeCor: 'verde' | 'vermelho' | 'laranja' | 'azul' = 'azul'
+              let badgeLabel = 'Pendente'
 
-            if (ativo.inspecionadoHoje) {
-              if (ativo.resultadoUltima === 'critico') {
-                badgeCor = 'vermelho'
-                badgeLabel = 'Crítico'
-              } else if (ativo.resultadoUltima === 'importante') {
-                badgeCor = 'laranja'
-                badgeLabel = 'Com restrição'
-              } else {
-                badgeCor = 'verde'
-                badgeLabel = 'Conforme'
+              if (ativo.inspecionadoHoje) {
+                if (ativo.resultadoUltima === 'critico') {
+                  badgeCor = 'vermelho'
+                  badgeLabel = 'Crítico'
+                } else if (ativo.resultadoUltima === 'importante') {
+                  badgeCor = 'laranja'
+                  badgeLabel = 'Com restrição'
+                } else {
+                  badgeCor = 'verde'
+                  badgeLabel = 'Conforme'
+                }
               }
-            }
 
-            return (
-              <Link
-                key={ativo.id}
-                href={`/inspetor/checklist/${ativo.id}`}
-                prefetch={true}
-                className="block bg-white rounded-[24px] p-3.5 sm:p-4 shadow-[0_2px_14px_rgba(0,0,0,0.03)] border border-gray-100/90 hover:border-gray-300 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer"
-                style={{ animationDelay: `${i * 40}ms` }}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  {/* Ícone + Informações */}
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    {iconeImg ? (
-                      <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] overflow-hidden bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100/40">
-                        <img src={iconeImg} alt={ativo.nome} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 pointer-events-none rounded-[inherit] shadow-[inset_0_1.5px_4px_rgba(255,255,255,0.9)]" />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[16px] bg-slate-50 flex items-center justify-center shrink-0 border border-slate-200/60 text-slate-600">
-                        <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.07a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091.455.076.93-.043 1.378" />
-                        </svg>
-                      </div>
-                    )}
-
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-sm font-bold text-slate-900 tracking-tight leading-snug">
-                          {ativo.nome}
-                        </h3>
-                        {ativo.compartilhado && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 inline-flex items-center whitespace-nowrap">
-                            Salas 1, 3 e 4
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                        <span className={[
-                          'w-2 h-2 rounded-full shrink-0',
-                          badgeCor === 'verde' ? 'bg-[#31B44A]' :
-                          badgeCor === 'vermelho' ? 'bg-red-500' :
-                          badgeCor === 'laranja' ? 'bg-amber-500' : 'bg-slate-300'
-                        ].join(' ')} />
-                        <span className="truncate font-medium">{ativo.ultimaInspecaoTexto}</span>
-                      </div>
+              return (
+                <Link
+                  key={ativo.id}
+                  href={`/inspetor/checklist/${ativo.id}`}
+                  prefetch={true}
+                  className="relative block overflow-hidden rounded-[24px] bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100/90 active:scale-[0.99] transition-transform min-h-[120px] sm:min-h-[130px] flex flex-col justify-between"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                >
+                  {/* Imagem do equipamento no fundo à direita sem fade, cortada na borda */}
+                  {iconeImg ? (
+                    <div className="absolute -right-6 -bottom-3 sm:-right-7 sm:-bottom-3 w-36 h-36 sm:w-40 sm:h-40 pointer-events-none select-none z-0 flex items-end justify-end overflow-hidden">
+                      <img
+                        src={iconeImg}
+                        alt=""
+                        className="w-full h-full object-contain object-bottom-right opacity-90"
+                      />
                     </div>
-                  </div>
-
-                  {/* Badge de Status e Ação */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <PillTag cor={badgeCor} className="scale-85 origin-right">
-                      {badgeLabel}
-                    </PillTag>
-
-                    <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:text-slate-700">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  ) : (
+                    <div className="absolute -right-2 -bottom-2 w-28 h-28 pointer-events-none select-none z-0 flex items-end justify-end opacity-20">
+                      <svg className="w-20 h-20 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.25} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.07a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091.455.076.93-.043 1.378" />
                       </svg>
                     </div>
+                  )}
+
+                  {/* Topo: Badge de Status padronizado e compacto */}
+                  <div className="relative z-10 flex items-center gap-1.5 flex-wrap">
+                    <div className="scale-75 origin-left -mr-3 shrink-0">
+                      <PillTag cor={badgeCor}>
+                        {badgeLabel}
+                      </PillTag>
+                    </div>
+
+                    {ativo.compartilhado && (
+                      <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 inline-flex items-center whitespace-nowrap">
+                        Salas 1, 3 e 4
+                      </span>
+                    )}
                   </div>
-                </div>
-              </Link>
-            )
-          })
+
+                  {/* Base: Título e Detalhes da Inspeção em primeiro plano */}
+                  <div className="relative z-10 max-w-[65%] sm:max-w-[70%] pt-4 space-y-1">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
+                      {ativo.nome}
+                    </h3>
+
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+                      <span className={[
+                        'w-1.5 h-1.5 rounded-full shrink-0',
+                        badgeCor === 'verde' ? 'bg-[#31B44A]' :
+                        badgeCor === 'vermelho' ? 'bg-red-500' :
+                        badgeCor === 'laranja' ? 'bg-amber-500' : 'bg-blue-400'
+                      ].join(' ')} />
+                      <span className="truncate">{ativo.ultimaInspecaoTexto}</span>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
         )}
       </div>
 

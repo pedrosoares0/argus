@@ -128,9 +128,9 @@ export default function LayoutInspetor({
   const isGradientPage = pathname === '/inspetor'
 
   return (
-    <div className={`min-h-[100dvh] flex flex-col ${isGradientPage ? 'bg-gradient-to-b from-[#79C7FF] via-[#79C7FF]/5 to-[#FAFAFC] to-[50%]' : 'bg-[#FAFAFC]'} max-w-md mx-auto relative`}>
+    <div className={`min-h-[100dvh] flex flex-col ${isGradientPage ? 'bg-gradient-to-b from-[#79C7FF] via-[#79C7FF]/5 to-[#F4F6FA] to-[50%]' : 'bg-[#F4F6FA]'} max-w-md mx-auto relative`}>
       {/* Header no tom do background */}
-      <header className={`relative z-50 px-4 pt-4 pb-3 flex items-center justify-between transition-all duration-200 ${isGradientPage ? 'bg-transparent' : 'bg-[#FAFAFC] border-b border-gray-200/60'}`}>
+      <header className={`relative z-50 px-4 pt-4 pb-3 flex items-center justify-between transition-all duration-200 ${isGradientPage ? 'bg-transparent' : 'bg-[#F4F6FA] border-b border-slate-200/70'}`}>
         <Link href="/inspetor" className={`text-xl font-bold tracking-tight hover:opacity-80 transition-opacity font-brand ${isGradientPage ? 'text-white' : 'text-gray-900'}`}>
           Argus
         </Link>

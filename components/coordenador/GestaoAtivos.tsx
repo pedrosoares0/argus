@@ -533,75 +533,70 @@ export function GestaoAtivos({ hospitalId }: GestaoAtivosProps) {
                           Nenhum ativo nesta sala com os filtros aplicados.
                         </div>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {sala.ativos.map((ativo) => {
                             const iconeAtivoUrl = obterIconeEquipamento(ativo.nome, ativo.categorias_ativos?.nome)
                             const compartilhado = isAtivoCompartilhado(ativo.nome)
+                            const statusInfo = STATUS_ATIVO_MAPA[ativo.status as StatusAtivo] || STATUS_ATIVO_MAPA.operacional
 
                             return (
                               <div
                                 key={ativo.id}
-                                style={{
-                                  boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.85), 0 2px 8px rgba(0, 0, 0, 0.03)',
-                                }}
-                                className="flex items-center justify-between gap-2.5 bg-slate-50/70 rounded-2xl px-3.5 py-3 border border-slate-100/80 transition-colors hover:bg-slate-50"
+                                className="relative overflow-hidden rounded-[22px] bg-white p-3.5 sm:p-4 shadow-[0_3px_14px_rgba(0,0,0,0.04)] border border-slate-200/70 flex flex-col justify-between min-h-[115px]"
                               >
-                                {/* Info do Ativo com Imagem 3D Real */}
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <div
-                                    style={{
-                                      boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.8), 0 2px 6px rgba(0, 0, 0, 0.04)',
-                                    }}
-                                    className="relative w-10 h-10 rounded-[14px] overflow-hidden bg-white flex items-center justify-center shrink-0 border border-slate-200/50"
-                                  >
+                                {/* Imagem do equipamento no fundo à direita sem fade, cortada na borda */}
+                                {iconeAtivoUrl && (
+                                  <div className="absolute -right-5 -bottom-2 w-28 h-28 sm:w-32 sm:h-32 pointer-events-none select-none z-0 flex items-end justify-end overflow-hidden">
                                     <img
                                       src={iconeAtivoUrl}
-                                      alt={ativo.nome || 'Equipamento'}
-                                      className="w-full h-full object-cover"
+                                      alt=""
+                                      className="w-full h-full object-contain object-bottom-right opacity-90"
                                     />
                                   </div>
+                                )}
 
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <h5 className="text-[13px] font-black text-slate-900 truncate">
-                                        {ativo.nome}
-                                      </h5>
-                                      {compartilhado && (
-                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 inline-flex items-center whitespace-nowrap">
-                                          Salas 1, 3 e 4
-                                        </span>
-                                      )}
+                                {/* Topo: Badge de Status padronizado + Tag compartilhada e QR Code */}
+                                <div className="relative z-10 flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <div className="scale-75 origin-left -mr-2.5 shrink-0">
+                                      <PillTag cor={statusInfo.pillCor}>
+                                        {statusInfo.label}
+                                      </PillTag>
                                     </div>
-
-                                    <div className="flex items-center gap-2 text-[10.5px] text-slate-400 font-medium mt-0.5">
-                                      <span className="text-slate-500 font-bold">
-                                        {ativo.categorias_ativos?.nome || 'Equipamento'}
+                                    {compartilhado && (
+                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 inline-flex items-center whitespace-nowrap">
+                                        Salas 1, 3 e 4
                                       </span>
-                                      {ativo.patrimonio && (
-                                        <>
-                                          <span>·</span>
-                                          <span className="font-mono text-slate-400 font-bold">Pat: {ativo.patrimonio}</span>
-                                        </>
-                                      )}
-                                    </div>
+                                    )}
+                                  </div>
+
+                                  <div className="shrink-0">
+                                    <QRCodeAtivo
+                                      ativoId={ativo.id}
+                                      localId={ativo.local_id}
+                                      nomeAtivo={ativo.nome}
+                                      codigoQr={ativo.codigo_qr}
+                                      patrimonio={ativo.patrimonio}
+                                    />
                                   </div>
                                 </div>
 
-                                {/* Ícone de Status (redondo) + QRCode — lado a lado */}
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  {/* Ícone de status redondo */}
-                                  <div className="w-7 h-7 rounded-full bg-white border border-slate-200/60 flex items-center justify-center shadow-2xs">
-                                    <StatusIconeMini status={ativo.status as StatusAtivo} />
+                                {/* Base: Título e Categoria/Patrimônio */}
+                                <div className="relative z-10 max-w-[65%] sm:max-w-[70%] pt-3 space-y-0.5">
+                                  <h5 className="text-[14px] font-bold text-slate-900 leading-snug">
+                                    {ativo.nome}
+                                  </h5>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
+                                    <span className="font-semibold text-slate-600">
+                                      {ativo.categorias_ativos?.nome || 'Equipamento'}
+                                    </span>
+                                    {ativo.patrimonio && (
+                                      <>
+                                        <span>·</span>
+                                        <span className="font-mono text-slate-400">Pat: {ativo.patrimonio}</span>
+                                      </>
+                                    )}
                                   </div>
-
-                                  {/* Botão QR Code */}
-                                  <QRCodeAtivo
-                                    ativoId={ativo.id}
-                                    localId={ativo.local_id}
-                                    nomeAtivo={ativo.nome}
-                                    codigoQr={ativo.codigo_qr}
-                                    patrimonio={ativo.patrimonio}
-                                  />
                                 </div>
                               </div>
                             )
