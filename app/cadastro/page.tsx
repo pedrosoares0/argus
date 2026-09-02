@@ -761,29 +761,29 @@ export default function PaginaCadastro() {
                 </div>
               </div>
 
-              {/* ── SIMULAÇÃO DA PILL DO USUÁRIO ── */}
+              {/* ── SIMULAÇÃO DA PILL DO USUÁRIO (AMPLIADA) ── */}
               <div className="space-y-1.5 pt-0.5">
                 <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1 block">
                   Prévia na aplicação
                 </label>
-                <div className="bg-[#F4F6FA] border border-gray-200/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5">
-                  <span className="text-[10px] font-medium text-gray-400 text-center">
+                <div className="bg-[#F4F6FA] border border-gray-200/80 rounded-2xl p-4 flex flex-col items-center justify-center gap-2.5">
+                  <span className="text-[10.5px] font-semibold text-gray-400 text-center">
                     Assim aparecerá sua identificação no cabeçalho do sistema:
                   </span>
                   
                   {/* A Pill do Usuário (Simulação em tempo real) */}
-                  <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs transition-all">
+                  <div className="inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-white border border-slate-200/90 shadow-[0_2px_10px_rgba(0,0,0,0.04)] transition-all hover:scale-[1.02]">
                     <AvatarPerfil
                       perfil={perfilSelecionado}
                       avatarUrl={fotoPreview}
                       nome={nomeCompleto || 'Seu Nome'}
-                      tamanho="sm"
+                      tamanho="md"
                     />
-                    <div className="flex flex-col items-start leading-tight text-left pr-1 min-w-0 max-w-[170px]">
-                      <span className="w-full block text-[11.5px] font-bold text-slate-800 tracking-tight truncate">
+                    <div className="flex flex-col items-start leading-tight text-left pr-1 min-w-0 max-w-[210px]">
+                      <span className="w-full block text-[13px] font-extrabold text-slate-900 tracking-tight truncate">
                         {nomeCompleto || 'Seu Nome'}
                       </span>
-                      <span className="w-full block text-[9.5px] font-semibold text-slate-400 truncate">
+                      <span className="w-full block text-[10.5px] font-semibold text-slate-500 truncate mt-0.5">
                         {roleAtual.label} • {hospitalNome}
                       </span>
                     </div>
