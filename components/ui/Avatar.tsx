@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 
 export function getAvatarUrlPorPerfil(perfil?: string, nome?: string, setor?: string | null): string {
   const p = (perfil || '').toLowerCase()
@@ -52,6 +52,7 @@ interface AvatarPerfilProps {
   perfil?: string
   nome?: string
   setor?: string | null
+  avatarUrl?: string | null
   tamanho?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
@@ -60,10 +61,18 @@ export function AvatarPerfil({
   perfil,
   nome,
   setor,
+  avatarUrl,
   tamanho = 'md',
   className = '',
 }: AvatarPerfilProps) {
-  const src = getAvatarUrlPorPerfil(perfil, nome, setor)
+  const [imgErro, setImgErro] = useState(false)
+
+  useEffect(() => {
+    setImgErro(false)
+  }, [avatarUrl])
+
+  const srcDefault = getAvatarUrlPorPerfil(perfil, nome, setor)
+  const srcFinal = (!imgErro && avatarUrl) ? avatarUrl : srcDefault
   const fallbackGradient = getAvatarGradientPorPerfil(perfil, nome, setor)
 
   const sizeClasses = {
@@ -79,8 +88,13 @@ export function AvatarPerfil({
       className={`relative inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 shadow-xs border border-white/80 aspect-square select-none ${fallbackGradient} ${sizeClasses[tamanho]} ${className}`}
     >
       <img
-        src={src}
+        src={srcFinal}
         alt={nome || perfil || 'Avatar'}
+        onError={() => {
+          if (avatarUrl && !imgErro) {
+            setImgErro(true)
+          }
+        }}
         className="w-full h-full object-cover rounded-full"
       />
     </div>

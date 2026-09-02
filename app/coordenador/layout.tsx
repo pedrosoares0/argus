@@ -15,7 +15,7 @@ export default function LayoutCoordenador({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [usuario, setUsuario] = useState<{ nome: string; perfil: string } | null>(null)
+  const [usuario, setUsuario] = useState<{ nome: string; perfil: string; avatar_url?: string | null } | null>(null)
 
   useEffect(() => {
     async function carregarUsuario() {
@@ -25,7 +25,7 @@ export default function LayoutCoordenador({
         try {
           const parsed = JSON.parse(stored)
           if (parsed?.nome && !parsed.nome.toLowerCase().includes('ana beatriz')) {
-            setUsuario({ nome: parsed.nome, perfil: parsed.perfil || 'coordenador' })
+            setUsuario({ nome: parsed.nome, perfil: parsed.perfil || 'coordenador', avatar_url: parsed.avatar_url || null })
           } else {
             localStorage.removeItem('primus_usuario_atual')
           }
@@ -41,19 +41,31 @@ export default function LayoutCoordenador({
         const { data: { user } } = await supabase.auth.getUser()
         
         if (user) {
+          const metaAvatar = user.user_metadata?.avatar_url || null
           // Busca perfil na tabela usuarios por auth_user_id ou id
-          const { data: profiles } = await supabase
+          let { data: profiles, error: pErr } = await supabase
             .from('usuarios')
-            .select('id, auth_user_id, nome, perfil')
+            .select('id, auth_user_id, nome, perfil, avatar_url')
             .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
             .limit(1)
 
+          if (pErr && pErr.code === '42703') {
+            const { data: pFallback } = await supabase
+              .from('usuarios')
+              .select('id, auth_user_id, nome, perfil')
+              .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+              .limit(1)
+            profiles = pFallback
+          }
+
+          const localAvatar = profiles?.[0]?.avatar_url || localStorage.getItem(`primus_avatar_${user.id}`) || metaAvatar
           const profile = profiles?.[0]
           
           if (profile?.nome) {
             const dadosUsuario = {
               nome: profile.nome,
-              perfil: profile.perfil || 'coordenador'
+              perfil: profile.perfil || 'coordenador',
+              avatar_url: localAvatar
             }
             setUsuario(dadosUsuario)
             localStorage.setItem('primus_usuario_atual', JSON.stringify(dadosUsuario))
@@ -65,7 +77,8 @@ export default function LayoutCoordenador({
           if (metaNome) {
             const dadosUsuario = {
               nome: metaNome,
-              perfil: user.user_metadata?.perfil || 'coordenador'
+              perfil: user.user_metadata?.perfil || 'coordenador',
+              avatar_url: localAvatar
             }
             setUsuario(dadosUsuario)
             localStorage.setItem('primus_usuario_atual', JSON.stringify(dadosUsuario))
@@ -78,7 +91,8 @@ export default function LayoutCoordenador({
             const nomeFormatado = nomeEmail.charAt(0).toUpperCase() + nomeEmail.slice(1)
             const dadosUsuario = {
               nome: `Coord. ${nomeFormatado}`,
-              perfil: 'coordenador'
+              perfil: 'coordenador',
+              avatar_url: metaAvatar
             }
             setUsuario(dadosUsuario)
             localStorage.setItem('primus_usuario_atual', JSON.stringify(dadosUsuario))
@@ -136,6 +150,7 @@ export default function LayoutCoordenador({
             <CommandMenu
               title={nomeExibido}
               perfil="coordenador"
+              avatarUrl={usuario?.avatar_url}
               status={[
                 'Coordenador(a)',
                 'Hosp. Piem. Paraguaçu',

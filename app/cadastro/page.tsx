@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Botao } from '@/components/ui/Botao'
+import { ChevronLeft, Camera, Image as ImageIcon, X, ArrowRight } from 'lucide-react'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
-import { Avatar } from '@/components/ui/Avatar'
+import { Avatar, AvatarPerfil } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
 import { TODOS_SETORES, SETORES_LABELS } from '@/lib/roteamentoNC'
 import { traduzirErroAuth } from '@/lib/tratarErrosAuth'
@@ -34,19 +34,81 @@ const ROLES = [
   },
 ]
 
+function comprimirImagem(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new window.Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const maxDim = 120
+        const width = img.width
+        const height = img.height
+
+        // Recorte 1:1 centralizado (quadrado perfeito para avatar)
+        const size = Math.min(width, height)
+        const sx = (width - size) / 2
+        const sy = (height - size) / 2
+
+        canvas.width = maxDim
+        canvas.height = maxDim
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          resolve(e.target?.result as string)
+          return
+        }
+
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, maxDim, maxDim)
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8)
+        resolve(compressedBase64)
+      }
+      img.onerror = () => resolve(e.target?.result as string)
+      img.src = e.target?.result as string
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+function base64ToBlob(base64: string): Blob {
+  const parts = base64.split(',')
+  const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg'
+  const bstr = atob(parts[1])
+  let n = bstr.length
+  const u8arr = new Uint8Array(n)
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n)
+  }
+  return new Blob([u8arr], { type: mime })
+}
+
 export default function PaginaCadastro() {
   const router = useRouter()
+  
+  // Controle de Etapa (1 = Dados e Cargo, 2 = Foto e Senha)
+  const [etapa, setEtapa] = useState<1 | 2>(1)
+
+  // Etapa 1: Dados Profissionais e Cargo
   const [nomeCompleto, setNomeCompleto] = useState('')
   const [email, setEmail] = useState('')
+  const [hospitalId, setHospitalId] = useState('e632822a-0000-0000-0000-000000000001')
   const [numeroConselho, setNumeroConselho] = useState('')
+  const [perfilSelecionado, setPerfilSelecionado] = useState('inspetor')
+  const [setorSelecionado, setSetorSelecionado] = useState('')
 
+  // Etapa 2: Foto (Opcional) e Senha
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galeriaInputRef = useRef<HTMLInputElement>(null)
+
+  // Câmera ao vivo (Webcam / Celular)
+  const [modalCameraAberto, setModalCameraAberto] = useState(false)
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   const [senha, setSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
-  const [perfilSelecionado, setPerfilSelecionado] = useState('inspetor')
-  const [setorSelecionado, setSetorSelecionado] = useState('')
-  const [hospitalId, setHospitalId] = useState('e632822a-0000-0000-0000-000000000001') // Default hospital ID
-  
+
   const [hospitais, setHospitais] = useState<any[]>([])
   const [carregandoHospitais, setCarregandoHospitais] = useState(true)
   const [carregando, setCarregando] = useState(false)
@@ -57,7 +119,6 @@ export default function PaginaCadastro() {
   useEffect(() => {
     async function carregarHospitais() {
       try {
-        // Tenta buscar via API interna
         const res = await fetch('/api/hospitais')
         const json = await res.json()
         if (json?.hospitais && json.hospitais.length > 0) {
@@ -67,7 +128,6 @@ export default function PaginaCadastro() {
           return
         }
 
-        // Fallback: busca direta via Supabase Client
         const supabase = criarClienteSupabase() as any
         const { data } = await supabase
           .from('hospitais')
@@ -89,20 +149,134 @@ export default function PaginaCadastro() {
     carregarHospitais()
   }, [])
 
+  // Limpeza de stream de câmera caso desmonte
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((t) => t.stop())
+      }
+    }
+  }, [cameraStream])
 
+  // Vincula stream ao elemento de vídeo quando o modal abre
+  useEffect(() => {
+    if (modalCameraAberto && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream
+      videoRef.current.play().catch((e) => console.error('Erro ao iniciar vídeo:', e))
+    }
+  }, [modalCameraAberto, cameraStream])
 
+  // Abrir Câmera ao vivo
+  async function abrirCamera() {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
+          audio: false,
+        })
+        setCameraStream(stream)
+        setModalCameraAberto(true)
+        setErro(null)
+      } else {
+        cameraInputRef.current?.click()
+      }
+    } catch (err: any) {
+      console.warn('Câmera direta indisponível ou permissão negada, fallback para input de arquivo:', err)
+      cameraInputRef.current?.click()
+    }
+  }
+
+  function fecharCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop())
+      setCameraStream(null)
+    }
+    setModalCameraAberto(false)
+  }
+
+  function capturarFotoCamera() {
+    if (!videoRef.current) return
+    const video = videoRef.current
+    const canvas = document.createElement('canvas')
+    const maxDim = 120
+    const width = video.videoWidth || 640
+    const height = video.videoHeight || 480
+
+    const size = Math.min(width, height)
+    const sx = (width - size) / 2
+    const sy = (height - size) / 2
+
+    canvas.width = maxDim
+    canvas.height = maxDim
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Efeito espelho para selfie natural
+    ctx.translate(maxDim, 0)
+    ctx.scale(-1, 1)
+    ctx.drawImage(video, sx, sy, size, size, 0, 0, maxDim, maxDim)
+
+    const base64 = canvas.toDataURL('image/jpeg', 0.8)
+    setFotoPreview(base64)
+    fecharCamera()
+  }
+
+  async function handleFotoSelecionada(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const base64Comprimido = await comprimirImagem(file)
+      setFotoPreview(base64Comprimido)
+      setErro(null)
+    } catch (err) {
+      console.error('Erro ao processar imagem:', err)
+      setErro('Não foi possível carregar a foto selecionada.')
+    } finally {
+      e.target.value = ''
+    }
+  }
+
+  function removerFoto() {
+    setFotoPreview(null)
+  }
+
+  // Avançar da Etapa 1 para a Etapa 2
+  function handleAvancarEtapa1(e: React.FormEvent) {
+    e.preventDefault()
+    setErro(null)
+
+    if (!nomeCompleto.trim()) {
+      setErro('Por favor, informe seu nome completo.')
+      return
+    }
+
+    if (!email.trim() || !email.includes('@')) {
+      setErro('Por favor, informe um e-mail válido.')
+      return
+    }
+
+    if (perfilSelecionado === 'tecnico' && !setorSelecionado) {
+      setErro('Por favor, selecione o seu setor técnico.')
+      return
+    }
+
+    setEtapa(2)
+  }
+
+  // Concluir cadastro na Etapa 2
   async function handleCadastrar(e: React.FormEvent) {
     e.preventDefault()
     setErro(null)
     setSucesso(null)
 
-    if (senha !== confirmarSenha) {
-      setErro('As senhas não coincidem.')
+    if (senha.length < 6) {
+      setErro('A senha deve ter pelo menos 6 caracteres.')
       return
     }
 
-    if (senha.length < 6) {
-      setErro('A senha deve ter pelo menos 6 caracteres.')
+    if (senha !== confirmarSenha) {
+      setErro('As senhas não coincidem.')
       return
     }
 
@@ -111,7 +285,11 @@ export default function PaginaCadastro() {
     try {
       const supabase = criarClienteSupabase() as any
 
-      // 1. Registrar o usuário no Supabase Auth com metadados
+      // Se o usuário subiu foto, ela já está em memória e comprimida para ~5KB.
+      // Se NÃO subiu foto, avatarFinalUrl é estritamente null -> o sistema usará o avatar oficial do cargo
+      const avatarFinalUrl: string | null = fotoPreview || null
+
+      // 1. Registrar o usuário no Supabase Auth com metadados leves (sem base64 no token JWT para manter cookies pequenos e evitar HTTP 431)
       const { data, error } = await supabase.auth.signUp({
         email,
         password: senha,
@@ -122,6 +300,7 @@ export default function PaginaCadastro() {
             perfil: perfilSelecionado,
             numero_conselho: numeroConselho,
             setor: perfilSelecionado === 'tecnico' ? (setorSelecionado || 'engenharia_clinica') : null,
+            tem_foto: Boolean(fotoPreview),
           }
         }
       })
@@ -134,28 +313,70 @@ export default function PaginaCadastro() {
 
       setSucesso('Conta criada com sucesso!')
 
-      // 2. Vincular dados diretamente na tabela public.usuarios
-      if (data.user) {
+      // 2. Se o usuário enviou foto, tenta persistir no Supabase Storage oficial (bucket avatars)
+      let avatarPersistido: string | null = null
+      if (fotoPreview) {
         try {
-          await supabase.from('usuarios').upsert({
-            id: data.user.id,
-            nome: nomeCompleto,
-            email: email,
-            perfil: perfilSelecionado,
-            hospital_id: hospitalId,
-            numero_conselho: numeroConselho,
-            setor: perfilSelecionado === 'tecnico' ? (setorSelecionado || 'engenharia_clinica') : null,
-          })
+          const blob = base64ToBlob(fotoPreview)
+          const fileName = `${data.user.id}.jpg`
+          const { data: upData, error: upError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true })
+
+          if (!upError && upData) {
+            const { data: pUrl } = supabase.storage.from('avatars').getPublicUrl(fileName)
+            if (pUrl?.publicUrl) {
+              avatarPersistido = pUrl.publicUrl
+            }
+          }
+        } catch (storageErr) {
+          console.warn('Storage avatars não configurado ou indisponível:', storageErr)
+        }
+
+        // Se o bucket não existir ainda no Supabase, usa a imagem comprimida (~5KB) diretamente no banco
+        if (!avatarPersistido) {
+          avatarPersistido = fotoPreview
+        }
+      }
+
+      // 3. Vincular dados na tabela public.usuarios (Banco de Dados PostgreSQL)
+      if (data.user) {
+        const payloadUsuario: any = {
+          id: data.user.id,
+          nome: nomeCompleto,
+          email: email,
+          perfil: perfilSelecionado,
+          hospital_id: hospitalId,
+          numero_conselho: numeroConselho,
+          setor: perfilSelecionado === 'tecnico' ? (setorSelecionado || 'engenharia_clinica') : null,
+          avatar_url: avatarPersistido,
+        }
+
+        try {
+          const { error: upsertErr } = await supabase.from('usuarios').upsert(payloadUsuario)
+          if (upsertErr) {
+            console.warn('Aviso no upsert de usuarios com avatar_url:', upsertErr)
+            delete payloadUsuario.avatar_url
+            await supabase.from('usuarios').upsert(payloadUsuario)
+          }
         } catch (dbErr) {
           console.error('Erro ao upsertar na tabela usuarios:', dbErr)
         }
 
-        // Ponte com a sessão simulada no LocalStorage para retrocompatibilidade
-        localStorage.setItem('primus_usuario_atual', JSON.stringify({
-          id: data.user.id,
-          nome: nomeCompleto,
-          perfil: perfilSelecionado
-        }))
+        // 4. Cache local para carregamento instantâneo da pill (0ms) no primeiro acesso
+        try {
+          localStorage.setItem('primus_usuario_atual', JSON.stringify({
+            id: data.user.id,
+            nome: nomeCompleto,
+            perfil: perfilSelecionado,
+            avatar_url: avatarPersistido
+          }))
+          if (avatarPersistido) {
+            localStorage.setItem(`primus_avatar_${data.user.id}`, avatarPersistido)
+          }
+        } catch {
+          // ignore
+        }
 
         // Redirecionamento imediato para a tela respectiva
         const rotas: Record<string, string> = {
@@ -179,231 +400,509 @@ export default function PaginaCadastro() {
     }
   }
 
+  const roleAtual = ROLES.find(r => r.valor === perfilSelecionado) || ROLES[0]
+  const hospitalSelecionado = hospitais.find(h => h.id === hospitalId)
+  const hospitalNome = hospitalSelecionado ? hospitalSelecionado.nome : 'Hospital Geral'
+
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center px-5 py-8 bg-[#F4F6FA] select-none">
-      <div className="w-full max-w-sm space-y-8 animate-[fadeIn_0.3s_ease-out]">
+      <div className="w-full max-w-sm space-y-5 animate-[fadeIn_0.3s_ease-out]">
         
-        {/* Cabeçalho */}
-        <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            Criar Conta
-          </h1>
-          <p className="text-sm text-gray-400 font-semibold mt-1.5 leading-snug">
-            Cadastre o seu perfil na plataforma <span className="font-brand font-bold text-gray-700">Primus</span>
-          </p>
+        {/* Topo com Botão Voltar contextual e Título */}
+        <div className="relative flex items-center justify-center">
+          {etapa === 1 ? (
+            <Link
+              href="/login"
+              className="absolute left-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+              aria-label="Voltar para login"
+              title="Voltar para Login"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setErro(null)
+                setEtapa(1)
+              }}
+              className="absolute left-0 inline-flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)] text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
+              aria-label="Voltar para a etapa anterior"
+              title="Voltar para Etapa 1"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            </button>
+          )}
+
+          <div className="text-center px-10">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+              Criar Conta
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-400 font-semibold mt-0.5 leading-snug">
+              Cadastre o seu perfil na plataforma <span className="font-brand font-bold text-gray-700">Primus</span>
+            </p>
+          </div>
         </div>
 
-        {/* Card de Cadastro */}
+        {/* Indicador de Etapas / Progress Bar */}
+        <div className="space-y-1.5 px-1">
+          <div className="flex items-center justify-between text-[11px] font-bold text-gray-500">
+            <span className={etapa === 1 ? 'text-[#246BFD]' : 'text-gray-400'}>
+              1. Identificação & Cargo
+            </span>
+            <span className={etapa === 2 ? 'text-[#246BFD]' : 'text-gray-400'}>
+              2. Foto & Senha
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className={`h-1.5 rounded-full transition-all duration-300 ${etapa >= 1 ? 'bg-[#246BFD]' : 'bg-gray-200'}`} />
+            <div className={`h-1.5 rounded-full transition-all duration-300 ${etapa === 2 ? 'bg-[#246BFD]' : 'bg-gray-200'}`} />
+          </div>
+        </div>
+
+        {/* Inputs ocultos para Câmera (fallback) e Galeria */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="user"
+          onChange={handleFotoSelecionada}
+          className="hidden"
+        />
+        <input
+          ref={galeriaInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFotoSelecionada}
+          className="hidden"
+        />
+
+        {/* Card Principal */}
         <div className="bg-white rounded-[28px] p-6 shadow-[0_2px_14px_rgba(0,0,0,0.03)] border border-gray-100/80">
-          <form onSubmit={handleCadastrar} className="space-y-4">
-            
-            {erro && (
-              <p className="text-xs font-bold text-red-500 bg-red-50/50 border border-red-200/50 rounded-xl px-4 py-2.5 text-center">
-                {erro}
-              </p>
-            )}
+          
+          {erro && (
+            <p className="text-xs font-bold text-red-500 bg-red-50/50 border border-red-200/50 rounded-xl px-4 py-2.5 mb-4 text-center">
+              {erro}
+            </p>
+          )}
 
-            {sucesso && (
-              <p className="text-xs font-bold text-emerald-600 bg-emerald-50/50 border border-emerald-200/50 rounded-xl px-4 py-2.5 text-center">
-                {sucesso}
-              </p>
-            )}
-            
-            {/* Nome Completo */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-                Nome Completo
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Seu nome"
-                value={nomeCompleto}
-                onChange={(e) => setNomeCompleto(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
-              />
-            </div>
+          {sucesso && (
+            <p className="text-xs font-bold text-emerald-600 bg-emerald-50/50 border border-emerald-200/50 rounded-xl px-4 py-2.5 mb-4 text-center">
+              {sucesso}
+            </p>
+          )}
 
-            {/* E-mail */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-                E-mail
-              </label>
-              <input
-                type="email"
-                required
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
-              />
-            </div>
-
-            {/* Hospital */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-                Hospital
-              </label>
-              <select
-                value={hospitalId}
-                onChange={(e) => setHospitalId(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 outline-none focus:border-[#246BFD] transition-all cursor-pointer"
-              >
-                {hospitais.map(h => (
-                  <option key={h.id} value={h.id}>
-                    {h.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Número do Conselho (COREN / CRM / CREA) */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-                Número do Conselho (COREN / CRM / CREA)
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: COREN-BA 123456"
-                value={numeroConselho}
-                onChange={(e) => setNumeroConselho(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
-              />
-
-            </div>
-
-            {/* Perfil / Cargo — Seletor por Avatares */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1 block">
-                Perfil / Cargo
-              </label>
-              <div className="flex justify-around items-center bg-[#F4F6FA] border border-gray-200/80 rounded-2xl p-3">
-                {ROLES.map((r) => {
-                  const ativo = perfilSelecionado === r.valor
-                  return (
-                    <button
-                      key={r.valor}
-                      type="button"
-                      onClick={() => setPerfilSelecionado(r.valor)}
-                      className="flex flex-col items-center gap-1.5 focus:outline-none group select-none cursor-pointer flex-1"
-                    >
-                      <div
-                        className={`rounded-full p-0.5 aspect-square flex items-center justify-center transition-all duration-200 ${
-                          ativo
-                            ? 'ring-2 ring-[#246BFD]/40 ring-offset-2 scale-105 shadow-[0_2px_8px_rgba(36,107,253,0.15)]'
-                            : 'opacity-60 hover:opacity-100 hover:scale-105 active:scale-95'
-                        }`}
-                      >
-                        <Avatar size="md">
-                          <Avatar.Image
-                            alt={r.label}
-                            src={r.avatarUrl}
-                          />
-                          <Avatar.Fallback>{r.fallback}</Avatar.Fallback>
-                        </Avatar>
-                      </div>
-                      <div className="text-center leading-tight">
-                        <span
-                          className={`text-[11px] font-bold tracking-tight block transition-colors ${
-                            ativo ? 'text-[#246BFD]' : 'text-gray-700 group-hover:text-gray-900'
-                          }`}
-                        >
-                          {r.label}
-                        </span>
-                        <span className="text-[9.5px] font-medium text-gray-400 block mt-0.5">
-                          {r.desc}
-                        </span>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Seletor de Setor (aparece só quando Perfil = Técnico) */}
-            <div
-              className="overflow-hidden transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
-              style={{
-                maxHeight: perfilSelecionado === 'tecnico' ? '120px' : '0px',
-                opacity: perfilSelecionado === 'tecnico' ? 1 : 0,
-                marginTop: perfilSelecionado === 'tecnico' ? '0px' : '-8px',
-              }}
-            >
+          {/* ═══════════════════════════════════════════════════════════════
+              ETAPA 1: Identificação Profissional & Cargo
+          ═══════════════════════════════════════════════════════════════ */}
+          {etapa === 1 && (
+            <form onSubmit={handleAvancarEtapa1} className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
+              
+              {/* Nome Completo */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-                  Setor Técnico
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Seu nome completo"
+                  value={nomeCompleto}
+                  onChange={(e) => setNomeCompleto(e.target.value)}
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
+                />
+              </div>
+
+              {/* E-mail */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
+                  E-mail
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
+                />
+              </div>
+
+              {/* Hospital */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
+                  Hospital
                 </label>
                 <select
-                  value={setorSelecionado}
-                  onChange={(e) => setSetorSelecionado(e.target.value)}
-                  required={perfilSelecionado === 'tecnico'}
+                  value={hospitalId}
+                  onChange={(e) => setHospitalId(e.target.value)}
                   className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 outline-none focus:border-[#246BFD] transition-all cursor-pointer"
                 >
-                  <option value="" disabled>Selecione o setor...</option>
-                  {TODOS_SETORES.map(s => (
-                    <option key={s} value={s}>
-                      {SETORES_LABELS[s]}
+                  {hospitais.map(h => (
+                    <option key={h.id} value={h.id}>
+                      {h.nome}
                     </option>
                   ))}
                 </select>
               </div>
-            </div>
 
-            {/* Senha */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-                Senha (mín. 6 caracteres)
-              </label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
-              />
-            </div>
+              {/* Número do Conselho (COREN / CRM / CREA) */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
+                  Número do Conselho (COREN / CRM / CREA)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: COREN-BA 123456"
+                  value={numeroConselho}
+                  onChange={(e) => setNumeroConselho(e.target.value)}
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
+                />
+              </div>
 
-            {/* Confirmar Senha */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
-                Confirmar Senha
-              </label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={confirmarSenha}
-                onChange={(e) => setConfirmarSenha(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
-              />
-            </div>
+              {/* Perfil / Cargo — Seletor por Avatares */}
+              <div className="space-y-2 pt-1">
+                <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1 block">
+                  Perfil / Cargo
+                </label>
+                <div className="flex justify-around items-center bg-[#F4F6FA] border border-gray-200/80 rounded-2xl p-3">
+                  {ROLES.map((r) => {
+                    const ativo = perfilSelecionado === r.valor
+                    return (
+                      <button
+                        key={r.valor}
+                        type="button"
+                        onClick={() => setPerfilSelecionado(r.valor)}
+                        className="flex flex-col items-center gap-1.5 focus:outline-none group select-none cursor-pointer flex-1"
+                      >
+                        <div
+                          className={`rounded-full p-0.5 aspect-square flex items-center justify-center transition-all duration-200 ${
+                            ativo
+                              ? 'ring-2 ring-[#246BFD]/40 ring-offset-2 scale-105 shadow-[0_2px_8px_rgba(36,107,253,0.15)]'
+                              : 'opacity-60 hover:opacity-100 hover:scale-105 active:scale-95'
+                          }`}
+                        >
+                          <Avatar size="md">
+                            <Avatar.Image
+                              alt={r.label}
+                              src={r.avatarUrl}
+                            />
+                            <Avatar.Fallback>{r.fallback}</Avatar.Fallback>
+                          </Avatar>
+                        </div>
+                        <div className="text-center leading-tight">
+                          <span
+                            className={`text-[11px] font-bold tracking-tight block transition-colors ${
+                              ativo ? 'text-[#246BFD]' : 'text-gray-700 group-hover:text-gray-900'
+                            }`}
+                          >
+                            {r.label}
+                          </span>
+                          <span className="text-[9.5px] font-medium text-gray-400 block mt-0.5">
+                            {r.desc}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
 
-            {/* Botão Cadastrar com Efeito Liquid Metal */}
-            <div className="pt-2">
-              <LiquidMetalButton
-                type="submit"
-                tamanho="lg"
-                larguraTotal
-                carregando={carregando}
-                label="Cadastrar"
-              />
-            </div>
-
-            {/* Link para Login */}
-            <div className="text-center pt-1.5">
-              <Link
-                href="/login"
-                className="text-xs font-bold text-gray-500 hover:text-gray-800 hover:underline"
+              {/* Seletor de Setor Técnico (somente quando perfil for 'tecnico') */}
+              <div
+                className="overflow-hidden transition-all duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                style={{
+                  maxHeight: perfilSelecionado === 'tecnico' ? '120px' : '0px',
+                  opacity: perfilSelecionado === 'tecnico' ? 1 : 0,
+                  marginTop: perfilSelecionado === 'tecnico' ? '0px' : '-8px',
+                }}
               >
-                Já tem conta? Faça Login
-              </Link>
-            </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
+                    Setor Técnico
+                  </label>
+                  <select
+                    value={setorSelecionado}
+                    onChange={(e) => setSetorSelecionado(e.target.value)}
+                    required={perfilSelecionado === 'tecnico'}
+                    className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 outline-none focus:border-[#246BFD] transition-all cursor-pointer"
+                  >
+                    <option value="" disabled>Selecione o setor...</option>
+                    {TODOS_SETORES.map(s => (
+                      <option key={s} value={s}>
+                        {SETORES_LABELS[s]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          </form>
+              {/* Botão Avançar para Etapa 2 */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  className="w-full h-12 rounded-2xl bg-[#246BFD] text-white font-bold text-sm shadow-[0_4px_14px_rgba(36,107,253,0.3)] hover:bg-[#1a5ce6] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Continuar</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Link para Login */}
+              <div className="text-center pt-1">
+                <Link
+                  href="/login"
+                  className="text-xs font-bold text-gray-500 hover:text-gray-800 hover:underline"
+                >
+                  Já tem conta? Faça Login
+                </Link>
+              </div>
+
+            </form>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════
+              ETAPA 2: Foto de Perfil (Opcional) & Senha de Acesso
+          ═══════════════════════════════════════════════════════════════ */}
+          {etapa === 2 && (
+            <form onSubmit={handleCadastrar} className="space-y-4 animate-[fadeIn_0.2s_ease-out]">
+              
+              {/* SEÇÃO: Foto de Perfil (Opcional) */}
+              <div className="bg-[#F4F6FA] border border-gray-200/70 rounded-2xl p-4 flex flex-col items-center gap-3">
+                <div className="relative group">
+                  {fotoPreview ? (
+                    // Caso tenha enviado foto personalizada
+                    <div className="relative">
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#246BFD] shadow-md">
+                        <img
+                          src={fotoPreview}
+                          alt="Sua foto de perfil"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removerFoto}
+                        className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 active:scale-95 transition-all cursor-pointer"
+                        title="Remover foto e usar avatar do cargo"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    // Caso NÃO tenha foto -> mostra o avatar oficial do cargo escolhido na Etapa 1
+                    <div 
+                      onClick={abrirCamera}
+                      className="relative cursor-pointer group"
+                      title="Toque para abrir a câmera ou use os botões abaixo"
+                    >
+                      <div className="w-20 h-20 rounded-full p-0.5 border-2 border-dashed border-gray-300 group-hover:border-[#246BFD] transition-colors flex items-center justify-center overflow-hidden bg-white shadow-xs">
+                        <img
+                          src={roleAtual.avatarUrl}
+                          alt={roleAtual.label}
+                          className="w-full h-full object-cover rounded-full transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#246BFD] text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform">
+                        <Camera className="w-3.5 h-3.5" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Textos explicativos atualizados conforme feedback */}
+                <div className="text-center w-full">
+                  <div className="flex items-center justify-center gap-1.5 text-[11.5px] font-bold text-gray-800">
+                    <span>{fotoPreview ? 'Ficou muito bom!' : 'Foto de Perfil (Opcional)'}</span>
+                    {fotoPreview ? (
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
+                    ) : (
+                      <span className="text-[10px] font-semibold text-gray-400">
+                        • {roleAtual.label}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1 leading-relaxed max-w-[260px] mx-auto">
+                    {fotoPreview 
+                      ? 'Essa foto será exibida como seu avatar para os outros usuários na plataforma.' 
+                      : `A foto ajuda sua equipe a identificar você. Se preferir não enviar agora, sem problemas: seu avatar será o ícone oficial de ${roleAtual.label}.`}
+                  </p>
+
+                  {/* Botões Câmera e Galeria */}
+                  <div className="flex items-center justify-center gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={abrirCamera}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:text-[#246BFD] hover:border-[#246BFD]/40 shadow-xs active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-[#246BFD]" />
+                      <span>Câmera</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => galeriaInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-[11px] font-bold text-gray-700 hover:text-[#246BFD] hover:border-[#246BFD]/40 shadow-xs active:scale-95 transition-all cursor-pointer"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-[#246BFD]" />
+                      <span>Galeria</span>
+                    </button>
+
+                    {fotoPreview && (
+                      <button
+                        type="button"
+                        onClick={removerFoto}
+                        className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── SIMULAÇÃO DA PILL DO USUÁRIO ── */}
+              <div className="space-y-1.5 pt-0.5">
+                <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1 block">
+                  Prévia na aplicação
+                </label>
+                <div className="bg-[#F4F6FA] border border-gray-200/80 rounded-2xl p-3 flex flex-col items-center justify-center gap-1.5">
+                  <span className="text-[10px] font-medium text-gray-400 text-center">
+                    Assim aparecerá sua identificação no cabeçalho do sistema:
+                  </span>
+                  
+                  {/* A Pill do Usuário (Simulação em tempo real) */}
+                  <div className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs transition-all">
+                    <AvatarPerfil
+                      perfil={perfilSelecionado}
+                      avatarUrl={fotoPreview}
+                      nome={nomeCompleto || 'Seu Nome'}
+                      tamanho="sm"
+                    />
+                    <div className="flex flex-col items-start leading-tight text-left pr-1 min-w-0 max-w-[170px]">
+                      <span className="w-full block text-[11.5px] font-bold text-slate-800 tracking-tight truncate">
+                        {nomeCompleto || 'Seu Nome'}
+                      </span>
+                      <span className="w-full block text-[9.5px] font-semibold text-slate-400 truncate">
+                        {roleAtual.label} • {hospitalNome}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Senha */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
+                  Senha (mín. 6 caracteres)
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
+                />
+              </div>
+
+              {/* Confirmar Senha */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
+                  Confirmar Senha
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
+                />
+              </div>
+
+              {/* Botão Cadastrar (Liquid Metal) */}
+              <div className="pt-2">
+                <LiquidMetalButton
+                  type="submit"
+                  tamanho="lg"
+                  larguraTotal
+                  carregando={carregando}
+                  label="Concluir Cadastro"
+                />
+              </div>
+
+              {/* Botão Voltar para a Etapa 1 */}
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErro(null)
+                    setEtapa(1)
+                  }}
+                  className="text-xs font-bold text-gray-400 hover:text-gray-700 transition-colors cursor-pointer"
+                >
+                  ← Voltar para dados profissionais
+                </button>
+              </div>
+
+            </form>
+          )}
+
         </div>
 
       </div>
+
+      {/* ── MODAL DE CÂMERA AO VIVO ── */}
+      {modalCameraAberto && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-[fadeIn_0.2s_ease-out]">
+          <div className="w-full max-w-xs flex flex-col items-center gap-4 bg-slate-900 rounded-[28px] p-5 border border-white/10 shadow-2xl">
+            {/* Header com botão fechar */}
+            <div className="w-full flex items-center justify-between text-white">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                Tirar Foto
+              </span>
+              <button
+                type="button"
+                onClick={fecharCamera}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Visualizador de Vídeo em Círculo (Preview idêntico ao avatar) */}
+            <div className="relative w-52 h-52 rounded-full overflow-hidden border-4 border-[#246BFD] shadow-[0_0_24px_rgba(36,107,253,0.4)] bg-black flex items-center justify-center">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover scale-x-[-1]"
+              />
+            </div>
+
+            <p className="text-[11px] text-slate-400 text-center font-medium">
+              Posicione seu rosto no centro e capture
+            </p>
+
+            {/* Botão de Disparo */}
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={capturarFotoCamera}
+                className="w-16 h-16 rounded-full bg-white ring-4 ring-[#246BFD] flex items-center justify-center shadow-lg active:scale-90 hover:scale-105 transition-all cursor-pointer"
+                title="Capturar Foto"
+              >
+                <div className="w-12 h-12 rounded-full bg-[#246BFD] flex items-center justify-center">
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

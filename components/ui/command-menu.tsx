@@ -32,6 +32,7 @@ export type CommandMenuSection = {
 type Props = {
 	title: ReactNode;
 	perfil?: string;
+	avatarUrl?: string | null;
 	avatar?: ReactNode;
 	/** Cycles through these one at a time, pausing while the menu is open. */
 	status?: ReactNode[];
@@ -57,6 +58,7 @@ const KEYFRAMES = `
 export default function CommandMenu({
 	title,
 	perfil,
+	avatarUrl,
 	avatar,
 	status = [],
 	statusInterval = 4000,
@@ -181,6 +183,7 @@ export default function CommandMenu({
 	const avatarFinal = avatar || (
 		<AvatarPerfil
 			perfil={perfil}
+			avatarUrl={avatarUrl}
 			nome={typeof title === 'string' ? title : undefined}
 			tamanho="sm"
 		/>

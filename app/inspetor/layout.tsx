@@ -13,7 +13,7 @@ export default function LayoutInspetor({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [usuario, setUsuario] = useState<{ nome: string; perfil: string } | null>(null)
+  const [usuario, setUsuario] = useState<{ nome: string; perfil: string; avatar_url?: string | null } | null>(null)
 
   useEffect(() => {
     // Pré-carregar rotas principais em background para navegação instantânea
@@ -42,15 +42,26 @@ export default function LayoutInspetor({
         const supabase = criarClienteSupabase() as any
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          const { data: profiles } = await supabase
+          const metaAvatar = user.user_metadata?.avatar_url || null
+          let { data: profiles, error: pErr } = await supabase
             .from('usuarios')
-            .select('id, auth_user_id, nome, perfil')
+            .select('id, auth_user_id, nome, perfil, avatar_url')
             .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
             .limit(1)
 
+          if (pErr && pErr.code === '42703') {
+            const { data: pFallback } = await supabase
+              .from('usuarios')
+              .select('id, auth_user_id, nome, perfil')
+              .or(`auth_user_id.eq.${user.id},id.eq.${user.id}`)
+              .limit(1)
+            profiles = pFallback
+          }
+
+          const localAvatar = profiles?.[0]?.avatar_url || localStorage.getItem(`primus_avatar_${user.id}`) || metaAvatar
           const profile = profiles?.[0]
           if (profile?.nome) {
-            const u = { nome: profile.nome, perfil: profile.perfil || 'inspetor' }
+            const u = { nome: profile.nome, perfil: profile.perfil || 'inspetor', avatar_url: localAvatar }
             setUsuario(u)
             localStorage.setItem('primus_usuario_atual', JSON.stringify(u))
             return
@@ -58,7 +69,7 @@ export default function LayoutInspetor({
 
           const metaNome = user.user_metadata?.nome || user.user_metadata?.full_name || user.user_metadata?.name
           if (metaNome) {
-            const u = { nome: metaNome, perfil: user.user_metadata?.perfil || 'inspetor' }
+            const u = { nome: metaNome, perfil: user.user_metadata?.perfil || 'inspetor', avatar_url: localAvatar }
             setUsuario(u)
             localStorage.setItem('primus_usuario_atual', JSON.stringify(u))
             return
@@ -139,6 +150,7 @@ export default function LayoutInspetor({
         <CommandMenu
           title={nomeExibido}
           perfil="inspetor"
+          avatarUrl={usuario?.avatar_url}
           status={[
             'Inspetor(a)',
             'Hosp. Piem. Paraguaçu',

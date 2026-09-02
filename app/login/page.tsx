@@ -94,14 +94,25 @@ function FormularioLogin() {
         return
       }
 
+      const metaAvatar = res.data.user.user_metadata?.avatar_url || null
+
       let profile = null
       for (let i = 0; i < 4; i++) {
-        const { data: p } = await supabase
+        let { data: p, error: pErr } = await supabase
           .from('usuarios')
-          .select('id, nome, perfil')
+          .select('id, nome, perfil, avatar_url')
           .eq('id', res.data.user.id)
           .single()
         
+        if (pErr && pErr.code === '42703') {
+          const { data: pSemAvatar } = await supabase
+            .from('usuarios')
+            .select('id, nome, perfil')
+            .eq('id', res.data.user.id)
+            .single()
+          p = pSemAvatar
+        }
+
         if (p) {
           profile = p
           break
@@ -113,14 +124,16 @@ function FormularioLogin() {
         profile = {
           id: res.data.user.id,
           nome: res.data.user.user_metadata?.nome || email.split('@')[0],
-          perfil: res.data.user.user_metadata?.perfil || perfilSelecionado
+          perfil: res.data.user.user_metadata?.perfil || perfilSelecionado,
+          avatar_url: metaAvatar
         }
       }
 
       localStorage.setItem('primus_usuario_atual', JSON.stringify({
         id: res.data.user.id,
         nome: profile.nome,
-        perfil: profile.perfil
+        perfil: profile.perfil,
+        avatar_url: profile.avatar_url || metaAvatar
       }))
 
       const rotas: Record<string, string> = {
