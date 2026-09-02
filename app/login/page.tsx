@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { X, Eye, EyeOff } from 'lucide-react'
 import { Botao } from '@/components/ui/Botao'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { criarClienteSupabase } from '@/lib/supabase/client'
@@ -44,8 +45,26 @@ function FormularioLogin() {
   const [perfilSelecionado, setPerfilSelecionado] = useState<PerfilUsuario>('inspetor')
   const [carregando, setCarregando] = useState(false)
   const [mostrarCredenciais, setMostrarCredenciais] = useState(false)
+  const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [manterConectado, setManterConectado] = useState(true)
 
   const [erro, setErro] = useState<string | null>(null)
+
+  // Recupera último login salvo se "Me manter conectado" estiver ativo
+  useEffect(() => {
+    try {
+      const emailSalvo = localStorage.getItem('primus_lembrar_email')
+      const manterSalvo = localStorage.getItem('primus_manter_conectado')
+      if (emailSalvo) {
+        setEmail(emailSalvo)
+      }
+      if (manterSalvo !== null) {
+        setManterConectado(manterSalvo === 'true')
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
 
   async function handleEntrar(e: React.FormEvent) {
     e.preventDefault()
@@ -135,6 +154,19 @@ function FormularioLogin() {
         perfil: profile.perfil,
         avatar_url: profile.avatar_url || metaAvatar
       }))
+
+      // Salva ou remove o último login conforme "Me manter conectado"
+      try {
+        if (manterConectado) {
+          localStorage.setItem('primus_lembrar_email', email)
+          localStorage.setItem('primus_manter_conectado', 'true')
+        } else {
+          localStorage.removeItem('primus_lembrar_email')
+          localStorage.setItem('primus_manter_conectado', 'false')
+        }
+      } catch {
+        // ignore
+      }
 
       const rotas: Record<string, string> = {
         inspetor: '/inspetor',
@@ -263,14 +295,27 @@ function FormularioLogin() {
               <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
                 E-mail
               </label>
-              <input
-                type="email"
-                required
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3.5 text-[16px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type="email"
+                  required
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl pl-4 pr-11 py-3.5 text-[16px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
+                />
+                {email.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setEmail('')}
+                    className="absolute right-3.5 w-6 h-6 rounded-full bg-gray-200/80 hover:bg-gray-300 active:scale-95 text-gray-500 hover:text-gray-700 flex items-center justify-center transition-all cursor-pointer"
+                    aria-label="Limpar e-mail"
+                    title="Limpar e-mail"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Input de Senha */}
@@ -278,14 +323,44 @@ function FormularioLogin() {
               <label className="text-[11px] font-bold text-gray-400 tracking-wider uppercase ml-1">
                 Senha
               </label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl px-4 py-3.5 text-[16px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type={mostrarSenha ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full bg-[#F4F6FA] border border-gray-200/80 rounded-2xl pl-4 pr-11 py-3.5 text-[16px] text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#246BFD] focus:ring-1 focus:ring-[#246BFD]/10 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha(!mostrarSenha)}
+                  className="absolute right-3.5 w-7 h-7 rounded-full text-gray-400 hover:text-gray-700 flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                  aria-label={mostrarSenha ? 'Ocultar senha' : 'Ver senha'}
+                  title={mostrarSenha ? 'Ocultar senha' : 'Ver senha'}
+                >
+                  {mostrarSenha ? (
+                    <EyeOff className="w-4 h-4 text-[#246BFD]" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Opção Me manter conectado */}
+            <div className="flex items-center justify-between px-1 pt-0.5">
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  checked={manterConectado}
+                  onChange={(e) => setManterConectado(e.target.checked)}
+                  className="w-4 h-4 rounded-md border-gray-300 text-[#246BFD] focus:ring-[#246BFD]/20 accent-[#246BFD] cursor-pointer"
+                />
+                <span className="text-xs font-semibold text-gray-500 group-hover:text-gray-800 transition-colors">
+                  Me manter conectado
+                </span>
+              </label>
             </div>
 
             {/* Botão Entrar com Efeito Liquid Metal */}
