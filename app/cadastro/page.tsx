@@ -907,56 +907,54 @@ export default function PaginaCadastro() {
 
       </div>
 
-      {/* ── INTERFACE DE CÂMERA NATIVA FULLSCREEN ESTILO IPHONE ── */}
+      {/* ── INTERFACE DE CÂMERA TOTALMENTE FULLSCREEN (EDGE-TO-EDGE) ESTILO IPHONE ── */}
       {modalCameraAberto && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col justify-between select-none overflow-hidden touch-none animate-[fadeIn_0.15s_ease-out]">
+        <div className="fixed inset-0 z-[100] w-screen h-[100dvh] bg-black select-none overflow-hidden touch-none animate-[fadeIn_0.15s_ease-out]">
           
           {/* Efeito de Flash na tela ao disparar */}
           {disparandoFlash && (
-            <div className="fixed inset-0 z-[110] bg-white pointer-events-none" />
+            <div className="absolute inset-0 z-[110] bg-white pointer-events-none" />
           )}
 
-          {/* Top Bar com Botão Fechar */}
-          <div className="relative z-20 w-full flex items-center justify-between px-5 pt-8 pb-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+          {/* O Vídeo da Câmera ocupa 100% da tela física (Edge-to-Edge sem tarjas) */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`absolute inset-0 w-full h-full object-cover z-10 ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+          />
+
+          {/* Top Bar Flutuante sobre o Vídeo */}
+          <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-5 pt-8 pb-4 bg-gradient-to-b from-black/60 via-black/20 to-transparent pointer-events-auto">
             <button
               type="button"
               onClick={fecharCamera}
-              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-md"
               title="Fechar câmera"
             >
               <X className="w-5 h-5" />
             </button>
-            <span className="text-[11px] font-bold tracking-widest uppercase text-white/70">
+            <span className="text-[11px] font-bold tracking-widest uppercase text-white/90 drop-shadow-md">
               Foto de Perfil
             </span>
             <div className="w-10 h-10" />
           </div>
 
-          {/* Visor da Câmera: Ocupa a tela normal de câmera (sem círculo, tela cheia) */}
-          <div className="relative flex-1 w-full overflow-hidden bg-black flex items-center justify-center">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-            />
-          </div>
-
-          {/* Barra Inferior Estilo iPhone: Flash à esquerda, Disparador no centro, Virar Câmera à direita */}
-          <div className="relative z-20 w-full bg-black pt-5 pb-10 px-8 flex items-center justify-around">
+          {/* Barra de Controles Inferior Flutuante sobre o Vídeo */}
+          <div className="absolute bottom-0 left-0 right-0 z-20 pb-10 pt-10 px-8 flex items-center justify-around bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-auto">
             
             {/* Esquerda: Botão Flash */}
             <button
               type="button"
               onClick={alternarFlash}
-              className="w-13 h-13 rounded-full bg-[#1C1C1E] active:bg-[#2C2C2E] border border-white/10 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+              className="w-13 h-13 rounded-full bg-black/40 backdrop-blur-md border border-white/20 active:bg-black/60 flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-md"
               title={flashAtivo ? 'Desativar Flash' : 'Ativar Flash'}
             >
               {flashAtivo ? (
                 <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
               ) : (
-                <ZapOff className="w-5 h-5 text-white/80" />
+                <ZapOff className="w-5 h-5 text-white/90" />
               )}
             </button>
 
@@ -964,7 +962,7 @@ export default function PaginaCadastro() {
             <button
               type="button"
               onClick={capturarFotoCamera}
-              className="w-20 h-20 rounded-full border-[4px] border-white p-1 flex items-center justify-center active:scale-95 transition-transform cursor-pointer shadow-lg"
+              className="w-20 h-20 rounded-full border-[4px] border-white p-1 flex items-center justify-center active:scale-95 transition-transform cursor-pointer shadow-2xl backdrop-blur-xs"
               title="Tirar Foto"
             >
               <div className="w-full h-full rounded-full bg-white active:scale-90 transition-transform" />
@@ -974,10 +972,10 @@ export default function PaginaCadastro() {
             <button
               type="button"
               onClick={alternarCamera}
-              className="w-13 h-13 rounded-full bg-[#1C1C1E] active:bg-[#2C2C2E] border border-white/10 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+              className="w-13 h-13 rounded-full bg-black/40 backdrop-blur-md border border-white/20 active:bg-black/60 flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-md"
               title="Virar Câmera"
             >
-              <SwitchCamera className="w-5 h-5 text-white/80" />
+              <SwitchCamera className="w-5 h-5 text-white/90" />
             </button>
 
           </div>
