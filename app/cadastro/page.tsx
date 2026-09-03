@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Camera, Image as ImageIcon, X, ArrowRight } from 'lucide-react'
+import { ChevronLeft, Camera, Image as ImageIcon, X, ArrowRight, SwitchCamera, Zap, ZapOff } from 'lucide-react'
 import { LiquidMetalButton } from '@/components/ui/liquid-metal-button'
 import { Avatar, AvatarPerfil } from '@/components/ui/Avatar'
 import { criarClienteSupabase } from '@/lib/supabase/client'
@@ -101,9 +101,12 @@ export default function PaginaCadastro() {
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galeriaInputRef = useRef<HTMLInputElement>(null)
 
-  // Câmera ao vivo (Webcam / Celular)
+  // Câmera ao vivo estilo iPhone (Webcam / Celular)
   const [modalCameraAberto, setModalCameraAberto] = useState(false)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
+  const [flashAtivo, setFlashAtivo] = useState(false)
+  const [disparandoFlash, setDisparandoFlash] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const [senha, setSenha] = useState('')
@@ -166,24 +169,43 @@ export default function PaginaCadastro() {
     }
   }, [modalCameraAberto, cameraStream])
 
-  // Abrir Câmera ao vivo
-  async function abrirCamera() {
+  // Iniciar Câmera ao vivo
+  async function iniciarCamera(modo: 'user' | 'environment' = 'user') {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop())
+    }
     try {
       if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
+          video: {
+            facingMode: modo,
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
           audio: false,
         })
         setCameraStream(stream)
+        setFacingMode(modo)
         setModalCameraAberto(true)
         setErro(null)
       } else {
         cameraInputRef.current?.click()
       }
     } catch (err: any) {
-      console.warn('Câmera direta indisponível ou permissão negada, fallback para input de arquivo:', err)
-      cameraInputRef.current?.click()
+      console.warn('Câmera direta com modo indisponível, tentando genérico:', err)
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        setCameraStream(fallbackStream)
+        setFacingMode(modo)
+        setModalCameraAberto(true)
+      } catch {
+        cameraInputRef.current?.click()
+      }
     }
+  }
+
+  function abrirCamera() {
+    iniciarCamera('user')
   }
 
   function fecharCamera() {
@@ -191,16 +213,46 @@ export default function PaginaCadastro() {
       cameraStream.getTracks().forEach((t) => t.stop())
       setCameraStream(null)
     }
+    setFlashAtivo(false)
     setModalCameraAberto(false)
+  }
+
+  function alternarCamera() {
+    const proximoModo = facingMode === 'user' ? 'environment' : 'user'
+    iniciarCamera(proximoModo)
+  }
+
+  async function alternarFlash() {
+    const proximo = !flashAtivo
+    setFlashAtivo(proximo)
+    if (cameraStream) {
+      const track = cameraStream.getVideoTracks()[0]
+      try {
+        const capabilities = track.getCapabilities?.() as any
+        if (capabilities?.torch) {
+          await (track as any).applyConstraints({
+            advanced: [{ torch: proximo }]
+          })
+        }
+      } catch (err) {
+        console.warn('Torch não suportado neste aparelho/câmera:', err)
+      }
+    }
   }
 
   function capturarFotoCamera() {
     if (!videoRef.current) return
     const video = videoRef.current
+
+    if (flashAtivo) {
+      setDisparandoFlash(true)
+      setTimeout(() => setDisparandoFlash(false), 140)
+    }
+
     const canvas = document.createElement('canvas')
-    const maxDim = 120
-    const width = video.videoWidth || 640
-    const height = video.videoHeight || 480
+    const maxDim = 160
+    const width = video.videoWidth || 1280
+    const height = video.videoHeight || 720
 
     const size = Math.min(width, height)
     const sx = (width - size) / 2
@@ -211,12 +263,14 @@ export default function PaginaCadastro() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Efeito espelho para selfie natural
-    ctx.translate(maxDim, 0)
-    ctx.scale(-1, 1)
+    // Se for frontal (user), espelha horizontalmente como espelho/selfie
+    if (facingMode === 'user') {
+      ctx.translate(maxDim, 0)
+      ctx.scale(-1, 1)
+    }
     ctx.drawImage(video, sx, sy, size, size, 0, 0, maxDim, maxDim)
 
-    const base64 = canvas.toDataURL('image/jpeg', 0.8)
+    const base64 = canvas.toDataURL('image/jpeg', 0.82)
     setFotoPreview(base64)
     fecharCamera()
   }
@@ -853,53 +907,81 @@ export default function PaginaCadastro() {
 
       </div>
 
-      {/* ── MODAL DE CÂMERA AO VIVO ── */}
+      {/* ── INTERFACE DE CÂMERA NATIVA FULLSCREEN ESTILO IPHONE ── */}
       {modalCameraAberto && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-[fadeIn_0.2s_ease-out]">
-          <div className="w-full max-w-xs flex flex-col items-center gap-4 bg-slate-900 rounded-[28px] p-5 border border-white/10 shadow-2xl">
-            {/* Header com botão fechar */}
-            <div className="w-full flex items-center justify-between text-white">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Tirar Foto
-              </span>
-              <button
-                type="button"
-                onClick={fecharCamera}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col justify-between select-none overflow-hidden touch-none animate-[fadeIn_0.15s_ease-out]">
+          
+          {/* Efeito de Flash na tela ao disparar */}
+          {disparandoFlash && (
+            <div className="fixed inset-0 z-[110] bg-white pointer-events-none" />
+          )}
 
-            {/* Visualizador de Vídeo em Círculo (Preview idêntico ao avatar) */}
-            <div className="relative w-52 h-52 rounded-full overflow-hidden border-4 border-[#246BFD] shadow-[0_0_24px_rgba(36,107,253,0.4)] bg-black flex items-center justify-center">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover scale-x-[-1]"
-              />
-            </div>
-
-            <p className="text-[11px] text-slate-400 text-center font-medium">
-              Posicione seu rosto no centro e capture
-            </p>
-
-            {/* Botão de Disparo */}
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                type="button"
-                onClick={capturarFotoCamera}
-                className="w-16 h-16 rounded-full bg-white ring-4 ring-[#246BFD] flex items-center justify-center shadow-lg active:scale-90 hover:scale-105 transition-all cursor-pointer"
-                title="Capturar Foto"
-              >
-                <div className="w-12 h-12 rounded-full bg-[#246BFD] flex items-center justify-center">
-                  <Camera className="w-6 h-6 text-white" />
-                </div>
-              </button>
-            </div>
+          {/* Top Bar com Botão Fechar */}
+          <div className="relative z-20 w-full flex items-center justify-between px-5 pt-8 pb-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+            <button
+              type="button"
+              onClick={fecharCamera}
+              className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+              title="Fechar câmera"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <span className="text-[11px] font-bold tracking-widest uppercase text-white/70">
+              Foto de Perfil
+            </span>
+            <div className="w-10 h-10" />
           </div>
+
+          {/* Visor da Câmera: Ocupa a tela normal de câmera (sem círculo, tela cheia) */}
+          <div className="relative flex-1 w-full overflow-hidden bg-black flex items-center justify-center">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+            />
+          </div>
+
+          {/* Barra Inferior Estilo iPhone: Flash à esquerda, Disparador no centro, Virar Câmera à direita */}
+          <div className="relative z-20 w-full bg-black pt-5 pb-10 px-8 flex items-center justify-around">
+            
+            {/* Esquerda: Botão Flash */}
+            <button
+              type="button"
+              onClick={alternarFlash}
+              className="w-13 h-13 rounded-full bg-[#1C1C1E] active:bg-[#2C2C2E] border border-white/10 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+              title={flashAtivo ? 'Desativar Flash' : 'Ativar Flash'}
+            >
+              {flashAtivo ? (
+                <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
+              ) : (
+                <ZapOff className="w-5 h-5 text-white/80" />
+              )}
+            </button>
+
+            {/* Centro: Botão de Disparo do iPhone */}
+            <button
+              type="button"
+              onClick={capturarFotoCamera}
+              className="w-20 h-20 rounded-full border-[4px] border-white p-1 flex items-center justify-center active:scale-95 transition-transform cursor-pointer shadow-lg"
+              title="Tirar Foto"
+            >
+              <div className="w-full h-full rounded-full bg-white active:scale-90 transition-transform" />
+            </button>
+
+            {/* Direita: Botão Virar Câmera */}
+            <button
+              type="button"
+              onClick={alternarCamera}
+              className="w-13 h-13 rounded-full bg-[#1C1C1E] active:bg-[#2C2C2E] border border-white/10 flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+              title="Virar Câmera"
+            >
+              <SwitchCamera className="w-5 h-5 text-white/80" />
+            </button>
+
+          </div>
+
         </div>
       )}
 
